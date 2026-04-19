@@ -9,244 +9,430 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0b0f14; --bg2:#131920; --bg3:#1a2230; --bg4:#212d3d;
-  --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.13);
-  --text:#e8edf5; --muted:#5a6880; --muted2:#8a9ab5;
-  --accent:#3dd68c; --accent2:#2ab87a;
-  --warn:#f5a623; --danger:#e85555; --blue:#4a9eff;
-  --gold:#ffd166; --purple:#a78bfa; --teal:#2dd4bf;
-  --radius:14px;
+  --bg:     #090d12;
+  --bg2:    #111720;
+  --bg3:    #182030;
+  --bg4:    #1e2a3a;
+  --bg5:    #243244;
+  --border: rgba(255,255,255,.06);
+  --border2:rgba(255,255,255,.11);
+  --text:   #dde4f0;
+  --muted:  #4a5a72;
+  --muted2: #7a8fa8;
+  --accent: #34c97a;
+  --accent2:#28a863;
+  --warn:   #e89d1a;
+  --danger: #d94f4f;
+  --blue:   #3d8eef;
+  --gold:   #e8c84a;
+  --purple: #9575f0;
+  --teal:   #26c4b0;
+  --r:      12px;
+  --rs:     8px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;display:flex;flex-direction:column;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
 
 /* ── HEADER ── */
-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);z-index:1000;flex-shrink:0;gap:10px;}
-.logo{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.logo-icon{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:#071a0f;}
-.logo-text{font-size:15px;font-weight:600;letter-spacing:-.3px;}
-.logo-text span{color:var(--accent);}
-.live-strip{display:flex;align-items:center;gap:8px;flex:1;justify-content:center;}
-.live-chip{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:500;white-space:nowrap;}
-.live-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1.5s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
-.live-chip .val{color:var(--accent);font-weight:600;}
-.pts-badge{display:flex;align-items:center;gap:5px;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.25);border-radius:20px;padding:4px 11px;font-size:11px;font-weight:600;color:var(--gold);flex-shrink:0;}
-.btn-profile{width:32px;height:32px;background:var(--bg3);border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .15s;position:relative;}
+header{
+  display:flex;align-items:center;gap:12px;
+  padding:0 16px;height:48px;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  z-index:1000;flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:9px;flex-shrink:0;text-decoration:none;}
+.logo-mark{
+  width:26px;height:26px;background:var(--accent);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:#071a0f;
+  letter-spacing:-.5px;
+}
+.logo-name{font-size:13px;font-weight:600;letter-spacing:-.2px;color:var(--text);}
+.logo-name b{color:var(--accent);font-weight:600;}
+
+.hdr-stats{display:flex;align-items:center;gap:6px;flex:1;justify-content:center;}
+.hstat{
+  display:flex;align-items:center;gap:5px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:20px;padding:3px 9px;
+  font-size:10px;font-weight:500;color:var(--muted2);white-space:nowrap;
+}
+.hstat-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.hstat-dot.green{background:var(--accent);}
+.hstat-dot.blue{background:var(--blue);}
+.hstat-dot.warn{background:var(--warn);}
+.hstat b{color:var(--text);font-weight:600;}
+
+.hdr-right{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.pts-chip{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(232,200,74,.08);border:1px solid rgba(232,200,74,.2);
+  border-radius:20px;padding:3px 10px;
+  font-size:10px;font-weight:600;color:var(--gold);
+}
+.btn-profile{
+  width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;transition:background .15s;position:relative;
+}
 .btn-profile:hover{background:var(--bg4);}
-.profile-dot{position:absolute;top:1px;right:1px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:2px solid var(--bg2);}
+.profile-dot{position:absolute;top:0;right:0;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--bg2);display:none;}
 
 /* ── LAYOUT ── */
 .main{display:flex;flex:1;overflow:hidden;}
 #map{flex:1;z-index:1;}
 
 /* ── PANNEAU DROIT ── */
-.side{width:272px;background:var(--bg2);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:100;flex-shrink:0;}
-.panel-title{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
-.panel-title .zdot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
+.side{
+  width:268px;background:var(--bg2);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+  z-index:100;flex-shrink:0;
+}
 
-/* Zone */
-.zone-panel{padding:11px 13px;border-bottom:1px solid var(--border);flex-shrink:0;}
-.zone-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.zstat{background:var(--bg3);border-radius:9px;padding:8px 10px;}
-.zstat-label{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;}
-.zstat-val{font-size:16px;font-weight:600;line-height:1;}
-.zstat-val.green{color:var(--accent)}.zstat-val.orange{color:var(--warn)}.zstat-val.red{color:var(--danger)}.zstat-val.blue{color:var(--blue)}
-.zstat-sub{font-size:9px;color:var(--muted);margin-top:1px;}
-.prob-bar{margin-top:8px;height:3px;background:var(--bg4);border-radius:3px;overflow:hidden;}
-.prob-fill{height:100%;border-radius:3px;transition:width .6s ease,background .4s;}
+/* Section label */
+.sec-label{
+  font-size:8px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.8px;
+  display:flex;align-items:center;gap:5px;
+}
+.sec-label .pulse{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* ── TABS PANNEAU ── */
-.panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
-.ptab{flex:1;padding:9px 4px;font-size:10px;font-weight:600;color:var(--muted);text-align:center;cursor:pointer;transition:color .15s;border-bottom:2px solid transparent;letter-spacing:.3px;}
-.ptab:hover{color:var(--muted2);}
-.ptab.active{color:var(--text);border-bottom-color:var(--accent);}
-.tab-content{flex:1;overflow:hidden;display:none;flex-direction:column;}
-.tab-content.active{display:flex;}
+/* Zone panel */
+.zone-panel{padding:12px 13px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.zone-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:9px;}
+.zstat{
+  background:var(--bg3);border-radius:var(--rs);padding:8px 10px;
+  display:flex;flex-direction:column;gap:1px;
+}
+.zstat-l{font-size:8px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.zstat-v{font-size:17px;font-weight:600;line-height:1.1;color:var(--text);}
+.zstat-v.g{color:var(--accent)}.zstat-v.o{color:var(--warn)}.zstat-v.r{color:var(--danger)}.zstat-v.b{color:var(--blue)}
+.zstat-s{font-size:9px;color:var(--muted);}
+.prob-track{margin-top:9px;height:2px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.prob-fill{height:100%;border-radius:2px;transition:width .5s,background .4s;}
+
+/* ── TABS ── */
+.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab{
+  flex:1;height:34px;display:flex;align-items:center;justify-content:center;gap:5px;
+  font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  cursor:pointer;transition:color .15s;border-bottom:2px solid transparent;
+}
+.tab:hover{color:var(--muted2);}
+.tab.on{color:var(--text);border-bottom-color:var(--accent);}
+.tab-pane{flex:1;overflow:hidden;display:none;flex-direction:column;}
+.tab-pane.on{display:flex;}
+.pane-scroll{flex:1;overflow-y:auto;padding:9px 12px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;}
 
 /* ── CARBURANTS ── */
-.fuel-scroll{flex:1;overflow-y:auto;padding:10px 13px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;}
-.fuel-station{background:var(--bg3);border-radius:10px;padding:9px 11px;margin-bottom:7px;}
-.fuel-station:last-child{margin-bottom:0;}
-.fuel-name{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fuel-addr{font-size:10px;color:var(--muted);margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fuel-prices{display:flex;flex-wrap:wrap;gap:4px;}
-.fuel-pill{display:flex;align-items:center;gap:4px;background:var(--bg4);border-radius:6px;padding:3px 7px;font-size:10px;font-weight:500;}
-.fuel-pill .ftype{color:var(--muted);font-size:9px;}
-.fuel-pill .fprice{color:var(--text);font-weight:600;}
-.fuel-pill.cheap .fprice{color:var(--accent);}
-.fuel-pill.mid   .fprice{color:var(--warn);}
-.fuel-pill.exp   .fprice{color:var(--danger);}
-.fuel-dist{font-size:9px;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:5px;}
-.fuel-auto{background:rgba(61,214,140,.1);color:var(--accent);font-size:8px;font-weight:600;padding:1px 5px;border-radius:4px;}
-.fuel-nodata{font-size:11px;color:var(--muted);text-align:center;padding:12px 0;font-style:italic;}
+.stn{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);padding:9px 10px;margin-bottom:6px;
+}
+.stn:last-child{margin-bottom:0;}
+.stn-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.2;}
+.stn-addr{font-size:10px;color:var(--muted);margin:2px 0 7px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stn-prices{display:flex;flex-wrap:wrap;gap:3px;}
+.price-tag{
+  display:flex;align-items:center;gap:3px;
+  background:var(--bg4);border:1px solid var(--border);
+  border-radius:5px;padding:3px 6px;
+}
+.pt-name{font-size:8px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+.pt-val{font-size:11px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;}
+.price-tag.lo .pt-val{color:var(--accent);}
+.price-tag.hi .pt-val{color:var(--danger);}
+.price-tag.fav{border-color:rgba(232,200,74,.3);}
+.price-tag.fav .pt-name{color:var(--gold);}
+.stn-meta{display:flex;align-items:center;gap:6px;margin-top:6px;}
+.stn-dist{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
+.badge-h24{
+  font-size:8px;font-weight:700;color:var(--accent);
+  background:rgba(52,201,122,.1);border:1px solid rgba(52,201,122,.2);
+  border-radius:4px;padding:1px 5px;letter-spacing:.3px;
+}
+.badge-demo{
+  font-size:8px;font-weight:700;color:var(--warn);
+  background:rgba(232,157,26,.08);border:1px solid rgba(232,157,26,.2);
+  border-radius:4px;padding:1px 5px;letter-spacing:.3px;
+}
+.no-data{font-size:11px;color:var(--muted);text-align:center;padding:16px 0;line-height:1.6;}
 
 /* ── BORNES ── */
-.bornes-scroll{flex:1;overflow-y:auto;padding:10px 13px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;}
-.borne-card{background:var(--bg3);border-radius:10px;padding:9px 11px;margin-bottom:7px;}
-.borne-card:last-child{margin-bottom:0;}
-.borne-header{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px;}
-.borne-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;}
-.borne-pdc{background:rgba(167,139,250,.15);color:var(--purple);font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;flex-shrink:0;}
-.borne-operateur{font-size:10px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.borne-specs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px;}
-.borne-pill{display:flex;align-items:center;gap:3px;border-radius:6px;padding:3px 7px;font-size:10px;font-weight:600;}
-.borne-pill.power{background:rgba(45,212,191,.12);color:var(--teal);}
-.borne-pill.type{background:var(--bg4);color:var(--muted2);}
-.borne-pill.dc{background:rgba(74,158,255,.12);color:var(--blue);}
-.borne-pill.ac{background:rgba(61,214,140,.1);color:var(--accent);}
-.borne-tarif{font-size:10px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-top:3px;}
-.borne-tarif .tval{color:var(--text);font-weight:500;}
-.borne-gratuit{background:rgba(61,214,140,.12);color:var(--accent);font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;}
-.borne-cb{background:rgba(74,158,255,.1);color:var(--blue);font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;}
-.bornes-nodata{font-size:11px;color:var(--muted);text-align:center;padding:12px 0;font-style:italic;}
+.brn{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);padding:9px 10px;margin-bottom:6px;
+}
+.brn:last-child{margin-bottom:0;}
+.brn.compat{border-color:rgba(149,117,240,.3);}
+.brn-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:4px;}
+.brn-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.2;}
+.brn-pdc{
+  font-size:9px;font-weight:700;color:var(--purple);
+  background:rgba(149,117,240,.1);border:1px solid rgba(149,117,240,.2);
+  border-radius:5px;padding:2px 6px;flex-shrink:0;
+}
+.brn-op{font-size:10px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.brn-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;}
+.btag{
+  font-size:9px;font-weight:600;border-radius:5px;padding:2px 6px;
+  background:var(--bg4);border:1px solid var(--border);color:var(--muted2);
+}
+.btag.dc{background:rgba(61,142,239,.1);border-color:rgba(61,142,239,.2);color:var(--blue);}
+.btag.ac{background:rgba(52,201,122,.08);border-color:rgba(52,201,122,.2);color:var(--accent);}
+.btag.kw{background:rgba(38,196,176,.1);border-color:rgba(38,196,176,.2);color:var(--teal);}
+.brn-tarif{font-size:10px;color:var(--muted2);display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.tag-free{font-size:8px;font-weight:700;color:var(--accent);background:rgba(52,201,122,.1);border:1px solid rgba(52,201,122,.2);border-radius:4px;padding:1px 5px;}
+.tag-cb{font-size:8px;font-weight:700;color:var(--blue);background:rgba(61,142,239,.1);border:1px solid rgba(61,142,239,.2);border-radius:4px;padding:1px 5px;}
 
 /* ── FEED ── */
+.feed-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 12px 7px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.feed-badge{
+  font-size:9px;font-weight:600;color:var(--muted2);
+  background:var(--bg3);border-radius:20px;padding:2px 7px;
+}
 .feed-scroll{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;}
-.feed-header-row{padding:10px 13px 7px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.feed-count{background:var(--bg3);border-radius:20px;padding:2px 7px;font-size:10px;color:var(--muted2);font-weight:500;}
-.feed-item{display:flex;align-items:flex-start;gap:8px;padding:6px 13px;transition:background .15s;animation:fadeSlide .3s ease;}
-@keyframes fadeSlide{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
-.feed-item:hover{background:var(--bg3);}
-.feed-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px;}
-.feed-icon.strong{background:rgba(61,214,140,.12)}.feed-icon.weak{background:rgba(245,166,35,.12)}.feed-icon.implicit{background:rgba(74,158,255,.1)}
-.feed-body{flex:1;min-width:0;}
-.feed-msg{font-size:11px;font-weight:500;color:var(--text);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.feed-meta{display:flex;align-items:center;gap:5px;margin-top:2px;}
-.feed-time{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
-.feed-badge{font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;text-transform:uppercase;letter-spacing:.3px;}
-.feed-badge.strong{background:rgba(61,214,140,.15);color:var(--accent)}
-.feed-badge.weak{background:rgba(245,166,35,.15);color:var(--warn)}
-.feed-badge.implicit{background:rgba(74,158,255,.12);color:var(--blue)}
-.feed-pts{font-size:9px;font-weight:700;color:var(--gold);}
+.fi{display:flex;align-items:flex-start;gap:8px;padding:6px 12px;transition:background .1s;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.fi:hover{background:var(--bg3);}
+.fi-icon{
+  width:24px;height:24px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
+}
+.fi-icon.s{background:rgba(52,201,122,.1);}
+.fi-icon.w{background:rgba(232,157,26,.1);}
+.fi-icon.i{background:rgba(61,142,239,.08);}
+.fi-body{flex:1;min-width:0;}
+.fi-msg{font-size:11px;font-weight:500;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fi-meta{display:flex;align-items:center;gap:4px;margin-top:2px;}
+.fi-time{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
+.fi-tag{font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px;text-transform:uppercase;letter-spacing:.3px;}
+.fi-tag.s{background:rgba(52,201,122,.12);color:var(--accent);}
+.fi-tag.w{background:rgba(232,157,26,.12);color:var(--warn);}
+.fi-tag.i{background:rgba(61,142,239,.1);color:var(--blue);}
+.fi-pts{font-size:9px;font-weight:700;color:var(--gold);}
 
 /* ── MODAL PROFIL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .2s;}
-.modal-overlay.open{opacity:1;pointer-events:all;}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;width:360px;max-width:calc(100vw - 32px);max-height:85dvh;overflow-y:auto;padding:0;}
-.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;}
-.modal-title{font-size:17px;font-weight:600;}
-.modal-close{width:30px;height:30px;background:var(--bg3);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);}
-.modal-close:hover{background:var(--bg4);}
-.modal-body{padding:0 20px 20px;}
-.modal-section{margin-bottom:20px;}
-.modal-section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:2000;display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-bg.open{opacity:1;pointer-events:all;}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:18px;width:350px;max-width:calc(100vw - 32px);
+  max-height:88dvh;overflow-y:auto;
+}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px 12px;border-bottom:1px solid var(--border);
+}
+.modal-title{font-size:15px;font-weight:600;}
+.modal-x{
+  width:26px;height:26px;background:var(--bg3);border:none;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);
+}
+.modal-x:hover{background:var(--bg4);}
+.modal-body{padding:14px 18px 18px;}
+.m-sec{margin-bottom:18px;}
+.m-sec-title{font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px;}
 
-/* Vehicle picker */
-.vehicle-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.vehicle-card{background:var(--bg3);border:1.5px solid var(--border);border-radius:12px;padding:12px 10px;cursor:pointer;transition:border-color .15s,background .15s;text-align:center;}
-.vehicle-card:hover{background:var(--bg4);}
-.vehicle-card.selected{border-color:var(--accent);background:rgba(61,214,140,.06);}
-.vehicle-card.selected .vc-label{color:var(--accent);}
-.vc-icon{font-size:22px;margin-bottom:5px;}
-.vc-label{font-size:11px;font-weight:600;color:var(--muted2);}
+/* Vehicle grid */
+.v-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.v-card{
+  background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;
+  padding:11px 8px;cursor:pointer;transition:border-color .15s,background .15s;
+  text-align:center;
+}
+.v-card:hover{background:var(--bg4);}
+.v-card.on{border-color:var(--accent);background:rgba(52,201,122,.05);}
+.v-card.on .v-label{color:var(--accent);}
+.v-icon{display:flex;align-items:center;justify-content:center;margin-bottom:5px;color:var(--muted2);}
+.v-card.on .v-icon{color:var(--accent);}
+.v-label{font-size:10px;font-weight:600;color:var(--muted2);}
 
-/* Carburant picker */
-.carb-grid{display:flex;flex-wrap:wrap;gap:6px;}
-.carb-btn{background:var(--bg3);border:1.5px solid var(--border);border-radius:8px;padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--muted2);cursor:pointer;transition:all .15s;}
-.carb-btn:hover{background:var(--bg4);}
-.carb-btn.selected{border-color:var(--warn);background:rgba(245,166,35,.1);color:var(--warn);}
-.carb-btn.elec{border-color:var(--teal);background:rgba(45,212,191,.08);color:var(--teal);}
+/* Carb / conn buttons */
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;}
+.chip{
+  background:var(--bg3);border:1.5px solid var(--border);border-radius:6px;
+  padding:4px 11px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;
+  color:var(--muted2);cursor:pointer;transition:all .15s;
+}
+.chip:hover{background:var(--bg4);}
+.chip.on-c{border-color:var(--warn);background:rgba(232,157,26,.08);color:var(--warn);}
+.chip.on-e{border-color:var(--purple);background:rgba(149,117,240,.08);color:var(--purple);}
 
-/* Connecteur picker */
-.conn-grid{display:flex;flex-wrap:wrap;gap:6px;}
-.conn-btn{background:var(--bg3);border:1.5px solid var(--border);border-radius:8px;padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;color:var(--muted2);cursor:pointer;transition:all .15s;}
-.conn-btn:hover{background:var(--bg4);}
-.conn-btn.selected{border-color:var(--purple);background:rgba(167,139,250,.1);color:var(--purple);}
-
-.modal-save{width:100%;height:44px;background:var(--accent);color:#071a0f;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;border:none;border-radius:12px;cursor:pointer;transition:background .15s;margin-top:4px;}
+.modal-save{
+  width:100%;height:40px;background:var(--accent);color:#071a0f;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  border:none;border-radius:10px;cursor:pointer;transition:background .15s;
+}
 .modal-save:hover{background:var(--accent2);}
 
 /* ── GAMIFICATION ── */
-.xp-toast{position:fixed;top:58px;left:50%;transform:translateX(-50%) translateY(0);background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);border-radius:20px;padding:7px 16px;font-size:12px;font-weight:700;color:var(--gold);z-index:9998;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
-.xp-toast.show{opacity:1;transform:translateX(-50%) translateY(8px);}
-.xp-bar-wrap{position:fixed;bottom:84px;left:0;right:272px;padding:0 14px;z-index:999;pointer-events:none;}
-.xp-bar-label{display:flex;justify-content:space-between;margin-bottom:3px;font-size:9px;color:var(--muted);}
-.xp-bar-label .lv{color:var(--gold);font-weight:700;}
-.xp-bar{height:3px;background:var(--bg3);border-radius:3px;overflow:hidden;}
-.xp-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--warn));border-radius:3px;transition:width .5s ease;}
+.xp-toast{
+  position:fixed;top:56px;left:50%;
+  transform:translateX(-50%) translateY(0);
+  background:rgba(232,200,74,.1);border:1px solid rgba(232,200,74,.3);
+  border-radius:20px;padding:6px 14px;
+  font-size:11px;font-weight:600;color:var(--gold);
+  z-index:9998;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+.xp-toast.on{opacity:1;transform:translateX(-50%) translateY(8px);}
 
-/* ── LOCKED OVERLAY ── */
-.locked-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(11,15,20,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(3px);transition:opacity .4s;}
-.locked-overlay.hidden{opacity:0;pointer-events:none;}
-.lock-card{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:26px 28px;text-align:center;max-width:290px;}
-.lock-icon{font-size:34px;margin-bottom:10px;}
-.lock-title{font-size:17px;font-weight:600;margin-bottom:7px;}
-.lock-sub{font-size:12px;color:var(--muted2);line-height:1.6;margin-bottom:16px;}
-.lock-pts-needed{display:inline-flex;align-items:center;gap:5px;background:rgba(255,209,102,.1);border:1px solid rgba(255,209,102,.25);border-radius:10px;padding:7px 14px;font-size:12px;font-weight:600;color:var(--gold);margin-bottom:16px;}
-.lock-cta{background:var(--accent);color:#071a0f;border:none;border-radius:12px;padding:11px 22px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;}
-.lock-cta:hover{background:var(--accent2);}
+.xp-wrap{
+  position:fixed;bottom:80px;left:0;right:268px;
+  padding:0 13px;z-index:999;pointer-events:none;
+}
+.xp-info{display:flex;justify-content:space-between;margin-bottom:3px;font-size:8px;color:var(--muted);}
+.xp-lv{color:var(--gold);font-weight:700;}
+.xp-track{height:2px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.xp-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--warn));border-radius:2px;transition:width .5s;}
+
+/* ── LOCKED ── */
+.lock-bg{
+  position:absolute;inset:0;background:rgba(9,13,18,.85);
+  display:flex;align-items:center;justify-content:center;
+  z-index:500;backdrop-filter:blur(4px);transition:opacity .3s;
+}
+.lock-bg.off{opacity:0;pointer-events:none;}
+.lock-box{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:18px;padding:28px 26px;text-align:center;max-width:280px;
+}
+.lock-icon{
+  width:48px;height:48px;background:var(--bg3);border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 14px;color:var(--muted2);
+}
+.lock-title{font-size:16px;font-weight:600;margin-bottom:7px;}
+.lock-sub{font-size:11px;color:var(--muted2);line-height:1.6;margin-bottom:14px;}
+.lock-req{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(232,200,74,.08);border:1px solid rgba(232,200,74,.2);
+  border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--gold);margin-bottom:14px;
+}
+.lock-btn{
+  background:var(--accent);color:#071a0f;border:none;border-radius:10px;
+  padding:10px 20px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;
+}
 
 /* Radius chip */
-.radius-chip{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600;color:var(--muted2);z-index:400;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:5px;}
-.radius-chip .rc-val{color:var(--text);}
+.r-chip{
+  position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  background:rgba(17,23,32,.9);border:1px solid var(--border2);
+  border-radius:20px;padding:3px 11px;
+  font-size:9px;font-weight:600;color:var(--muted2);
+  z-index:400;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:4px;
+}
+.r-chip b{color:var(--text);}
 
-/* ── LÉGENDE ── */
-.legend{position:absolute;bottom:88px;left:13px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 11px;z-index:400;font-size:10px;}
-.legend-title{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
-.legend-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;color:var(--muted2);}
-.legend-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0;}
+/* Legend */
+.lgnd{
+  position:absolute;bottom:84px;left:12px;
+  background:rgba(17,23,32,.92);border:1px solid var(--border);
+  border-radius:10px;padding:8px 10px;z-index:400;
+}
+.lgnd-title{font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
+.lgnd-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:9px;color:var(--muted2);}
+.lgnd-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
 
 /* ── BOTTOM ── */
-.bottom{position:fixed;bottom:0;left:0;width:calc(100% - 272px);z-index:1000;padding:10px 14px 16px;background:linear-gradient(to top,var(--bg2) 50%,transparent);pointer-events:none;}
+.bottom{
+  position:fixed;bottom:0;left:0;
+  width:calc(100% - 268px);
+  z-index:1000;padding:8px 13px 14px;
+  background:linear-gradient(to top,var(--bg2) 50%,transparent);
+  pointer-events:none;
+}
 .bottom>*{pointer-events:all;}
-.rl-bar{height:2px;background:var(--bg3);border-radius:2px;margin-bottom:8px;overflow:hidden;}
+.rl-track{height:1.5px;background:var(--bg3);border-radius:2px;margin-bottom:8px;overflow:hidden;}
 .rl-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
-.cta-row{display:flex;gap:8px;}
-.btn-signal{flex:1;height:50px;background:var(--accent);color:#071a0f;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;border:none;border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:background .15s,transform .1s;box-shadow:0 0 20px rgba(61,214,140,.2);}
-.btn-signal:active{transform:scale(.97);background:var(--accent2);}
-.btn-signal:disabled{background:var(--bg3);color:var(--muted);box-shadow:none;cursor:not-allowed;}
-.btn-locate{width:50px;height:50px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
-.btn-locate:hover{background:var(--bg4);}
+.cta{display:flex;gap:7px;}
+.btn-main{
+  flex:1;height:46px;background:var(--accent);color:#071a0f;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  border:none;border-radius:var(--r);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:background .15s,transform .1s;
+  box-shadow:0 0 16px rgba(52,201,122,.18);
+}
+.btn-main:active{transform:scale(.97);background:var(--accent2);}
+.btn-main:disabled{background:var(--bg3);color:var(--muted);box-shadow:none;cursor:not-allowed;}
+.btn-loc{
+  width:46px;height:46px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;
+}
+.btn-loc:hover{background:var(--bg4);}
 
-/* ── TOASTS ── */
-#toast{position:fixed;top:58px;left:50%;transform:translateX(-50%) translateY(-8px);background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 15px;font-size:12px;font-weight:500;color:var(--text);z-index:9999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-#toast.success{border-color:rgba(61,214,140,.4);color:var(--accent);}
-#toast.warn{border-color:rgba(245,166,35,.4);color:var(--warn);}
+/* ── TOAST ── */
+#toast{
+  position:fixed;top:56px;left:50%;
+  transform:translateX(-50%) translateY(-6px);
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;padding:7px 14px;
+  font-size:11px;font-weight:500;color:var(--text);
+  z-index:9999;opacity:0;transition:opacity .2s,transform .2s;
+  pointer-events:none;white-space:nowrap;
+}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{border-color:rgba(52,201,122,.35);color:var(--accent);}
+#toast.wn{border-color:rgba(232,157,26,.35);color:var(--warn);}
 
-/* Marqueur borne */
-.borne-marker{background:var(--bg2);border:1.5px solid rgba(167,139,250,.5);border-radius:8px;padding:3px 7px;font-size:10px;font-weight:600;color:var(--purple);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);}
-.borne-marker.fast{border-color:rgba(74,158,255,.6);color:var(--blue);}
-.fuel-marker{background:var(--bg2);border:1.5px solid rgba(245,166,35,.5);border-radius:8px;padding:3px 6px;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:var(--warn);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);}
-.fuel-marker.cheap{border-color:rgba(61,214,140,.5);color:var(--accent);}
+/* Fuel / borne markers */
+.fm{
+  background:rgba(17,23,32,.92);border:1px solid rgba(232,157,26,.4);
+  border-radius:6px;padding:2px 6px;
+  font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:var(--warn);
+  white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
+.fm.lo{border-color:rgba(52,201,122,.4);color:var(--accent);}
+.bm{
+  background:rgba(17,23,32,.92);border:1px solid rgba(149,117,240,.4);
+  border-radius:6px;padding:2px 6px;
+  font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:var(--purple);
+  white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
+.bm.dc{border-color:rgba(61,142,239,.4);color:var(--blue);}
 
 /* Leaflet */
-.leaflet-popup-content-wrapper{background:var(--bg2)!important;border:1px solid var(--border2)!important;border-radius:var(--radius)!important;box-shadow:0 8px 32px rgba(0,0,0,.6)!important;color:var(--text)!important;font-family:'DM Sans',sans-serif!important;}
+.leaflet-popup-content-wrapper{background:var(--bg2)!important;border:1px solid var(--border2)!important;border-radius:var(--r)!important;box-shadow:0 8px 28px rgba(0,0,0,.6)!important;color:var(--text)!important;font-family:'DM Sans',sans-serif!important;}
 .leaflet-popup-tip{background:var(--bg2)!important;}
-.leaflet-popup-content{margin:12px 14px!important;}
-.popup-prob{font-size:28px;font-weight:600;line-height:1;}
-.popup-label{font-size:11px;color:var(--muted);margin-top:2px;}
-.popup-row{display:flex;gap:12px;margin-top:8px;}
-.popup-stat{text-align:center;}
-.popup-stat-val{font-size:13px;font-weight:600;}
-.popup-stat-label{font-size:9px;color:var(--muted);margin-top:1px;}
-.leaflet-control-zoom{border:1px solid var(--border)!important;border-radius:10px!important;overflow:hidden;}
-.leaflet-control-zoom a{background:var(--bg2)!important;color:var(--text)!important;border-color:var(--border)!important;width:30px!important;height:30px!important;line-height:30px!important;}
+.leaflet-popup-content{margin:11px 13px!important;font-size:12px!important;line-height:1.5!important;}
+.leaflet-control-zoom{border:1px solid var(--border)!important;border-radius:var(--rs)!important;overflow:hidden;}
+.leaflet-control-zoom a{background:var(--bg2)!important;color:var(--text)!important;border-color:var(--border)!important;width:28px!important;height:28px!important;line-height:28px!important;}
 .leaflet-control-zoom a:hover{background:var(--bg3)!important;}
 
-@media(max-width:640px){.side{display:none;}.bottom{width:100%;}.live-strip{display:none;}.xp-bar-wrap{right:0;}}
+@media(max-width:640px){.side{display:none;}.bottom{width:100%;}.hdr-stats{display:none;}.xp-wrap{right:0;}}
 </style>
 </head>
 <body>
-
+<!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-icon">V</div>
-    <span class="logo-text">VAC<span>UUM</span></span>
+    <div class="logo-mark">V</div>
+    <span class="logo-name">VAC<b>UUM</b></span>
   </div>
-  <div class="live-strip">
-    <div class="live-chip"><div class="dot"></div><span><span class="val" id="v-active">0</span> signaux</span></div>
-    <div class="live-chip"><div class="dot" style="background:var(--blue)"></div><span><span class="val" id="v-zones" style="color:var(--blue)">0</span> zones</span></div>
+  <div class="hdr-stats">
+    <div class="hstat"><div class="hstat-dot green"></div><b id="v-active">0</b> signaux</div>
+    <div class="hstat"><div class="hstat-dot blue"></div><b id="v-zones" style="color:var(--blue)">0</b> zones</div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-    <div class="pts-badge">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+  <div class="hdr-right">
+    <div class="pts-chip">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       <span id="hdr-pts">0 pts</span>
     </div>
-    <button class="btn-profile" onclick="openProfile()" title="Mon profil">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      <div class="profile-dot" id="profile-dot" style="display:none"></div>
+    <button class="btn-profile" onclick="openProfile()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <div class="profile-dot" id="profile-dot"></div>
     </button>
   </div>
 </header>
@@ -255,91 +441,124 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
   <div style="position:relative;flex:1;display:flex;flex-direction:column;">
     <div id="map" style="flex:1;"></div>
 
-    <div class="radius-chip" id="radius-chip">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
-      Rayon : <span class="rc-val" id="rc-val">0 cellule</span>
+    <!-- Radius -->
+    <div class="r-chip">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+      Rayon <b id="rc-val">0 cellule</b>
     </div>
 
-    <div class="locked-overlay" id="locked-overlay">
-      <div class="lock-card">
-        <div class="lock-icon">🅿️</div>
-        <div class="lock-title">Débloquez la carte</div>
-        <div class="lock-sub">Signalez des places pour gagner des points et voir les zones disponibles.</div>
-        <div class="lock-pts-needed">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    <!-- Locked -->
+    <div class="lock-bg" id="locked-overlay">
+      <div class="lock-box">
+        <div class="lock-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div class="lock-title">Carte verrouillée</div>
+        <div class="lock-sub">Signalez des places disponibles pour débloquer les zones autour de vous.</div>
+        <div class="lock-req">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           3 points pour commencer
         </div>
-        <button class="lock-cta" onclick="submitSignal()">Signaler une place</button>
+        <button class="lock-btn" onclick="submitSignal()">Signaler une place</button>
       </div>
     </div>
 
-    <div class="legend">
-      <div class="legend-title">Disponibilité</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#3dd68c"></div>&gt; 70 %</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#f5a623"></div>40 – 70 %</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#e85555"></div>&lt; 40 %</div>
-      <div class="legend-row"><div class="legend-dot" style="background:#a78bfa"></div>Borne ⚡</div>
+    <!-- Legend -->
+    <div class="lgnd">
+      <div class="lgnd-title">Disponibilité</div>
+      <div class="lgnd-row"><div class="lgnd-dot" style="background:#34c97a"></div>&gt; 70 %</div>
+      <div class="lgnd-row"><div class="lgnd-dot" style="background:#e89d1a"></div>40 – 70 %</div>
+      <div class="lgnd-row"><div class="lgnd-dot" style="background:#d94f4f"></div>&lt; 40 %</div>
+      <div class="lgnd-row"><div class="lgnd-dot" style="background:#9575f0"></div>Borne élec.</div>
     </div>
 
-    <div class="xp-bar-wrap">
-      <div class="xp-bar-label"><span class="lv" id="xp-level">Niv. 0</span><span id="xp-label">0 / 3 pts</span></div>
-      <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+    <!-- XP bar -->
+    <div class="xp-wrap">
+      <div class="xp-info"><span class="xp-lv" id="xp-level">Niv. 0</span><span id="xp-label">0 / 3 pts</span></div>
+      <div class="xp-track"><div class="xp-bar" id="xp-fill" style="width:0%"></div></div>
     </div>
 
+    <!-- Bottom CTA -->
     <div class="bottom">
-      <div class="rl-bar"><div class="rl-fill" id="rl-fill" style="width:0%"></div></div>
-      <div class="cta-row">
-        <button class="btn-signal" id="btn-signal" onclick="submitSignal()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
-          J'ai vu une place
+      <div class="rl-track"><div class="rl-fill" id="rl-fill" style="width:0%"></div></div>
+      <div class="cta">
+        <button class="btn-main" id="btn-signal" onclick="submitSignal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+          J'ai vu une place libre
         </button>
-        <button class="btn-locate" onclick="centerOnUser()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        <button class="btn-loc" onclick="centerOnUser()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- PANNEAU DROIT -->
+  <!-- SIDE PANEL -->
   <div class="side">
-    <!-- Zone courante -->
+
+    <!-- Zone stats -->
     <div class="zone-panel">
-      <div class="panel-title"><div class="zdot"></div>Ma zone</div>
+      <div class="sec-label"><div class="pulse"></div>Ma zone</div>
       <div class="zone-grid">
-        <div class="zstat"><div class="zstat-label">Probabilité</div><div class="zstat-val green" id="zp-prob">–</div><div class="zstat-sub">de trouver</div></div>
-        <div class="zstat"><div class="zstat-label">Signaux</div><div class="zstat-val blue" id="zp-count">0</div><div class="zstat-sub">actifs</div></div>
-        <div class="zstat"><div class="zstat-label">Densité</div><div class="zstat-val orange" id="zp-density">0</div><div class="zstat-sub">/ 30s</div></div>
-        <div class="zstat"><div class="zstat-label">Dernier</div><div class="zstat-val" id="zp-age" style="font-size:13px;">–</div><div class="zstat-sub" id="zp-age-sub">–</div></div>
+        <div class="zstat">
+          <span class="zstat-l">Probabilité</span>
+          <span class="zstat-v g" id="zp-prob">—</span>
+          <span class="zstat-s">de disponibilité</span>
+        </div>
+        <div class="zstat">
+          <span class="zstat-l">Signaux</span>
+          <span class="zstat-v b" id="zp-count">0</span>
+          <span class="zstat-s">actifs</span>
+        </div>
+        <div class="zstat">
+          <span class="zstat-l">Densité</span>
+          <span class="zstat-v o" id="zp-density">0</span>
+          <span class="zstat-s">/ 30 s</span>
+        </div>
+        <div class="zstat">
+          <span class="zstat-l">Dernier</span>
+          <span class="zstat-v" id="zp-age" style="font-size:13px;">—</span>
+          <span class="zstat-s" id="zp-age-sub">—</span>
+        </div>
       </div>
-      <div class="prob-bar"><div class="prob-fill" id="zp-bar" style="width:0%;background:var(--accent)"></div></div>
+      <div class="prob-track"><div class="prob-fill" id="zp-bar" style="width:0%;background:var(--accent)"></div></div>
     </div>
 
     <!-- Tabs -->
-    <div class="panel-tabs">
-      <div class="ptab active" id="tab-fuel-btn"    onclick="switchTab('fuel')">⛽ Carburant</div>
-      <div class="ptab"        id="tab-bornes-btn"  onclick="switchTab('bornes')">⚡ Bornes</div>
-      <div class="ptab"        id="tab-feed-btn"    onclick="switchTab('feed')">📡 Flux</div>
-    </div>
-
-    <!-- Tab carburants -->
-    <div class="tab-content active" id="tab-fuel">
-      <div class="fuel-scroll" id="fuel-content">
-        <div class="fuel-nodata" style="margin-top:16px;">Localisez-vous pour voir les stations proches.</div>
+    <div class="tabs">
+      <div class="tab on" id="tab-fuel-btn" onclick="switchTab('fuel')">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 22V8l5-6h8l5 6v14"/><line x1="3" y1="13" x2="18" y2="13"/></svg>
+        Carburant
+      </div>
+      <div class="tab" id="tab-bornes-btn" onclick="switchTab('bornes')">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Bornes
+      </div>
+      <div class="tab" id="tab-feed-btn" onclick="switchTab('feed')">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 7.76a6 6 0 0 0 0 8.49"/></svg>
+        Flux
       </div>
     </div>
 
-    <!-- Tab bornes -->
-    <div class="tab-content" id="tab-bornes">
-      <div class="bornes-scroll" id="bornes-content">
-        <div class="bornes-nodata" style="margin-top:16px;">Localisez-vous pour voir les bornes proches.</div>
+    <!-- Carburant tab -->
+    <div class="tab-pane on" id="tab-fuel">
+      <div class="pane-scroll" id="fuel-content">
+        <div class="no-data">Localisez-vous<br>pour voir les stations proches.</div>
       </div>
     </div>
 
-    <!-- Tab feed -->
-    <div class="tab-content" id="tab-feed">
-      <div class="feed-header-row">
-        <span class="panel-title" style="margin:0;">Flux d'activité</span>
-        <span class="feed-count" id="feed-count">0</span>
+    <!-- Bornes tab -->
+    <div class="tab-pane" id="tab-bornes">
+      <div class="pane-scroll" id="bornes-content">
+        <div class="no-data">Localisez-vous<br>pour voir les bornes proches.</div>
+      </div>
+    </div>
+
+    <!-- Flux tab -->
+    <div class="tab-pane" id="tab-feed">
+      <div class="feed-head">
+        <div class="sec-label">Activité en direct</div>
+        <span class="feed-badge" id="feed-count">0</span>
       </div>
       <div class="feed-scroll" id="feed-list"></div>
     </div>
@@ -347,68 +566,64 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 </div>
 
 <!-- MODAL PROFIL -->
-<div class="modal-overlay" id="modal-overlay" onclick="closeProfileOutside(event)">
+<div class="modal-bg" id="modal-overlay" onclick="closeProfileOutside(event)">
   <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">Mon profil</span>
-      <button class="modal-close" onclick="closeProfile()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <div class="modal-head">
+      <span class="modal-title">Profil véhicule</span>
+      <button class="modal-x" onclick="closeProfile()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-body">
-
-      <!-- Type véhicule -->
-      <div class="modal-section">
-        <div class="modal-section-title">Type de véhicule</div>
-        <div class="vehicle-grid">
-          <div class="vehicle-card" id="vc-thermique" onclick="selectVehicle('thermique')">
-            <div class="vc-icon">🚗</div>
-            <div class="vc-label">Thermique</div>
+      <div class="m-sec">
+        <div class="m-sec-title">Type de véhicule</div>
+        <div class="v-grid">
+          <div class="v-card" id="vc-thermique" onclick="selectVehicle('thermique')">
+            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg></div>
+            <div class="v-label">Thermique</div>
           </div>
-          <div class="vehicle-card" id="vc-electrique" onclick="selectVehicle('electrique')">
-            <div class="vc-icon">⚡</div>
-            <div class="vc-label">Électrique</div>
+          <div class="v-card" id="vc-electrique" onclick="selectVehicle('electrique')">
+            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><polyline points="11 3 9 8 13 8 11 13"/></svg></div>
+            <div class="v-label">Électrique</div>
           </div>
-          <div class="vehicle-card" id="vc-hybride" onclick="selectVehicle('hybride')">
-            <div class="vc-icon">🔋</div>
-            <div class="vc-label">Hybride</div>
+          <div class="v-card" id="vc-hybride" onclick="selectVehicle('hybride')">
+            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><path d="M9 5h6"/></svg></div>
+            <div class="v-label">Hybride</div>
           </div>
-          <div class="vehicle-card" id="vc-moto" onclick="selectVehicle('moto')">
-            <div class="vc-icon">🏍️</div>
-            <div class="vc-label">Moto / Scooter</div>
+          <div class="v-card" id="vc-moto" onclick="selectVehicle('moto')">
+            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="16" r="3"/><circle cx="18" cy="16" r="3"/><path d="M6 16h3l3-8h4l2 5"/><path d="M9 16l2-5"/></svg></div>
+            <div class="v-label">Moto / Scooter</div>
           </div>
-          <div class="vehicle-card" id="vc-utilitaire" onclick="selectVehicle('utilitaire')">
-            <div class="vc-icon">🚐</div>
-            <div class="vc-label">Utilitaire</div>
+          <div class="v-card" id="vc-utilitaire" onclick="selectVehicle('utilitaire')">
+            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="7" width="22" height="12" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg></div>
+            <div class="v-label">Utilitaire</div>
           </div>
         </div>
       </div>
 
-      <!-- Carburant préféré (si thermique/hybride) -->
-      <div class="modal-section" id="section-carb">
-        <div class="modal-section-title">Carburant habituel</div>
-        <div class="carb-grid">
-          <button class="carb-btn" id="cb-sp95"   onclick="toggleCarb('sp95')">SP95</button>
-          <button class="carb-btn" id="cb-sp98"   onclick="toggleCarb('sp98')">SP98</button>
-          <button class="carb-btn" id="cb-e10"    onclick="toggleCarb('e10')">E10</button>
-          <button class="carb-btn" id="cb-gazole" onclick="toggleCarb('gazole')">Gazole</button>
-          <button class="carb-btn" id="cb-e85"    onclick="toggleCarb('e85')">E85 Flex</button>
-          <button class="carb-btn" id="cb-gplc"   onclick="toggleCarb('gplc')">GPLc</button>
+      <div class="m-sec" id="section-carb">
+        <div class="m-sec-title">Carburant habituel</div>
+        <div class="chip-row">
+          <button class="chip" id="cb-sp95"   onclick="toggleCarb('sp95')">SP95</button>
+          <button class="chip" id="cb-sp98"   onclick="toggleCarb('sp98')">SP98</button>
+          <button class="chip" id="cb-e10"    onclick="toggleCarb('e10')">E10</button>
+          <button class="chip" id="cb-gazole" onclick="toggleCarb('gazole')">Gazole</button>
+          <button class="chip" id="cb-e85"    onclick="toggleCarb('e85')">E85</button>
+          <button class="chip" id="cb-gplc"   onclick="toggleCarb('gplc')">GPLc</button>
         </div>
       </div>
 
-      <!-- Connecteur électrique (si élec/hybride) -->
-      <div class="modal-section" id="section-conn" style="display:none;">
-        <div class="modal-section-title">Connecteur(s)</div>
-        <div class="conn-grid">
-          <button class="conn-btn" id="cn-type2"   onclick="toggleConn('type2')">Type 2</button>
-          <button class="conn-btn" id="cn-ccs"     onclick="toggleConn('ccs')">CCS Combo</button>
-          <button class="conn-btn" id="cn-chademo" onclick="toggleConn('chademo')">CHAdeMO</button>
-          <button class="conn-btn" id="cn-ef"      onclick="toggleConn('ef')">Prise EF</button>
+      <div class="m-sec" id="section-conn" style="display:none;">
+        <div class="m-sec-title">Connecteur(s)</div>
+        <div class="chip-row">
+          <button class="chip" id="cn-type2"   onclick="toggleConn('type2')">Type 2</button>
+          <button class="chip" id="cn-ccs"     onclick="toggleConn('ccs')">CCS Combo</button>
+          <button class="chip" id="cn-chademo" onclick="toggleConn('chademo')">CHAdeMO</button>
+          <button class="chip" id="cn-ef"      onclick="toggleConn('ef')">Prise EF</button>
         </div>
       </div>
 
-      <button class="modal-save" onclick="saveProfile()">Enregistrer le profil</button>
+      <button class="modal-save" onclick="saveProfile()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -417,11 +632,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 <div id="toast"></div>
 
 <script>
-// ═══════════════════════════════════════════════════
+// 
 //  VACUUM · v4 · Profil · Carburants · Bornes
-// ═══════════════════════════════════════════════════
+// 
 
-// ⚠️ Remplace par ton URL Vercel après déploiement
+//  Remplace par ton URL Vercel après déploiement
 const API_BASE = 'https://vacuum-63afge048-anthropotech-lab.vercel.app';
 
 const CFG = {
@@ -461,7 +676,7 @@ const state = {
   },
 };
 
-// ── USER + PROFIL ──────────────────────────────────
+//  USER + PROFIL 
 function initUser() {
   let uid = localStorage.getItem('vac_uid');
   if (!uid) { uid='u_'+Math.random().toString(36).slice(2,9); localStorage.setItem('vac_uid',uid); }
@@ -479,21 +694,21 @@ function applyProfileUI() {
   if (state.profile.vehicle) {
     document.getElementById('profile-dot').style.display = 'block';
     // Mettre à jour sélection dans la modal
-    document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('selected'));
+    document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('on-c'));
     const el = document.getElementById('vc-'+state.profile.vehicle);
-    if (el) el.classList.add('selected');
+    if (el) el.classList.add('on-c');
   }
   // Carburants
-  document.querySelectorAll('.carb-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.carb-btn').forEach(b => b.classList.remove('on-c'));
   state.profile.carburants.forEach(c => {
     const el = document.getElementById('cb-'+c);
-    if (el) el.classList.add('selected');
+    if (el) el.classList.add('on-c');
   });
   // Connecteurs
-  document.querySelectorAll('.conn-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.conn-btn').forEach(b => b.classList.remove('on-c'));
   state.profile.connecteurs.forEach(c => {
     const el = document.getElementById('cn-'+c);
-    if (el) el.classList.add('selected');
+    if (el) el.classList.add('on-c');
   });
   // Sections visibles
   updateProfileSections();
@@ -511,8 +726,8 @@ function updateProfileSections() {
 
 function selectVehicle(v) {
   state.profile.vehicle = v;
-  document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('vc-'+v).classList.add('selected');
+  document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('on-c'));
+  document.getElementById('vc-'+v).classList.add('on-c');
   // Réinitialiser carburant par défaut selon véhicule
   if (v === 'electrique') state.profile.carburants = [];
   updateProfileSections();
@@ -522,16 +737,16 @@ function toggleCarb(c) {
   const idx = state.profile.carburants.indexOf(c);
   if (idx >= 0) state.profile.carburants.splice(idx,1);
   else { state.profile.carburants = [c]; } // 1 seul à la fois
-  document.querySelectorAll('.carb-btn').forEach(b => b.classList.remove('selected'));
-  state.profile.carburants.forEach(k => { const el=document.getElementById('cb-'+k); if(el) el.classList.add('selected'); });
+  document.querySelectorAll('.carb-btn').forEach(b => b.classList.remove('on-c'));
+  state.profile.carburants.forEach(k => { const el=document.getElementById('cb-'+k); if(el) el.classList.add('on-c'); });
 }
 
 function toggleConn(c) {
   const idx = state.profile.connecteurs.indexOf(c);
   if (idx >= 0) state.profile.connecteurs.splice(idx,1);
   else state.profile.connecteurs.push(c);
-  document.querySelectorAll('.conn-btn').forEach(b => b.classList.remove('selected'));
-  state.profile.connecteurs.forEach(k => { const el=document.getElementById('cn-'+k); if(el) el.classList.add('selected'); });
+  document.querySelectorAll('.conn-btn').forEach(b => b.classList.remove('on-c'));
+  state.profile.connecteurs.forEach(k => { const el=document.getElementById('cn-'+k); if(el) el.classList.add('on-c'); });
 }
 
 function saveProfile() {
@@ -550,15 +765,15 @@ function openProfile()  { document.getElementById('modal-overlay').classList.add
 function closeProfile() { document.getElementById('modal-overlay').classList.remove('open'); }
 function closeProfileOutside(e) { if (e.target === document.getElementById('modal-overlay')) closeProfile(); }
 
-// ── TABS ──────────────────────────────────────────
+//  TABS 
 function switchTab(tab) {
   ['fuel','bornes','feed'].forEach(t => {
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
-    document.getElementById('tab-'+t+'-btn').classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t).classList.toggle('on', t===tab);
+    document.getElementById('tab-'+t+'-btn').classList.toggle('on', t===tab);
   });
 }
 
-// ── GAMIFICATION ──────────────────────────────────
+//  GAMIFICATION 
 function visRadius() { return Math.floor(Math.log2(1+state.points)*2); }
 function level()     { const r=visRadius(); return r===0?0:r<=2?1:r<=5?2:r<=8?3:4; }
 function nextThresh(){ return Math.ceil(Math.pow(2,(visRadius()+1)/2)-1); }
@@ -573,7 +788,7 @@ function updateXP() {
   document.getElementById('xp-label').textContent=Math.floor(pts)+' / '+next+' pts';
   state.visRadius=r;
   document.getElementById('rc-val').textContent=r===0?'0 cellule':r+' cellule'+(r>1?'s':'');
-  document.getElementById('locked-overlay').classList.toggle('hidden', r>=1);
+  document.getElementById('locked-overlay').classList.toggle('off', r>=1);
   applyVisibility();
 }
 
@@ -582,7 +797,7 @@ function addPoints(pts) {
   const mul=streak>=3?1.5:1, earned=+(pts*mul).toFixed(1);
   state.points+=earned;
   localStorage.setItem('vac_pts',state.points.toString());
-  showXPToast(streak>=3?`+${earned} pts · streak ×1.5 🔥`:`+${pts} pt${pts>1?'s':''}`);
+  showXPToast(streak>=3?`+${earned} pts · streak ×1.5 `:`+${pts} pt${pts>1?'s':''}`);
   updateXP();
 }
 function penalize(pts) {
@@ -599,7 +814,7 @@ function checkStreak() {
   return state.streak;
 }
 
-// ── VISIBILITÉ ────────────────────────────────────
+//  VISIBILITÉ 
 function h3Dist(a,b) {
   const [ra,ca]=a.split('_').map(Number),[rb,cb]=b.split('_').map(Number);
   return Math.max(Math.abs(ra-rb),Math.abs(ca-cb));
@@ -612,33 +827,33 @@ function applyVisibility() {
   }
 }
 
-// ── GRID ──────────────────────────────────────────
+//  GRID 
 function latlngToH3(lat,lng){const row=Math.floor(lat/CFG.GRID);return `${row}_${Math.floor((lng/CFG.GRID)-(row%2===0?0:.5))}`;}
 function h3Center(h3){const[r,c]=h3.split('_').map(Number),off=r%2===0?0:.5;return{lat:(r+.5)*CFG.GRID,lng:(c+off+.5)*CFG.GRID};}
 function h3Poly(h3){const[r,c]=h3.split('_').map(Number),g=CFG.GRID,off=r%2===0?0:.5;const la=r*g,lb=(r+1)*g,lo=(c+off)*g,lp=(c+off+1)*g,mid=(la+lb)/2;return[[lb,lo+g*.15],[lb,lp-g*.15],[mid+g*.5,lp],[la,lp-g*.15],[la,lo+g*.15],[mid+g*.5,lo]];}
 
-// ── SCORING ───────────────────────────────────────
+//  SCORING 
 const TW={SIGNAL_STRONG:1,SIGNAL_WEAK:.6,SIGNAL_IMPLICIT:.4};
 function sigmoid(x){return 1/(1+Math.exp(-x));}
 function scoreSignal(s,d){const dt=Math.max(0,(Date.now()-s.timestamp)/1000),acc=Math.max(.2,Math.min(1,1-s.accuracy/50));return(TW[s.type]||.4)*s.trust_score*Math.exp(-dt/CFG.DECAY_S)*acc*Math.log1p(d);}
 function zoneProb(h3){const now=Date.now(),cut=now-CFG.MAX_AGE;const active=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>cut);const d30=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>(now-30000)).length;const sum=active.reduce((a,s)=>a+scoreSignal(s,d30),0);const w=Math.min(1,active.length/CFG.COLD_N);return{prob:w*sigmoid(sum)+(1-w)*CFG.PRIOR,n:active.length,d30};}
 
-// ── STORAGE ───────────────────────────────────────
+//  STORAGE 
 function loadSignals(){try{const r=localStorage.getItem('vac_signals');if(r)state.signals=JSON.parse(r).filter(s=>Date.now()-s.timestamp<CFG.MAX_AGE);}catch{state.signals=[];}}
 function saveSignals(){state.signals=state.signals.filter(s=>Date.now()-s.timestamp<CFG.MAX_AGE);try{localStorage.setItem('vac_signals',JSON.stringify(state.signals));}catch{}localStorage.setItem('vac_trust',state.trustScore.toString());}
 
-// ── RATE LIMIT ────────────────────────────────────
+//  RATE LIMIT 
 function checkRL(){if(Date.now()-state.lastMinReset>60000){state.signalsThisMin=0;state.lastMinReset=Date.now();}return state.signalsThisMin<CFG.RATE_LIMIT;}
 function updateRLBar(){const p=(state.signalsThisMin/CFG.RATE_LIMIT)*100,f=document.getElementById('rl-fill');f.style.width=p+'%';f.style.background=p>80?'var(--warn)':'var(--accent)';}
 function isSpam(h3){return state.signals.filter(s=>s.h3_index===h3&&s.user_id===state.userId&&Date.now()-s.timestamp<30000).length>=CFG.SPAM_TH;}
 
-// ── GEO ───────────────────────────────────────────
+//  GEO 
 function getPos(){return new Promise(res=>{if(!navigator.geolocation)return res({lat:state.userLat,lng:state.userLng,accuracy:20});navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:Math.min(50,p.coords.accuracy||10)}),()=>res({lat:state.userLat,lng:state.userLng,accuracy:20}),{timeout:4000,maximumAge:10000});});}
 
-// ── CARBURANTS ────────────────────────────────────
+//  CARBURANTS 
 async function loadCarburants(lat, lng) {
   const el = document.getElementById('fuel-content');
-  el.innerHTML = '<div class="fuel-nodata">Chargement…</div>';
+  el.innerHTML = '<div class="no-data">Chargement…</div>';
   const profCarb = state.profile.carburants[0] || null;
   const vehicleCarbs = VEHICLE_CARBS[state.profile.vehicle] || Object.keys(FUEL_NAMES);
 
@@ -665,7 +880,7 @@ async function loadCarburants(lat, lng) {
       {id:'d4',nom:'E.Leclerc',adresse:'Station locale',ville:'',lat:lat-0.007,lng:lng-0.003,automate:true,
        prix:{gazole:{val:1.659},sp95:{val:1.809},sp98:{val:1.899},e10:{val:1.759},e85:{val:0.849},gplc:{val:0.979}}},
     ];
-    el.innerHTML = '<div class="fuel-nodata" style="color:var(--warn);font-style:normal;">⚠️ Prix indicatifs — API indisponible</div>';
+    el.innerHTML = '<div class="no-data" style="color:var(--warn);font-style:normal;"> Prix indicatifs — API indisponible</div>';
     setTimeout(() => renderFuelStations(stations, lat, lng, profCarb, vehicleCarbs, el), 800);
     return;
   }
@@ -682,42 +897,45 @@ function renderFuelStations(stations, lat, lng, profCarb, vehicleCarbs, el) {
   Object.entries(allP).forEach(([k,v]) => { mm[k]={min:Math.min(...v),max:Math.max(...v)}; });
 
   clearFuelMarkers();
-  el.innerHTML = stations.slice(0,4).map(s => {
+  const isDemo = stations[0]?.id?.startsWith('d');
+  el.innerHTML = (isDemo ? '<div style="margin-bottom:8px;"><span class="badge-demo">Prix indicatifs</span></div>' : '') +
+    stations.slice(0,4).map(s => {
     const relevantPrix = Object.entries(s.prix)
       .filter(([k,v]) => v?.val > 0.5 && vehicleCarbs.includes(k))
       .sort(([a],[b]) => a===profCarb?-1:b===profCarb?1:0);
 
     const d = distM(lat,lng,s.lat,s.lng);
     const prixHtml = relevantPrix.map(([k,v]) => {
-      const cls = mm[k] ? (v.val<=mm[k].min?'cheap':v.val>=mm[k].max?'exp':'mid') : '';
-      return `<div class="fuel-pill ${cls}"><span class="ftype">${k===profCarb?'★ ':''}${FUEL_NAMES[k]}</span><span class="fprice">${v.val.toFixed(3)}€</span></div>`;
+      const isFav = k === profCarb;
+      const cls = (mm[k] ? (v.val<=mm[k].min?' lo':v.val>=mm[k].max?' hi':'') : '') + (isFav?' fav':'');
+      return `<div class="price-tag${cls}"><span class="pt-name">${FUEL_NAMES[k]}</span><span class="pt-val">${v.val.toFixed(3)}&thinsp;€</span></div>`;
     }).join('');
 
     if (s.lat && s.lng) {
       const ref = relevantPrix[0];
-      const label = ref ? ref[1].val.toFixed(3)+'€' : s.nom.slice(0,8);
-      const cheap = ref && mm[ref[0]] && ref[1].val <= mm[ref[0]].min;
-      const icon = L.divIcon({html:`<div class="fuel-marker${cheap?' cheap':''}">${label}</div>`,iconSize:[64,22],iconAnchor:[32,11],className:''});
+      const label = ref ? ref[1].val.toFixed(3)+'€' : s.nom.slice(0,6);
+      const isLo = ref && mm[ref[0]] && ref[1].val <= mm[ref[0]].min;
+      const icon = L.divIcon({html:`<div class="fm${isLo?' lo':''}">${label}</div>`,iconSize:[58,20],iconAnchor:[29,10],className:''});
       const m = L.marker([s.lat,s.lng],{icon}).addTo(state.map);
-      m.bindPopup(`<b>${s.nom}</b>${s.adresse?'<br>'+s.adresse:''}<br>${relevantPrix.length?relevantPrix.map(([k,v])=>`${FUEL_NAMES[k]}: ${v.val.toFixed(3)}€`).join('<br>'):'Prix non disponibles'}`);
+      m.bindPopup(`<b>${s.nom}</b>${s.adresse&&s.adresse!=='Station locale'?'<br>'+s.adresse:''}<br>${relevantPrix.map(([k,v])=>`${FUEL_NAMES[k]}: ${v.val.toFixed(3)} €`).join('<br>')||'Prix non disponibles'}`);
       state.fuelMarkers.push(m);
     }
 
-    return `<div class="fuel-station">
-      <div class="fuel-name">${s.nom}</div>
-      ${s.adresse&&s.adresse!=='Station locale'?`<div class="fuel-addr">${s.adresse}${s.ville?', '+s.ville:''}</div>`:''}
-      <div class="fuel-prices">${prixHtml||'<span style="font-size:10px;color:var(--muted)">Prix non disponibles</span>'}</div>
-      <div class="fuel-dist">${fmtDist(d)}${s.automate?'<span class="fuel-auto">24h/24</span>':''}</div>
+    return `<div class="stn">
+      <div class="stn-name">${s.nom}</div>
+      ${s.adresse&&s.adresse!=='Station locale'&&s.adresse?`<div class="stn-addr">${s.adresse}${s.ville?', '+s.ville:''}</div>`:''}
+      <div class="stn-prices" style="margin-top:6px;">${prixHtml||'<span style="font-size:10px;color:var(--muted)">Prix non disponibles</span>'}</div>
+      <div class="stn-meta" style="margin-top:6px;"><span class="stn-dist">${fmtDist(d)}</span>${s.automate?'<span class="badge-h24">24h/24</span>':''}</div>
     </div>`;
-  }).join('') || '<div class="fuel-nodata">Aucune station trouvée</div>';
+  }).join('') || '<div class="no-data">Aucune station trouvée</div>';
 }
 
 function clearFuelMarkers(){state.fuelMarkers.forEach(m=>state.map.removeLayer(m));state.fuelMarkers=[];}
 
-// ── BORNES ÉLECTRIQUES ────────────────────────────
+//  BORNES ÉLECTRIQUES 
 async function loadBornes(lat, lng) {
   const el = document.getElementById('bornes-content');
-  el.innerHTML = '<div class="bornes-nodata">Chargement…</div>';
+  el.innerHTML = '<div class="no-data">Chargement…</div>';
   clearBorneMarkers();
 
   const prefConn = state.profile.connecteurs;
@@ -733,7 +951,7 @@ async function loadBornes(lat, lng) {
     if (!res.ok) throw new Error('Overpass');
     const data = await res.json();
     const nodes = data.elements || [];
-    if (!nodes.length) { el.innerHTML='<div class="bornes-nodata">Aucune borne à 4 km</div>'; return; }
+    if (!nodes.length) { el.innerHTML='<div class="no-data">Aucune borne à 4 km</div>'; return; }
 
     const bornes = nodes.map(n => {
       const t = n.tags || {};
@@ -782,38 +1000,38 @@ async function loadBornes(lat, lng) {
     el.innerHTML = bornes.map(b => {
       const d = distM(lat,lng,b.lat,b.lng);
       const typeCls = b.isDC ? 'dc' : 'ac';
-      const compatBorder = b.isCompat && prefConn.length>0 ? 'border:1.5px solid rgba(167,139,250,.4);' : '';
+      const compatBorder = b.isCompat && prefConn.length>0 ? ' compat' : '';
       const tarifHtml = b.gratuit
-        ? '<span class="borne-gratuit">Gratuit</span>'
+        ? '<span class="tag-free">Gratuit</span>'
         : b.tarif ? `<span class="tval">${b.tarif.slice(0,40)}</span>`
         : '<span style="color:var(--muted)">Tarif non renseigné</span>';
 
       if (b.lat && b.lng) {
-        const label = `⚡${b.puissance>0?b.puissance+'kW':''}`;
-        const icon = L.divIcon({html:`<div class="borne-marker${b.isDC?' fast':''}">${label}</div>`,iconSize:[60,22],iconAnchor:[30,11],className:''});
+        const label = `${b.puissance>0?b.puissance+'kW':''}`;
+        const icon = L.divIcon({html:`<div class="bm${b.isDC?' fast':''}">${label}</div>`,iconSize:[60,22],iconAnchor:[30,11],className:''});
         const m = L.marker([b.lat,b.lng],{icon}).addTo(state.map);
         m.bindPopup(`<b>${b.nom}</b>${b.adresse?'<br>'+b.adresse:''}<br>${b.operateur}<br>${b.nbre_pdc} PDC · ${b.type_charge}${b.types.length?'<br>'+b.types.join(' · '):''}<br>${b.gratuit?'Gratuit':b.tarif||'Tarif inconnu'}${b.cb?'<br>CB acceptée':''}${b.h24?'<br>24h/24':''}`);
         state.borneMarkers.push(m);
       }
 
-      return `<div class="borne-card" style="${compatBorder}">
-        <div class="borne-header">
-          <div class="borne-name">${b.nom}</div>
-          <div class="borne-pdc">${b.nbre_pdc} PDC</div>
+      return `<div class="brn" class="brn${compatBorder}">
+        <div class="brn-top">
+          <div class="brn-name">${b.nom}</div>
+          <div class="brn-pdc">${b.nbre_pdc} PDC</div>
         </div>
-        <div class="borne-operateur">${b.operateur}${b.h24?' · <span style="color:var(--accent);font-size:9px">24h/24</span>':''}</div>
-        <div class="borne-specs">
-          ${b.puissance>0?`<div class="borne-pill power">${b.puissance} kW</div>`:''}
+        <div class="brn-op">${b.operateur}${b.h24?' · <span style="color:var(--accent);font-size:9px">24h/24</span>':''}</div>
+        <div class="brn-tags">
+          ${b.puissance>0?`<div class="btag kw">${b.puissance} kW</div>`:''}
           <div class="borne-pill ${typeCls}">${b.type_charge}</div>
-          ${b.types.map(t=>`<div class="borne-pill type">${t}</div>`).join('')}
+          ${b.types.map(t=>`<div class="btag">${t}</div>`).join('')}
         </div>
-        <div class="borne-tarif">${tarifHtml}${b.cb?'<span class="borne-cb">CB</span>':''}</div>
-        <div class="fuel-dist" style="margin-top:4px;">${fmtDist(d)}</div>
+        <div class="brn-tarif">${tarifHtml}${b.cb?'<span class="tag-cb">CB</span>':''}</div>
+        <div class="stn-meta" style="margin-top:4px;">${fmtDist(d)}</div>
       </div>`;
-    }).join('') || '<div class="bornes-nodata">Aucune borne trouvée</div>';
+    }).join('') || '<div class="no-data">Aucune borne trouvée</div>';
 
   } catch(e) {
-    el.innerHTML = '<div class="bornes-nodata">Service indisponible.<br><span style="font-size:9px;color:var(--muted)">Vérifiez votre connexion.</span></div>';
+    el.innerHTML = '<div class="no-data">Service indisponible.<br><span style="font-size:9px;color:var(--muted)">Vérifiez votre connexion.</span></div>';
   }
 }
 
@@ -823,9 +1041,13 @@ function clearBorneMarkers(){state.borneMarkers.forEach(m=>state.map.removeLayer
 function distM(la,lo,lb,lob){if(!lb||!lob)return 0;const dx=(lb-la)*111320,dy=(lob-lo)*111320*Math.cos(la*Math.PI/180);return Math.round(Math.sqrt(dx*dx+dy*dy));}
 function fmtDist(m){return m<1000?m+'m ':(m/1000).toFixed(1)+'km ';}
 
-// ── FEED ──────────────────────────────────────────
+//  FEED 
 const typeLabel={SIGNAL_STRONG:'fort',SIGNAL_WEAK:'faible',SIGNAL_IMPLICIT:'implicite'};
-const typeIcon={SIGNAL_STRONG:'🅿',SIGNAL_WEAK:'◎',SIGNAL_IMPLICIT:'·'};
+const typeIcon = {
+  SIGNAL_STRONG: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>',
+  SIGNAL_WEAK:   '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>',
+  SIGNAL_IMPLICIT:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>',
+};
 const typePts={SIGNAL_STRONG:CFG.PTS_STRONG,SIGNAL_WEAK:CFG.PTS_WEAK,SIGNAL_IMPLICIT:CFG.PTS_IMPLICIT};
 
 function addFeedItem(type,street,userId,isMe=false,pts=0){
@@ -837,20 +1059,20 @@ function timeSince(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<5)return'à
 function renderFeed(){
   document.getElementById('feed-count').textContent=state.feedItems.length;
   document.getElementById('feed-list').innerHTML=state.feedItems.slice(0,15).map(item=>`
-    <div class="feed-item">
-      <div class="feed-icon ${item.type==='SIGNAL_STRONG'?'strong':item.type==='SIGNAL_WEAK'?'weak':'implicit'}">${typeIcon[item.type]}</div>
-      <div class="feed-body">
-        <div class="feed-msg">${item.isMe?'<b>Vous</b>':'User '+item.userId.slice(-4)} · ${item.street}</div>
-        <div class="feed-meta">
-          <span class="feed-time">${timeSince(item.time)}</span>
-          <span class="feed-badge ${item.type==='SIGNAL_STRONG'?'strong':item.type==='SIGNAL_WEAK'?'weak':'implicit'}">${typeLabel[item.type]}</span>
-          ${item.pts>0?`<span class="feed-pts">+${item.pts}pts</span>`:''}
+    <div class="fi">
+      <div class="fi-icon ${item.type==='SIGNAL_STRONG'?'s':item.type==='SIGNAL_WEAK'?'w':'i'}">${typeIcon[item.type]}</div>
+      <div class="fi-body">
+        <div class="fi-msg">${item.isMe?'<b>Vous</b>':'User '+item.userId.slice(-4)} · ${item.street}</div>
+        <div class="fi-meta">
+          <span class="fi-time">${timeSince(item.time)}</span>
+          <span class="fi-tag ${item.type==='SIGNAL_STRONG'?'s':item.type==='SIGNAL_WEAK'?'w':'i'}">${typeLabel[item.type]}</span>
+          ${item.pts>0?`<span class="fi-pts">+${item.pts}pts</span>`:''}
         </div>
       </div>
     </div>`).join('');
 }
 
-// ── ZONE PANEL ────────────────────────────────────
+//  ZONE PANEL 
 function updateZonePanel(){
   const h3=latlngToH3(state.userLat,state.userLng),{prob,n,d30}=zoneProb(h3),pct=Math.round(prob*100);
   const el=document.getElementById('zp-prob');
@@ -869,7 +1091,7 @@ function updateHeaderCounters(){
   document.getElementById('v-zones').textContent=state.hexLayers.size;
 }
 
-// ── CARTE ─────────────────────────────────────────
+//  CARTE 
 function probColor(p){if(p>=.7)return{fill:'#3dd68c',stroke:'#2ab87a'};if(p>=.4)return{fill:'#f5a623',stroke:'#d4891a'};return{fill:'#e85555',stroke:'#c43d3d'};}
 
 function renderZone(h3){
@@ -907,7 +1129,7 @@ function updateUserMarker(lat,lng){
   if(userMarker)userMarker.setLatLng([lat,lng]);else userMarker=L.marker([lat,lng],{icon}).addTo(state.map);
 }
 
-// ── SIGNAL ────────────────────────────────────────
+//  SIGNAL 
 async function submitSignal(type='SIGNAL_STRONG'){
   const btn=document.getElementById('btn-signal');
   if(!checkRL()){toast('Limite 10/min','warn');return;}
@@ -923,7 +1145,7 @@ async function submitSignal(type='SIGNAL_STRONG'){
   updateUserMarker(pos.lat,pos.lng);applyVisibility();
   toast('Signal enregistré !','success');
   if(!state.dataLoaded){loadCarburants(pos.lat,pos.lng);loadBornes(pos.lat,pos.lng);state.dataLoaded=true;}
-  setTimeout(()=>{btn.disabled=false;btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>J'ai vu une place`;},1500);
+  setTimeout(()=>{btn.disabled=false;btn.innerHTML=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>J'ai vu une place`;},1500);
 }
 
 async function centerOnUser(){
@@ -932,7 +1154,7 @@ async function centerOnUser(){
   loadCarburants(pos.lat,pos.lng);loadBornes(pos.lat,pos.lng);state.dataLoaded=true;
 }
 
-// ── SIMULATION ────────────────────────────────────
+//  SIMULATION 
 function simulateOtherUser(){
   const types=['SIGNAL_STRONG','SIGNAL_STRONG','SIGNAL_WEAK','SIGNAL_IMPLICIT'];
   const type=types[Math.floor(Math.random()*types.length)];
@@ -944,12 +1166,12 @@ function simulateOtherUser(){
   renderZone(h3);updateHeaderCounters();
 }
 
-// ── TOASTS ────────────────────────────────────────
+//  TOASTS 
 let _xt,_tt;
-function showXPToast(msg){const el=document.getElementById('xp-toast');el.textContent=msg;el.classList.add('show');clearTimeout(_xt);_xt=setTimeout(()=>el.classList.remove('show'),2200);}
-function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='show '+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className='',2500);}
+function showXPToast(msg){const el=document.getElementById('xp-toast');el.textContent=msg;el.classList.add('on');clearTimeout(_xt);_xt=setTimeout(()=>el.classList.remove('on'),2200);}
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='on '+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className='',2500);}
 
-// ── MAP ───────────────────────────────────────────
+//  MAP 
 function initMap(){
   state.map=L.map('map',{center:[48.8566,2.3522],zoom:15,zoomControl:true,attributionControl:false});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(state.map);
@@ -975,7 +1197,7 @@ function seedDemo(){
   saveSignals();
 }
 
-// ── LOOPS + BOOT ──────────────────────────────────
+//  LOOPS + BOOT 
 setInterval(()=>{renderAllZones();updateZonePanel();updateHeaderCounters();updateRLBar();renderFeed();},5000);
 setInterval(simulateOtherUser,CFG.SIM_INTERVAL);
 
@@ -983,7 +1205,7 @@ function boot(){
   initUser();loadSignals();initMap();
   if(state.signals.length===0){seedDemo();toast('Démo chargée','');}
   // Prompt profil si pas encore renseigné
-  if(!state.profile.vehicle){setTimeout(()=>{toast('👤 Configurez votre profil !','');},2000);}
+  if(!state.profile.vehicle){setTimeout(()=>{toast(' Configurez votre profil !','');},2000);}
   renderAllZones();updateZonePanel();updateHeaderCounters();updateXP();
   getPos().then(p=>{updateUserMarker(p.lat,p.lng);state.map.setView([p.lat,p.lng],15);updateZonePanel();loadCarburants(p.lat,p.lng);loadBornes(p.lat,p.lng);state.dataLoaded=true;}).catch(()=>{});
 }
