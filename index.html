@@ -6,929 +6,1027 @@
 <title>Vacuum · Parking intelligent</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
 <style>
-  :root {
-    --bg:        #0b0f14;
-    --bg2:       #131920;
-    --bg3:       #1a2230;
-    --border:    rgba(255,255,255,0.07);
-    --text:      #e8edf5;
-    --muted:     #5a6880;
-    --accent:    #3dd68c;
-    --accent2:   #2ab87a;
-    --warn:      #f5a623;
-    --danger:    #e85555;
-    --blue:      #4a9eff;
-    --radius:    14px;
-    --shadow:    0 4px 24px rgba(0,0,0,0.5);
-  }
+:root {
+  --bg:      #0b0f14;
+  --bg2:     #131920;
+  --bg3:     #1a2230;
+  --bg4:     #212d3d;
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text:    #e8edf5;
+  --muted:   #5a6880;
+  --muted2:  #8a9ab5;
+  --accent:  #3dd68c;
+  --accent2: #2ab87a;
+  --warn:    #f5a623;
+  --danger:  #e85555;
+  --blue:    #4a9eff;
+  --gold:    #ffd166;
+  --radius:  14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── HEADER ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  z-index: 1000; flex-shrink: 0; gap: 10px;
+}
+.logo { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.logo-icon {
+  width: 28px; height: 28px; background: var(--accent); border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: #071a0f;
+}
+.logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+.logo-text span { color: var(--accent); }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    height: 100dvh;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
+.live-strip { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
+.live-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 500; white-space: nowrap;
+}
+.live-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+.live-chip .val { color: var(--accent); font-weight: 600; }
 
-  /* ── HEADER ── */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    z-index: 1000;
-    flex-shrink: 0;
-  }
+/* ── POINTS BADGE header ── */
+.pts-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,209,102,0.1);
+  border: 1px solid rgba(255,209,102,0.25);
+  border-radius: 20px; padding: 4px 12px;
+  font-size: 12px; font-weight: 600; color: var(--gold);
+  flex-shrink: 0; cursor: default;
+}
+.pts-badge svg { width: 13px; height: 13px; }
 
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+/* ── LAYOUT ── */
+.main { display: flex; flex: 1; overflow: hidden; }
+#map { flex: 1; z-index: 1; }
 
-  .logo-icon {
-    width: 30px; height: 30px;
-    background: var(--accent);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-  }
+/* ── PANNEAU DROIT ── */
+.side {
+  width: 272px; background: var(--bg2);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+  z-index: 100; flex-shrink: 0;
+}
 
-  .logo-icon svg { width: 16px; height: 16px; }
+/* Zone courante */
+.zone-panel { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.panel-title {
+  font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.7px; margin-bottom: 9px; display: flex; align-items: center; gap: 5px;
+}
+.panel-title .zdot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse 2s ease-in-out infinite; }
+.zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.zstat { background: var(--bg3); border-radius: 10px; padding: 8px 10px; }
+.zstat-label { font-size: 9px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+.zstat-val { font-size: 17px; font-weight: 600; line-height: 1; }
+.zstat-val.green{color:var(--accent)} .zstat-val.orange{color:var(--warn)} .zstat-val.red{color:var(--danger)} .zstat-val.blue{color:var(--blue)}
+.zstat-sub { font-size: 9px; color: var(--muted); margin-top: 2px; }
+.prob-bar { margin-top: 9px; height: 3px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+.prob-fill { height: 100%; border-radius: 3px; transition: width .6s ease, background .4s; }
 
-  .logo-text {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: -0.3px;
-    color: var(--text);
-  }
+/* ── CARBURANTS PANEL ── */
+.fuel-panel { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.fuel-loading { font-size: 11px; color: var(--muted); text-align: center; padding: 6px 0; }
+.fuel-station {
+  background: var(--bg3); border-radius: 10px; padding: 9px 11px; margin-bottom: 6px;
+}
+.fuel-station:last-child { margin-bottom: 0; }
+.fuel-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fuel-addr { font-size: 10px; color: var(--muted); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fuel-prices { display: flex; flex-wrap: wrap; gap: 4px; }
+.fuel-pill {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--bg4); border-radius: 6px; padding: 3px 7px;
+  font-size: 10px; font-weight: 500;
+}
+.fuel-pill .ftype { color: var(--muted); font-size: 9px; }
+.fuel-pill .fprice { color: var(--text); font-weight: 600; }
+.fuel-pill.cheap .fprice { color: var(--accent); }
+.fuel-pill.mid   .fprice { color: var(--warn); }
+.fuel-pill.exp   .fprice { color: var(--danger); }
+.fuel-dist { font-size: 9px; color: var(--muted); margin-top: 5px; }
+.fuel-nodata { font-size: 11px; color: var(--muted); font-style: italic; text-align: center; padding: 4px 0; }
 
-  .logo-text span { color: var(--accent); }
+/* ── FLUX ACTIVITÉ ── */
+.feed-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.feed-header {
+  padding: 10px 14px 7px;
+  font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .7px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; border-bottom: 1px solid var(--border);
+}
+.feed-count { background: var(--bg3); border-radius: 20px; padding: 2px 7px; font-size: 10px; color: var(--muted2); font-weight: 500; }
+.feed-list { flex: 1; overflow-y: auto; padding: 6px 0; scrollbar-width: thin; scrollbar-color: var(--bg4) transparent; }
+.feed-item { display: flex; align-items: flex-start; gap: 9px; padding: 6px 14px; transition: background .15s; animation: fadeSlide .3s ease; }
+@keyframes fadeSlide { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+.feed-item:hover { background: var(--bg3); }
+.feed-icon { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; margin-top: 1px; }
+.feed-icon.strong{background:rgba(61,214,140,.12)} .feed-icon.weak{background:rgba(245,166,35,.12)} .feed-icon.implicit{background:rgba(74,158,255,.1)}
+.feed-body { flex: 1; min-width: 0; }
+.feed-msg { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feed-meta { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+.feed-time { font-size: 9px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.feed-badge { font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .3px; }
+.feed-badge.strong{background:rgba(61,214,140,.15);color:var(--accent)}
+.feed-badge.weak{background:rgba(245,166,35,.15);color:var(--warn)}
+.feed-badge.implicit{background:rgba(74,158,255,.12);color:var(--blue)}
+.feed-pts { font-size: 9px; font-weight: 700; color: var(--gold); }
 
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+/* ── GAMIFICATION OVERLAY ── */
+.xp-toast {
+  position: fixed; top: 60px; left: 50%;
+  transform: translateX(-50%) translateY(0);
+  background: rgba(255,209,102,0.12);
+  border: 1px solid rgba(255,209,102,0.35);
+  border-radius: 20px; padding: 7px 16px;
+  font-size: 13px; font-weight: 700; color: var(--gold);
+  z-index: 9998; opacity: 0; pointer-events: none;
+  transition: opacity .25s, transform .25s;
+}
+.xp-toast.show { opacity: 1; transform: translateX(-50%) translateY(8px); }
 
-  .user-badge {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 8px;
-  }
+/* Barre XP */
+.xp-bar-wrap {
+  position: fixed; bottom: 86px; left: 0; right: 280px;
+  padding: 0 16px; z-index: 999; pointer-events: none;
+}
+.xp-bar-label { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px; color: var(--muted); }
+.xp-bar-label .lv { color: var(--gold); font-weight: 700; }
+.xp-bar { height: 3px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.xp-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--warn)); border-radius: 3px; transition: width .5s ease; }
 
-  .trust-pill {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 4px 10px;
-    font-size: 12px;
-    font-weight: 500;
-  }
+/* ── LOCKED OVERLAY ── */
+.locked-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(11,15,20,0.82);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 500; backdrop-filter: blur(3px);
+  transition: opacity .4s;
+}
+.locked-overlay.hidden { opacity: 0; pointer-events: none; }
+.lock-card {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 28px 32px; text-align: center; max-width: 300px;
+}
+.lock-icon { font-size: 36px; margin-bottom: 12px; }
+.lock-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.lock-sub { font-size: 13px; color: var(--muted2); line-height: 1.6; margin-bottom: 18px; }
+.lock-pts-needed {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,209,102,0.1); border: 1px solid rgba(255,209,102,0.25);
+  border-radius: 10px; padding: 8px 16px; font-size: 13px; font-weight: 600; color: var(--gold); margin-bottom: 18px;
+}
+.lock-cta {
+  background: var(--accent); color: #071a0f;
+  border: none; border-radius: 12px; padding: 12px 24px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background .15s;
+}
+.lock-cta:hover { background: var(--accent2); }
 
-  .trust-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--accent);
-  }
+/* ── RADIUS INDICATOR ── */
+.radius-chip {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 5px 12px;
+  font-size: 11px; font-weight: 600; color: var(--muted2);
+  z-index: 400; white-space: nowrap; pointer-events: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.radius-chip .rc-val { color: var(--text); }
 
-  /* ── MAP ── */
-  #map {
-    flex: 1;
-    z-index: 1;
-  }
+/* ── BOTTOM ── */
+.bottom {
+  position: fixed; bottom: 0; left: 0;
+  width: calc(100% - 272px);
+  z-index: 1000; padding: 12px 16px 18px;
+  background: linear-gradient(to top, var(--bg2) 50%, transparent);
+  pointer-events: none;
+}
+.bottom > * { pointer-events: all; }
+.rl-bar { height: 2px; background: var(--bg3); border-radius: 2px; margin-bottom: 9px; overflow: hidden; }
+.rl-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+.cta-row { display: flex; gap: 8px; }
+.btn-signal {
+  flex: 1; height: 50px;
+  background: var(--accent); color: #071a0f;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: background .15s, transform .1s;
+  box-shadow: 0 0 20px rgba(61,214,140,.2);
+}
+.btn-signal:active { transform: scale(.97); background: var(--accent2); }
+.btn-signal:disabled { background: var(--bg3); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+.btn-locate {
+  width: 50px; height: 50px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s;
+}
+.btn-locate:hover { background: var(--bg4); }
 
-  /* ── BOTTOM PANEL ── */
-  .bottom {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    z-index: 1000;
-    padding: 16px 20px 24px;
-    background: linear-gradient(to top, var(--bg2) 60%, transparent);
-    pointer-events: none;
-  }
+/* ── TOAST ── */
+#toast {
+  position: fixed; top: 60px; left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 8px 16px;
+  font-size: 12px; font-weight: 500; color: var(--text);
+  z-index: 9999; opacity: 0; transition: opacity .2s, transform .2s;
+  pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.success { border-color: rgba(61,214,140,.4); color: var(--accent); }
+#toast.warn    { border-color: rgba(245,166,35,.4);  color: var(--warn); }
 
-  .bottom > * { pointer-events: all; }
+/* ── LÉGENDE ── */
+.legend {
+  position: absolute; bottom: 90px; left: 14px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 9px 11px; z-index: 400; font-size: 10px;
+}
+.legend-title { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; }
+.legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: var(--muted2); }
+.legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 
-  /* stats bar */
-  .stats-bar {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
+/* ── LEAFLET ── */
+.leaflet-popup-content-wrapper {
+  background: var(--bg2) !important; border: 1px solid var(--border2) !important;
+  border-radius: var(--radius) !important; box-shadow: 0 8px 32px rgba(0,0,0,.6) !important;
+  color: var(--text) !important; font-family: 'DM Sans', sans-serif !important;
+}
+.leaflet-popup-tip { background: var(--bg2) !important; }
+.leaflet-popup-content { margin: 12px 14px !important; }
+.popup-prob { font-size: 30px; font-weight: 600; line-height: 1; }
+.popup-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.popup-row { display: flex; gap: 12px; margin-top: 8px; }
+.popup-stat { text-align: center; }
+.popup-stat-val { font-size: 13px; font-weight: 600; }
+.popup-stat-label { font-size: 9px; color: var(--muted); margin-top: 1px; }
+.leaflet-control-zoom { border: 1px solid var(--border) !important; border-radius: 10px !important; overflow: hidden; }
+.leaflet-control-zoom a { background: var(--bg2) !important; color: var(--text) !important; border-color: var(--border) !important; width: 30px !important; height: 30px !important; line-height: 30px !important; }
+.leaflet-control-zoom a:hover { background: var(--bg3) !important; }
 
-  .stat-card {
-    flex: 1;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 10px 14px;
-    backdrop-filter: blur(12px);
-  }
+/* Fuel marker */
+.fuel-marker {
+  background: var(--bg2); border: 1.5px solid rgba(245,166,35,.5);
+  border-radius: 8px; padding: 3px 6px;
+  font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+  color: var(--warn); white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+.fuel-marker.cheap { border-color: rgba(61,214,140,.5); color: var(--accent); }
 
-  .stat-label {
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 2px;
-  }
-
-  .stat-value {
-    font-size: 20px;
-    font-weight: 600;
-    line-height: 1;
-    color: var(--text);
-  }
-
-  .stat-value.green { color: var(--accent); }
-  .stat-value.orange { color: var(--warn); }
-
-  /* CTA BUTTON */
-  .cta-row {
-    display: flex;
-    gap: 10px;
-  }
-
-  .btn-signal {
-    flex: 1;
-    height: 56px;
-    background: var(--accent);
-    color: #0b1a12;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: background 0.15s, transform 0.1s;
-    letter-spacing: -0.2px;
-    box-shadow: 0 0 24px rgba(61,214,140,0.25);
-  }
-
-  .btn-signal:active { transform: scale(0.97); background: var(--accent2); }
-  .btn-signal:disabled { background: var(--bg3); color: var(--muted); box-shadow: none; cursor: not-allowed; }
-
-  .btn-signal svg { width: 20px; height: 20px; flex-shrink: 0; }
-
-  .btn-locate {
-    width: 56px; height: 56px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.15s;
-  }
-
-  .btn-locate:hover { background: var(--bg2); }
-  .btn-locate svg { width: 20px; height: 20px; color: var(--text); }
-
-  /* ── TOAST ── */
-  #toast {
-    position: fixed;
-    top: 70px; left: 50%;
-    transform: translateX(-50%) translateY(-8px);
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 18px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-    z-index: 9999;
-    opacity: 0;
-    transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none;
-    white-space: nowrap;
-  }
-
-  #toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  #toast.success { border-color: rgba(61,214,140,0.4); color: var(--accent); }
-  #toast.warn    { border-color: rgba(245,166,35,0.4); color: var(--warn); }
-  #toast.error   { border-color: rgba(232,85,85,0.4); color: var(--danger); }
-
-  /* ── ZONE POPUP ── */
-  .zone-popup {
-    background: var(--bg2) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius) !important;
-    box-shadow: var(--shadow) !important;
-    color: var(--text) !important;
-    font-family: 'DM Sans', sans-serif !important;
-    min-width: 180px;
-  }
-
-  .zone-popup .leaflet-popup-content-wrapper {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .zone-popup .leaflet-popup-tip { background: var(--bg2); }
-
-  .popup-inner { padding: 4px 2px; }
-  .popup-prob { font-size: 28px; font-weight: 600; line-height: 1; }
-  .popup-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .popup-signals { font-size: 11px; color: var(--muted); margin-top: 6px; }
-
-  /* ── LEAFLET OVERRIDES ── */
-  .leaflet-control-zoom {
-    border: 1px solid var(--border) !important;
-    border-radius: var(--radius) !important;
-    overflow: hidden;
-  }
-
-  .leaflet-control-zoom a {
-    background: var(--bg2) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
-    font-size: 16px !important;
-    width: 32px !important; height: 32px !important;
-    line-height: 32px !important;
-  }
-
-  .leaflet-control-zoom a:hover { background: var(--bg3) !important; }
-
-  /* ── RATE LIMIT BAR ── */
-  .rl-bar {
-    height: 2px;
-    background: var(--bg3);
-    border-radius: 2px;
-    margin-bottom: 12px;
-    overflow: hidden;
-  }
-
-  .rl-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 2px;
-    transition: width 0.3s;
-  }
-
-  /* ── LEGEND ── */
-  .legend {
-    position: fixed;
-    top: 70px; right: 16px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-    z-index: 999;
-    min-width: 130px;
-  }
-
-  .legend-title {
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 10px;
-  }
-
-  .legend-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-    font-size: 12px;
-    color: var(--text);
-  }
-
-  .legend-dot {
-    width: 12px; height: 12px;
-    border-radius: 3px;
-    flex-shrink: 0;
-  }
+@media (max-width: 640px) {
+  .side { display: none; }
+  .bottom { width: 100%; }
+  .live-strip { display: none; }
+  .xp-bar-wrap { right: 0; }
+}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#0b1a12" stroke-width="2.5" stroke-linecap="round">
-        <circle cx="12" cy="10" r="4"/>
-        <path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/>
-        <text x="9" y="11.5" fill="#0b1a12" font-size="8" font-weight="700" font-family="sans-serif">P</text>
-      </svg>
-    </div>
+    <div class="logo-icon">V</div>
     <span class="logo-text">VAC<span>UUM</span></span>
-
   </div>
-  <div class="header-right">
-    <span class="user-badge" id="uid-badge">–</span>
-    <div class="trust-pill">
-      <div class="trust-dot" id="trust-dot"></div>
-      <span id="trust-val">1.0</span>
-    </div>
+  <div class="live-strip">
+    <div class="live-chip"><div class="dot"></div><span><span class="val" id="v-active">0</span> signaux</span></div>
+    <div class="live-chip"><div class="dot" style="background:var(--blue)"></div><span><span class="val" id="v-last5" style="color:var(--blue)">0</span> / 5min</span></div>
+    <div class="live-chip"><div class="dot" style="background:var(--warn)"></div><span><span class="val" id="v-zones" style="color:var(--warn)">0</span> zones</span></div>
+  </div>
+  <div class="pts-badge">
+    <svg viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    <span id="hdr-pts">0 pts</span>
   </div>
 </header>
 
-<!-- MAP -->
-<div id="map"></div>
+<div class="main">
+  <div style="position:relative;flex:1;display:flex;flex-direction:column;">
+    <div id="map" style="flex:1;"></div>
 
-<!-- LEGEND -->
-<div class="legend">
-  <div class="legend-title">Disponibilité</div>
-  <div class="legend-row"><div class="legend-dot" style="background:#3dd68c"></div>Élevée &gt;70%</div>
-  <div class="legend-row"><div class="legend-dot" style="background:#f5a623"></div>Moyenne 40–70%</div>
-  <div class="legend-row"><div class="legend-dot" style="background:#e85555"></div>Faible &lt;40%</div>
-  <div class="legend-row"><div class="legend-dot" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15)"></div>Aucun signal</div>
+    <!-- Radius indicator -->
+    <div class="radius-chip" id="radius-chip">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+      Rayon visible : <span class="rc-val" id="rc-val">0 cellule</span>
+    </div>
+
+    <!-- Locked overlay -->
+    <div class="locked-overlay" id="locked-overlay">
+      <div class="lock-card">
+        <div class="lock-icon">🅿️</div>
+        <div class="lock-title">Débloquez la carte</div>
+        <div class="lock-sub">Signalez des places pour gagner des points et voir les zones disponibles autour de vous.</div>
+        <div class="lock-pts-needed">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span id="lock-needed">3 points pour commencer</span>
+        </div>
+        <button class="lock-cta" onclick="submitSignal()">Signaler une place maintenant</button>
+      </div>
+    </div>
+
+    <!-- Légende -->
+    <div class="legend">
+      <div class="legend-title">Disponibilité</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#3dd68c"></div>&gt; 70 %</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#f5a623"></div>40 – 70 %</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#e85555"></div>&lt; 40 %</div>
+    </div>
+
+    <!-- Barre XP -->
+    <div class="xp-bar-wrap">
+      <div class="xp-bar-label">
+        <span class="lv" id="xp-level">Niv. 0</span>
+        <span id="xp-label">0 / 3 pts</span>
+      </div>
+      <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="bottom">
+      <div class="rl-bar"><div class="rl-fill" id="rl-fill" style="width:0%"></div></div>
+      <div class="cta-row">
+        <button class="btn-signal" id="btn-signal" onclick="submitSignal()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+          J'ai vu une place
+        </button>
+        <button class="btn-locate" onclick="centerOnUser()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANNEAU DROIT -->
+  <div class="side">
+    <!-- Zone courante -->
+    <div class="zone-panel">
+      <div class="panel-title"><div class="zdot"></div>Ma zone</div>
+      <div class="zone-grid">
+        <div class="zstat">
+          <div class="zstat-label">Probabilité</div>
+          <div class="zstat-val green" id="zp-prob">–</div>
+          <div class="zstat-sub">de trouver</div>
+        </div>
+        <div class="zstat">
+          <div class="zstat-label">Signaux</div>
+          <div class="zstat-val blue" id="zp-count">0</div>
+          <div class="zstat-sub">actifs</div>
+        </div>
+        <div class="zstat">
+          <div class="zstat-label">Densité</div>
+          <div class="zstat-val orange" id="zp-density">0</div>
+          <div class="zstat-sub">/ 30s</div>
+        </div>
+        <div class="zstat">
+          <div class="zstat-label">Dernier</div>
+          <div class="zstat-val" id="zp-age" style="font-size:13px;">–</div>
+          <div class="zstat-sub" id="zp-age-sub">–</div>
+        </div>
+      </div>
+      <div class="prob-bar"><div class="prob-fill" id="zp-bar" style="width:0%;background:var(--accent)"></div></div>
+    </div>
+
+    <!-- Carburants -->
+    <div class="fuel-panel" id="fuel-panel">
+      <div class="panel-title" style="padding: 11px 14px 0;">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="var(--warn)"><path d="M3 22V6l7-4 7 4v16M3 11h14M10 22V15h4v7"/></svg>
+        Stations proches
+      </div>
+      <div style="padding: 0 14px 11px;" id="fuel-content">
+        <div class="fuel-loading">Localisation en cours…</div>
+      </div>
+    </div>
+
+    <!-- Flux activité -->
+    <div class="feed-panel">
+      <div class="feed-header">
+        Flux d'activité
+        <span class="feed-count" id="feed-count">0</span>
+      </div>
+      <div class="feed-list" id="feed-list"></div>
+    </div>
+  </div>
 </div>
 
-<!-- TOAST -->
+<!-- XP Toast -->
+<div class="xp-toast" id="xp-toast"></div>
 <div id="toast"></div>
 
-<!-- BOTTOM PANEL -->
-<div class="bottom">
-  <div class="stats-bar">
-    <div class="stat-card">
-      <div class="stat-label">Signaux actifs</div>
-      <div class="stat-value green" id="stat-signals">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Zones actives</div>
-      <div class="stat-value" id="stat-zones">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Meilleure zone</div>
-      <div class="stat-value green" id="stat-best">–</div>
-    </div>
-  </div>
-
-  <div class="rl-bar">
-    <div class="rl-fill" id="rl-fill" style="width:0%"></div>
-  </div>
-
-  <div class="cta-row">
-    <button class="btn-signal" id="btn-signal" onclick="submitSignal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-        <circle cx="12" cy="10" r="3"/>
-        <path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/>
-      </svg>
-      J'ai vu une place
-    </button>
-    <button class="btn-locate" onclick="centerOnUser()" title="Ma position">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-        <circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/>
-      </svg>
-    </button>
-  </div>
-</div>
-
 <script>
-// ════════════════════════════════════════════════════════
-//  PARKZEN · 100% FRONTEND MVP
-//  Algorithme complet en mémoire → localStorage
-//  H3-like grid simulé en JS pur
-// ════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  VACUUM · v3
+//  Gamification · Carburants · Temps réel
+// ═══════════════════════════════════════════════════
 
-// ── CONFIG ────────────────────────────────────────────
-const CONFIG = {
-  GRID_SIZE_DEG:  0.002,      // ~150-200m (équivalent H3 res 9)
-  DECAY_SECONDS:  15,          // demi-vie temporelle
-  MAX_AGE_MS:     300_000,     // 5min → signal expiré
-  RATE_LIMIT:     10,          // signaux/min/user
-  COLD_START_N:   5,           // seuil cold start
-  PRIOR:          0.25,        // probabilité a priori
-  RENDER_RADIUS:  8,           // cellules rendues autour de l'user
-  SPAM_THRESHOLD: 8,           // signals/30s dans même zone → spam
-  TRUST_DECAY:    0.08,        // pénalité trust par spam détecté
+// ⚠️ Remplace par ton URL Vercel après déploiement
+const API_BASE = 'https://TON_PROJET.vercel.app';
+
+const CFG = {
+  GRID:          0.002,
+  DECAY_S:       15,
+  MAX_AGE:       300_000,
+  RATE_LIMIT:    10,
+  COLD_N:        5,
+  PRIOR:         0.25,
+  SPAM_TH:       8,
+  TRUST_PEN:     0.08,
+  FEED_MAX:      40,
+  SIM_INTERVAL:  7000,
+  // Gamification
+  PTS_STRONG:    3,
+  PTS_WEAK:      1,
+  PTS_IMPLICIT:  0.5,
+  PTS_SPAM_PEN:  5,
+  // Rayon de vision : log2(1 + pts) * 2 cellules
+  // 0pts=0, 3pts≈3, 10pts≈7, 20pts≈9, 50pts≈12
 };
 
-// ── ÉTAT GLOBAL ───────────────────────────────────────
+const STREETS = [
+  'rue de Rivoli','bd Haussmann','av. de l\'Opéra','rue du Faubourg St-Honoré',
+  'rue de la Paix','bd Saint-Germain','av. Montaigne','rue de Vaugirard',
+  'rue Oberkampf','av. de la République','bd Beaumarchais','rue du Temple',
+  'rue de Turenne','av. Parmentier','rue Saint-Maur','bd Voltaire',
+  'rue de la Roquette','av. Ledru-Rollin','rue du Chemin-Vert','bd Richard-Lenoir',
+];
+
 const state = {
-  userLat:    48.8566,
-  userLng:    2.3522,
-  userId:     null,
-  trustScore: 1.0,
-  signals:    [],          // en mémoire
-  hexLayers:  new Map(),   // h3index → L.polygon
-  map:        null,
-  markers:    null,
-  signalsThisMin: 0,
-  lastMinReset:   Date.now(),
+  userLat: 48.8566, userLng: 2.3522,
+  userId: null, trustScore: 1.0,
+  points: 0, streak: 0, lastSignalTime: 0,
+  signals: [], hexLayers: new Map(),
+  fuelMarkers: [], map: null,
+  signalsThisMin: 0, lastMinReset: Date.now(),
+  feedItems: [], visRadius: 0,
+  fuelLoaded: false,
 };
 
-// ── USER ID ──────────────────────────────────────────
+// ── USER + POINTS ─────────────────────────────────
 function initUser() {
   let uid = localStorage.getItem('vac_uid');
-  if (!uid) {
-    uid = 'u_' + Math.random().toString(36).slice(2, 9);
-    localStorage.setItem('vac_uid', uid);
+  if (!uid) { uid = 'u_' + Math.random().toString(36).slice(2,9); localStorage.setItem('vac_uid', uid); }
+  state.userId     = uid;
+  state.trustScore = parseFloat(localStorage.getItem('vac_trust') || '1.0');
+  state.points     = parseFloat(localStorage.getItem('vac_pts')   || '0');
+  state.streak     = parseInt(localStorage.getItem('vac_streak')  || '0');
+  updateXP();
+}
+
+// Rayon visible = floor( log2(1 + pts) * 2 )
+function visRadius() {
+  return Math.floor(Math.log2(1 + state.points) * 2);
+}
+
+// Niveau affiché
+function level() {
+  const r = visRadius();
+  if (r === 0) return 0;
+  if (r <= 2)  return 1;
+  if (r <= 5)  return 2;
+  if (r <= 8)  return 3;
+  return 4;
+}
+
+// Points pour le prochain seuil de rayon
+function nextThreshold() {
+  // rayon r nécessite pts = 2^(r/2) - 1
+  const r = visRadius();
+  return Math.ceil(Math.pow(2, (r+1)/2) - 1);
+}
+
+function updateXP() {
+  const pts  = state.points;
+  const r    = visRadius();
+  const next = nextThreshold();
+  const lv   = level();
+
+  // Header
+  document.getElementById('hdr-pts').textContent = Math.floor(pts) + ' pts';
+
+  // Barre XP
+  const prev = r > 0 ? Math.ceil(Math.pow(2, r/2) - 1) : 0;
+  const pct  = next > prev ? Math.min(100, ((pts - prev) / (next - prev)) * 100) : 100;
+  document.getElementById('xp-fill').style.width = pct.toFixed(1) + '%';
+  document.getElementById('xp-level').textContent = 'Niv. ' + lv;
+  document.getElementById('xp-label').textContent = Math.floor(pts) + ' / ' + next + ' pts';
+
+  // Radius chip
+  state.visRadius = r;
+  document.getElementById('rc-val').textContent = r === 0 ? '0 cellule' : r + ' cellule' + (r>1?'s':'');
+
+  // Overlay lock
+  const overlay = document.getElementById('locked-overlay');
+  if (r >= 1) {
+    overlay.classList.add('hidden');
+  } else {
+    overlay.classList.remove('hidden');
+    document.getElementById('lock-needed').textContent = '3 points pour commencer';
   }
-  state.userId = uid;
-  document.getElementById('uid-badge').textContent = uid;
 
-  const ts = parseFloat(localStorage.getItem('vac_trust') || '1.0');
-  state.trustScore = ts;
-  renderTrust();
+  // Mettre à jour les zones visibles
+  applyVisibility();
 }
 
-function renderTrust() {
-  document.getElementById('trust-val').textContent = state.trustScore.toFixed(2);
-  const dot = document.getElementById('trust-dot');
-  dot.style.background = state.trustScore > 0.7
-    ? 'var(--accent)'
-    : state.trustScore > 0.4 ? 'var(--warn)' : 'var(--danger)';
+function addPoints(pts, label) {
+  const streak = checkStreak();
+  const multiplier = streak >= 3 ? 1.5 : 1;
+  const earned = pts * multiplier;
+  state.points += earned;
+  localStorage.setItem('vac_pts', state.points.toString());
+
+  // XP toast
+  const msg = streak >= 3
+    ? `+${earned.toFixed(1)} pts · streak ×1.5 🔥`
+    : `+${pts} pt${pts > 1 ? 's' : ''}`;
+  showXPToast(msg);
+  updateXP();
 }
 
-// ── H3-LIKE GRID (pseudo-H3 rectangulaire) ───────────
-// Convertit lat/lng → clé de cellule hexagonale simplifiée
-// Résolution équivalente H3 res 9 (~170m)
-function latLngToH3(lat, lng) {
-  const row = Math.floor(lat / CONFIG.GRID_SIZE_DEG);
-  const col = Math.floor(lng / CONFIG.GRID_SIZE_DEG);
-  // Offset alternance lignes (simule hexagones)
-  const colOffset = (row % 2 === 0) ? 0 : 0.5;
-  const effCol = Math.floor((lng / CONFIG.GRID_SIZE_DEG) - colOffset);
-  return `${row}_${effCol}`;
+function penalizePoints(pts) {
+  state.points = Math.max(0, state.points - pts);
+  localStorage.setItem('vac_pts', state.points.toString());
+  showXPToast(`-${pts} pts · spam détecté`);
+  updateXP();
 }
 
-function h3ToLatLng(h3) {
-  const [r, c] = h3.split('_').map(Number);
-  const colOffset = (r % 2 === 0) ? 0 : 0.5;
-  const lat = (r + 0.5) * CONFIG.GRID_SIZE_DEG;
-  const lng = (c + colOffset + 0.5) * CONFIG.GRID_SIZE_DEG;
-  return { lat, lng };
-}
-
-function h3ToBounds(h3) {
-  const [r, c] = h3.split('_').map(Number);
-  const g = CONFIG.GRID_SIZE_DEG;
-  const colOffset = (r % 2 === 0) ? 0 : 0.5;
-  const lat0 = r * g;
-  const lat1 = (r + 1) * g;
-  const lng0 = (c + colOffset) * g;
-  const lng1 = (c + colOffset + 1) * g;
-  // Hexagone approché : 6 points
-  const midLat = (lat0 + lat1) / 2;
-  const pad = g * 0.15;
-  return [
-    [lat1,         lng0 + pad],
-    [lat1,         lng1 - pad],
-    [midLat + g*0.5, lng1    ],
-    [lat0,         lng1 - pad],
-    [lat0,         lng0 + pad],
-    [midLat + g*0.5, lng0    ],
-  ];
-}
-
-// ── ALGORITHME SCORING ────────────────────────────────
-function typeWeight(type) {
-  return { SIGNAL_STRONG: 1.0, SIGNAL_WEAK: 0.6, SIGNAL_IMPLICIT: 0.4 }[type] || 0.4;
-}
-
-function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
-
-function computeScore(signal, densityCount) {
-  const nowMs    = Date.now();
-  const dtSec    = Math.max(0, (nowMs - signal.timestamp) / 1000);
-  const decay    = Math.exp(-dtSec / CONFIG.DECAY_SECONDS);
-  const accFact  = Math.max(0.2, Math.min(1, 1 - signal.accuracy / 50));
-  const density  = Math.log1p(densityCount);
-  return typeWeight(signal.type) * signal.trust_score * decay * accFact * density;
-}
-
-function computeZoneProbability(h3Index) {
+function checkStreak() {
   const now = Date.now();
-  const active = state.signals.filter(s =>
-    s.h3_index === h3Index && (now - s.timestamp) < CONFIG.MAX_AGE_MS
-  );
-
-  // Density : events in zone last 30s
-  const density30 = state.signals.filter(s =>
-    s.h3_index === h3Index && (now - s.timestamp) < 30_000
-  ).length;
-
-  const scoreSum = active.reduce((acc, s) => acc + computeScore(s, density30), 0);
-  const n = active.length;
-
-  // Cold start blending
-  const w = Math.min(1, n / CONFIG.COLD_START_N);
-  const rawP = sigmoid(scoreSum);
-  const prob = w * rawP + (1 - w) * CONFIG.PRIOR;
-
-  return { prob, n, scoreSum };
+  const gap = now - state.lastSignalTime;
+  if (gap < 120_000) { // < 2min → streak
+    state.streak++;
+  } else {
+    state.streak = 1;
+  }
+  state.lastSignalTime = now;
+  localStorage.setItem('vac_streak', state.streak.toString());
+  return state.streak;
 }
 
-// ── STORAGE ───────────────────────────────────────────
+// ── VISIBILITÉ ZONES ──────────────────────────────
+// Masque les zones hors du rayon de vision
+function applyVisibility() {
+  const r = state.visRadius;
+  for (const [h3, ly] of state.hexLayers) {
+    const dist = h3Distance(h3, latlngToH3(state.userLat, state.userLng));
+    ly.setStyle({ opacity: dist <= r ? 1 : 0, fillOpacity: dist <= r ? (ly._opacity||0.3) : 0 });
+  }
+}
+
+function h3Distance(h3a, h3b) {
+  const [ra, ca] = h3a.split('_').map(Number);
+  const [rb, cb] = h3b.split('_').map(Number);
+  return Math.max(Math.abs(ra-rb), Math.abs(ca-cb));
+}
+
+// ── GRID H3-like ──────────────────────────────────
+function latlngToH3(lat, lng) {
+  const row = Math.floor(lat / CFG.GRID);
+  const col = Math.floor((lng / CFG.GRID) - (row % 2 === 0 ? 0 : 0.5));
+  return `${row}_${col}`;
+}
+function h3Center(h3) {
+  const [r, c] = h3.split('_').map(Number);
+  const off = r % 2 === 0 ? 0 : 0.5;
+  return { lat: (r+.5)*CFG.GRID, lng: (c+off+.5)*CFG.GRID };
+}
+function h3Poly(h3) {
+  const [r,c] = h3.split('_').map(Number);
+  const g = CFG.GRID, off = r%2===0?0:.5;
+  const la=r*g,lb=(r+1)*g,lo=(c+off)*g,lp=(c+off+1)*g,mid=(la+lb)/2;
+  return [[lb,lo+g*.15],[lb,lp-g*.15],[mid+g*.5,lp],[la,lp-g*.15],[la,lo+g*.15],[mid+g*.5,lo]];
+}
+
+// ── SCORING ───────────────────────────────────────
+const TW = {SIGNAL_STRONG:1.0,SIGNAL_WEAK:.6,SIGNAL_IMPLICIT:.4};
+function sigmoid(x) { return 1/(1+Math.exp(-x)); }
+function scoreSignal(s,density) {
+  const dt=Math.max(0,(Date.now()-s.timestamp)/1000);
+  const acc=Math.max(.2,Math.min(1,1-s.accuracy/50));
+  return (TW[s.type]||.4)*s.trust_score*Math.exp(-dt/CFG.DECAY_S)*acc*Math.log1p(density);
+}
+function zoneProb(h3) {
+  const now=Date.now(),cut=now-CFG.MAX_AGE;
+  const active=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>cut);
+  const d30=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>(now-30000)).length;
+  const sum=active.reduce((a,s)=>a+scoreSignal(s,d30),0);
+  const w=Math.min(1,active.length/CFG.COLD_N);
+  return {prob:w*sigmoid(sum)+(1-w)*CFG.PRIOR, n:active.length, d30, sum};
+}
+
+// ── STORAGE ───────────────────────────────────────
 function loadSignals() {
   try {
-    const raw = localStorage.getItem('vac_signals');
-    if (raw) {
-      state.signals = JSON.parse(raw);
-      // Purge anciens signals
-      const cutoff = Date.now() - CONFIG.MAX_AGE_MS;
-      state.signals = state.signals.filter(s => s.timestamp > cutoff);
-    }
-  } catch { state.signals = []; }
+    const r=localStorage.getItem('vac_signals');
+    if(r) state.signals=JSON.parse(r).filter(s=>Date.now()-s.timestamp<CFG.MAX_AGE);
+  } catch { state.signals=[]; }
 }
-
 function saveSignals() {
-  try {
-    const cutoff = Date.now() - CONFIG.MAX_AGE_MS;
-    const fresh = state.signals.filter(s => s.timestamp > cutoff);
-    state.signals = fresh;
-    localStorage.setItem('vac_signals', JSON.stringify(fresh));
-    localStorage.setItem('vac_trust', state.trustScore.toString());
-  } catch {}
+  state.signals=state.signals.filter(s=>Date.now()-s.timestamp<CFG.MAX_AGE);
+  try { localStorage.setItem('vac_signals',JSON.stringify(state.signals)); } catch {}
+  localStorage.setItem('vac_trust', state.trustScore.toString());
 }
 
-// ── RATE LIMIT ────────────────────────────────────────
-function checkRateLimit() {
-  const now = Date.now();
-  if (now - state.lastMinReset > 60_000) {
-    state.signalsThisMin = 0;
-    state.lastMinReset = now;
-  }
-  return state.signalsThisMin < CONFIG.RATE_LIMIT;
+// ── RATE LIMIT ────────────────────────────────────
+function checkRL() {
+  if(Date.now()-state.lastMinReset>60000){state.signalsThisMin=0;state.lastMinReset=Date.now();}
+  return state.signalsThisMin<CFG.RATE_LIMIT;
 }
-
 function updateRLBar() {
-  const pct = (state.signalsThisMin / CONFIG.RATE_LIMIT) * 100;
-  const fill = document.getElementById('rl-fill');
-  fill.style.width = pct + '%';
-  fill.style.background = pct > 80 ? 'var(--warn)' : pct > 95 ? 'var(--danger)' : 'var(--accent)';
+  const p=(state.signalsThisMin/CFG.RATE_LIMIT)*100;
+  const f=document.getElementById('rl-fill');
+  f.style.width=p+'%'; f.style.background=p>80?'var(--warn)':'var(--accent)';
+}
+function isSpam(h3) {
+  return state.signals.filter(s=>s.h3_index===h3&&s.user_id===state.userId&&Date.now()-s.timestamp<30000).length>=CFG.SPAM_TH;
 }
 
-// ── ANTI-SPAM ─────────────────────────────────────────
-function detectSpam(h3Index) {
-  const now = Date.now();
-  const recent = state.signals.filter(s =>
-    s.h3_index === h3Index &&
-    s.user_id === state.userId &&
-    (now - s.timestamp) < 30_000
-  ).length;
-  return recent >= CONFIG.SPAM_THRESHOLD;
-}
-
-// ── GÉOLOCALISATION ──────────────────────────────────
-function getPosition() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error('GPS indisponible'));
+// ── GEO ───────────────────────────────────────────
+function getPos() {
+  return new Promise(res=>{
+    if(!navigator.geolocation) return res({lat:state.userLat,lng:state.userLng,accuracy:20});
     navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.min(50, p.coords.accuracy || 10) }),
-      e => resolve({ lat: state.userLat, lng: state.userLng, accuracy: 20 }),
-      { timeout: 4000, maximumAge: 10000 }
+      p=>res({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:Math.min(50,p.coords.accuracy||10)}),
+      ()=>res({lat:state.userLat,lng:state.userLng,accuracy:20}),
+      {timeout:4000,maximumAge:10000}
     );
   });
 }
 
-// ── SIGNAL SUBMISSION ─────────────────────────────────
-async function submitSignal(type = 'SIGNAL_STRONG') {
-  const btn = document.getElementById('btn-signal');
-  if (!checkRateLimit()) {
-    toast('Limite de signaux atteinte (10/min)', 'warn');
-    return;
+// ── CARBURANTS ────────────────────────────────────
+const FUEL_NAMES = {gazole:'Gazole',sp95:'SP95',sp98:'SP98',e10:'E10',e85:'E85',gplc:'GPLc'};
+
+async function loadCarburants(lat, lng) {
+  const el = document.getElementById('fuel-content');
+  el.innerHTML = '<div class="fuel-loading">Chargement…</div>';
+
+  try {
+    const url = `${API_BASE}/api/carburants?lat=${lat}&lng=${lng}&rayon=3`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('API indisponible');
+    const data = await res.json();
+
+    if (!data.stations || data.stations.length === 0) {
+      el.innerHTML = '<div class="fuel-nodata">Aucune station dans un rayon de 3 km</div>';
+      return;
+    }
+
+    // Calcul prix min/max par carburant pour coloration
+    const allPrices = {};
+    data.stations.forEach(s => {
+      Object.entries(s.prix).forEach(([k,v]) => {
+        if (v) { if (!allPrices[k]) allPrices[k]=[]; allPrices[k].push(v.val); }
+      });
+    });
+    const minMax = {};
+    Object.entries(allPrices).forEach(([k,vals]) => {
+      minMax[k] = {min:Math.min(...vals), max:Math.max(...vals)};
+    });
+
+    // Afficher les 3 premières stations
+    const stations = data.stations.slice(0, 3);
+    el.innerHTML = stations.map(s => {
+      const prixHtml = Object.entries(s.prix)
+        .filter(([,v]) => v)
+        .map(([k,v]) => {
+          const mm = minMax[k];
+          const cls = v.val <= mm.min ? 'cheap' : v.val >= mm.max ? 'exp' : 'mid';
+          return `<div class="fuel-pill ${cls}"><span class="ftype">${FUEL_NAMES[k]}</span><span class="fprice">${v.val.toFixed(3)}€</span></div>`;
+        }).join('');
+
+      // Distance approx
+      const dlat = (s.lat - lat) * 111;
+      const dlng = (s.lng - lng) * 111 * Math.cos(lat * Math.PI/180);
+      const dist = Math.round(Math.sqrt(dlat*dlat + dlng*dlng) * 1000);
+
+      return `
+        <div class="fuel-station">
+          <div class="fuel-name">${s.nom}</div>
+          <div class="fuel-addr">${s.adresse}, ${s.ville}</div>
+          <div class="fuel-prices">${prixHtml}</div>
+          <div class="fuel-dist">${dist < 1000 ? dist+'m' : (dist/1000).toFixed(1)+'km'} · ${s.automate ? '24h/24' : 'heures limitées'}</div>
+        </div>`;
+    }).join('');
+
+    // Marqueurs sur la carte
+    clearFuelMarkers();
+    data.stations.slice(0, 8).forEach(s => {
+      if (!s.lat || !s.lng) return;
+      // Prix E10 ou Gazole comme référence
+      const ref = s.prix.e10 || s.prix.sp95 || s.prix.gazole;
+      if (!ref) return;
+      const mm = minMax[ref === s.prix.e10 ? 'e10' : ref === s.prix.sp95 ? 'sp95' : 'gazole'];
+      const isCheap = ref.val <= mm.min;
+      const icon = L.divIcon({
+        html: `<div class="fuel-marker${isCheap?' cheap':''}">${ref.val.toFixed(3)}€</div>`,
+        iconSize: [58, 22], iconAnchor: [29, 11], className: '',
+      });
+      const m = L.marker([s.lat, s.lng], {icon}).addTo(state.map);
+      m.bindPopup(`<div style="font-size:12px;"><b>${s.nom}</b><br>${s.adresse}<br>${Object.entries(s.prix).filter(([,v])=>v).map(([k,v])=>`${FUEL_NAMES[k]}: ${v.val.toFixed(3)}€`).join('<br>')}</div>`);
+      state.fuelMarkers.push(m);
+    });
+
+    state.fuelLoaded = true;
+  } catch (err) {
+    // Fallback : message d'info + lien
+    el.innerHTML = `
+      <div class="fuel-nodata">
+        API non connectée.<br>
+        <span style="font-size:10px;color:var(--muted);">Déploie d'abord la Vercel Function.<br>Voir README.</span>
+      </div>`;
   }
-
-  btn.disabled = true;
-  btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Localisation…`;
-
-  let pos;
-  try { pos = await getPosition(); }
-  catch { pos = { lat: state.userLat, lng: state.userLng, accuracy: 20 }; }
-
-  const h3 = latLngToH3(pos.lat, pos.lng);
-
-  // Anti-spam
-  if (detectSpam(h3)) {
-    state.trustScore = Math.max(0.1, state.trustScore - CONFIG.TRUST_DECAY);
-    toast('Signal ignoré : activité suspecte', 'warn');
-    btn.disabled = false;
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="20" height="20"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg> J'ai vu une place`;
-    return;
-  }
-
-  const signal = {
-    id:          Math.random().toString(36).slice(2),
-    user_id:     state.userId,
-    type,
-    timestamp:   Date.now(),
-    lat:         pos.lat,
-    lng:         pos.lng,
-    h3_index:    h3,
-    accuracy:    pos.accuracy,
-    trust_score: state.trustScore,
-  };
-
-  state.signals.push(signal);
-  state.signalsThisMin++;
-  saveSignals();
-
-  // Mettre à jour la carte
-  renderZone(h3);
-  updateStats();
-  updateRLBar();
-
-  toast('Signal enregistré !', 'success');
-
-  // Centrer sur la position
-  state.map.setView([pos.lat, pos.lng], Math.max(state.map.getZoom(), 16));
-  updateUserMarker(pos.lat, pos.lng);
-
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="20" height="20"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg> J'ai vu une place`;
-  }, 1500);
 }
 
-// ── RENDU CARTE ───────────────────────────────────────
-function probColor(p) {
-  if (p >= 0.7) return { fill: '#3dd68c', stroke: '#2ab87a' };
-  if (p >= 0.4) return { fill: '#f5a623', stroke: '#d4891a' };
-  return       { fill: '#e85555', stroke: '#c43d3d' };
+function clearFuelMarkers() {
+  state.fuelMarkers.forEach(m => state.map.removeLayer(m));
+  state.fuelMarkers = [];
 }
 
-function renderZone(h3Index) {
-  const { prob, n } = computeZoneProbability(h3Index);
-  const bounds = h3ToBounds(h3Index);
-  const { fill, stroke } = probColor(prob);
-  const opacity = 0.15 + prob * 0.5;
+// ── FEED ──────────────────────────────────────────
+const typeLabel = {SIGNAL_STRONG:'fort',SIGNAL_WEAK:'faible',SIGNAL_IMPLICIT:'implicite'};
+const typeIcon  = {SIGNAL_STRONG:'🅿',SIGNAL_WEAK:'◎',SIGNAL_IMPLICIT:'·'};
+const typePts   = {SIGNAL_STRONG:CFG.PTS_STRONG,SIGNAL_WEAK:CFG.PTS_WEAK,SIGNAL_IMPLICIT:CFG.PTS_IMPLICIT};
 
-  if (state.hexLayers.has(h3Index)) {
-    const layer = state.hexLayers.get(h3Index);
-    layer.setLatLngs(bounds);
-    layer.setStyle({ fillColor: fill, color: stroke, fillOpacity: opacity });
-    // Update popup content
-    layer._prob = prob;
-    layer._n = n;
+function addFeedItem(type, street, userId, isMe=false, pts=0) {
+  state.feedItems.unshift({type,street,userId,isMe,time:Date.now(),pts});
+  if(state.feedItems.length>CFG.FEED_MAX) state.feedItems.pop();
+  renderFeed();
+}
+
+function timeSince(ts) {
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<5)  return 'à l\'instant';
+  if(s<60) return `${s}s`;
+  return  `${Math.floor(s/60)}min`;
+}
+
+function renderFeed() {
+  const list=document.getElementById('feed-list');
+  document.getElementById('feed-count').textContent=state.feedItems.length;
+  list.innerHTML=state.feedItems.slice(0,15).map(item=>`
+    <div class="feed-item">
+      <div class="feed-icon ${item.type==='SIGNAL_STRONG'?'strong':item.type==='SIGNAL_WEAK'?'weak':'implicit'}">${typeIcon[item.type]}</div>
+      <div class="feed-body">
+        <div class="feed-msg">${item.isMe?'<b>Vous</b>':'User '+item.userId.slice(-4)} · ${item.street}</div>
+        <div class="feed-meta">
+          <span class="feed-time">${timeSince(item.time)}</span>
+          <span class="feed-badge ${item.type==='SIGNAL_STRONG'?'strong':item.type==='SIGNAL_WEAK'?'weak':'implicit'}">${typeLabel[item.type]}</span>
+          ${item.pts>0?`<span class="feed-pts">+${item.pts}pts</span>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── ZONE PANEL ────────────────────────────────────
+function updateZonePanel() {
+  const h3=latlngToH3(state.userLat,state.userLng);
+  const {prob,n,d30}=zoneProb(h3);
+  const pct=Math.round(prob*100);
+  const el=document.getElementById('zp-prob');
+  el.textContent=pct+'%';
+  el.className='zstat-val '+(pct>=70?'green':pct>=40?'orange':'red');
+  document.getElementById('zp-count').textContent=n;
+  document.getElementById('zp-density').textContent=d30;
+  const last=state.signals.filter(s=>s.h3_index===h3).sort((a,b)=>b.timestamp-a.timestamp)[0];
+  const ageEl=document.getElementById('zp-age'), ageSub=document.getElementById('zp-age-sub');
+  if(last){
+    const s=Math.floor((Date.now()-last.timestamp)/1000);
+    ageEl.textContent=s<60?s+'s':Math.floor(s/60)+'min';
+    ageSub.textContent=typeLabel[last.type];
+    ageEl.style.color=s<30?'var(--accent)':s<90?'var(--warn)':'var(--muted2)';
+  } else { ageEl.textContent='–'; ageSub.textContent='aucun signal'; ageEl.style.color='var(--muted2)'; }
+  const bar=document.getElementById('zp-bar');
+  bar.style.width=pct+'%'; bar.style.background=pct>=70?'var(--accent)':pct>=40?'var(--warn)':'var(--danger)';
+}
+
+function updateHeaderCounters() {
+  const now=Date.now();
+  document.getElementById('v-active').textContent=state.signals.filter(s=>now-s.timestamp<CFG.MAX_AGE).length;
+  document.getElementById('v-last5').textContent=state.signals.filter(s=>now-s.timestamp<300000).length;
+  document.getElementById('v-zones').textContent=state.hexLayers.size;
+}
+
+// ── CARTE ─────────────────────────────────────────
+function probColor(p){
+  if(p>=.7) return{fill:'#3dd68c',stroke:'#2ab87a'};
+  if(p>=.4) return{fill:'#f5a623',stroke:'#d4891a'};
+  return         {fill:'#e85555',stroke:'#c43d3d'};
+}
+
+function renderZone(h3) {
+  const {prob,n,d30}=zoneProb(h3);
+  const pts=h3Poly(h3);
+  const {fill,stroke}=probColor(prob);
+  const op=0.12+prob*0.5;
+  const dist=h3Distance(h3,latlngToH3(state.userLat,state.userLng));
+  const visible=dist<=state.visRadius;
+
+  if(state.hexLayers.has(h3)){
+    const ly=state.hexLayers.get(h3);
+    ly.setLatLngs(pts);
+    ly._opacity=op;
+    ly.setStyle({fillColor:fill,color:stroke,fillOpacity:visible?op:0,opacity:visible?1:0});
+    ly._meta={prob,n,d30,h3};
   } else {
-    const poly = L.polygon(bounds, {
-      fillColor: fill,
-      color: stroke,
-      weight: 1,
-      fillOpacity: opacity,
-    });
-
-    poly._prob = prob;
-    poly._n = n;
-    poly._h3 = h3Index;
-
-    poly.on('click', function() {
-      const pct = Math.round(this._prob * 100);
-      const center = h3ToLatLng(this._h3);
-      L.popup({ className: 'zone-popup' })
-        .setLatLng([center.lat, center.lng])
-        .setContent(`
-          <div class="popup-inner">
-            <div class="popup-prob" style="color:${probColor(this._prob).fill}">${pct}%</div>
-            <div class="popup-label">Probabilité de trouver une place</div>
-            <div class="popup-signals">${this._n} signal${this._n > 1 ? 's' : ''} actif${this._n > 1 ? 's' : ''}</div>
+    const poly=L.polygon(pts,{fillColor:fill,color:stroke,weight:1,fillOpacity:visible?op:0,opacity:visible?1:0});
+    poly._meta={prob,n,d30,h3}; poly._opacity=op;
+    poly.on('click',function(){
+      const m=this._meta,ctr=h3Center(m.h3);
+      const last=state.signals.filter(s=>s.h3_index===m.h3).sort((a,b)=>b.timestamp-a.timestamp)[0];
+      const ageStr=last?Math.floor((Date.now()-last.timestamp)/1000)+'s':'–';
+      L.popup().setLatLng([ctr.lat,ctr.lng]).setContent(`
+        <div>
+          <div class="popup-prob" style="color:${probColor(m.prob).fill}">${Math.round(m.prob*100)}%</div>
+          <div class="popup-label">probabilité de disponibilité</div>
+          <div class="popup-row">
+            <div class="popup-stat"><div class="popup-stat-val" style="color:var(--blue)">${m.n}</div><div class="popup-stat-label">signaux</div></div>
+            <div class="popup-stat"><div class="popup-stat-val" style="color:var(--warn)">${m.d30}</div><div class="popup-stat-label">/ 30s</div></div>
+            <div class="popup-stat"><div class="popup-stat-val">${ageStr}</div><div class="popup-stat-label">dernier</div></div>
           </div>
-        `)
-        .openOn(state.map);
+        </div>`).openOn(state.map);
     });
-
     poly.addTo(state.map);
-    state.hexLayers.set(h3Index, poly);
+    state.hexLayers.set(h3,poly);
   }
 }
 
 function renderAllZones() {
-  const now = Date.now();
-  const cutoff = now - CONFIG.MAX_AGE_MS;
-  const activeH3s = new Set(
-    state.signals
-      .filter(s => s.timestamp > cutoff)
-      .map(s => s.h3_index)
-  );
+  const now=Date.now();
+  const active=new Set(state.signals.filter(s=>now-s.timestamp<CFG.MAX_AGE).map(s=>s.h3_index));
+  for(const [h3,ly] of state.hexLayers){if(!active.has(h3)){state.map.removeLayer(ly);state.hexLayers.delete(h3);}}
+  for(const h3 of active) renderZone(h3);
+}
 
-  // Supprimer les zones expirées
-  for (const [h3, layer] of state.hexLayers) {
-    if (!activeH3s.has(h3)) {
-      state.map.removeLayer(layer);
-      state.hexLayers.delete(h3);
-    }
+// ── USER MARKER ───────────────────────────────────
+let userMarker=null;
+function updateUserMarker(lat,lng) {
+  state.userLat=lat; state.userLng=lng;
+  const icon=L.divIcon({html:`<div style="width:14px;height:14px;background:#4a9eff;border:2px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(74,158,255,.25)"></div>`,iconSize:[14,14],iconAnchor:[7,7],className:''});
+  if(userMarker) userMarker.setLatLng([lat,lng]);
+  else userMarker=L.marker([lat,lng],{icon}).addTo(state.map);
+}
+
+// ── SIGNAL ────────────────────────────────────────
+async function submitSignal(type='SIGNAL_STRONG') {
+  const btn=document.getElementById('btn-signal');
+  if(!checkRL()){toast('Limite 10/min atteinte','warn');return;}
+  btn.disabled=true;
+
+  const pos=await getPos();
+  const h3=latlngToH3(pos.lat,pos.lng);
+
+  if(isSpam(h3)){
+    state.trustScore=Math.max(0.1,state.trustScore-CFG.TRUST_PEN);
+    penalizePoints(CFG.PTS_SPAM_PEN);
+    toast('Signal ignoré · spam détecté','warn');
+    btn.disabled=false; return;
   }
 
-  // Rendre les zones actives
-  for (const h3 of activeH3s) renderZone(h3);
-  updateStats();
+  const sig={
+    id:Math.random().toString(36).slice(2), user_id:state.userId, type,
+    timestamp:Date.now(), lat:pos.lat, lng:pos.lng, h3_index:h3,
+    accuracy:pos.accuracy, trust_score:state.trustScore,
+  };
+  state.signals.push(sig);
+  state.signalsThisMin++;
+  saveSignals();
+
+  // Points
+  const pts=typePts[type]||0.5;
+  addPoints(pts, type);
+
+  const street=STREETS[Math.floor(Math.random()*STREETS.length)];
+  addFeedItem(type,street,state.userId,true,pts);
+
+  renderZone(h3);
+  updateZonePanel();
+  updateHeaderCounters();
+  updateRLBar();
+
+  state.map.setView([pos.lat,pos.lng],Math.max(state.map.getZoom(),16));
+  updateUserMarker(pos.lat,pos.lng);
+  applyVisibility();
+  toast('Signal enregistré !','success');
+
+  // Recharger carburants si première fois
+  if(!state.fuelLoaded) loadCarburants(pos.lat,pos.lng);
+
+  setTimeout(()=>{
+    btn.disabled=false;
+    btn.innerHTML=`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>J'ai vu une place`;
+  },1500);
 }
 
-// ── MARQUEUR UTILISATEUR ──────────────────────────────
-let userMarker = null;
-function updateUserMarker(lat, lng) {
-  state.userLat = lat;
-  state.userLng = lng;
-  const icon = L.divIcon({
-    html: `<div style="width:16px;height:16px;background:#4a9eff;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(74,158,255,0.3)"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-    className: '',
-  });
-  if (userMarker) { userMarker.setLatLng([lat, lng]); }
-  else { userMarker = L.marker([lat, lng], { icon }).addTo(state.map); }
-}
-
-// ── CENTRAGE ──────────────────────────────────────────
 async function centerOnUser() {
-  try {
-    const pos = await getPosition();
-    updateUserMarker(pos.lat, pos.lng);
-    state.map.setView([pos.lat, pos.lng], 16);
-
-    // Signal implicite (déplacement détecté)
-    const h3 = latLngToH3(pos.lat, pos.lng);
-    if (checkRateLimit()) {
-      const implicit = {
-        id: Math.random().toString(36).slice(2),
-        user_id: state.userId,
-        type: 'SIGNAL_IMPLICIT',
-        timestamp: Date.now(),
-        lat: pos.lat,
-        lng: pos.lng,
-        h3_index: h3,
-        accuracy: pos.accuracy,
-        trust_score: state.trustScore,
-      };
-      state.signals.push(implicit);
-      saveSignals();
-      renderZone(h3);
-      updateStats();
-    }
-    toast('Position mise à jour', 'success');
-  } catch {
-    toast('GPS indisponible', 'warn');
-  }
+  const pos=await getPos();
+  updateUserMarker(pos.lat,pos.lng);
+  state.map.setView([pos.lat,pos.lng],16);
+  updateZonePanel();
+  applyVisibility();
+  if(!state.fuelLoaded) loadCarburants(pos.lat,pos.lng);
 }
 
-// ── STATS ─────────────────────────────────────────────
-function updateStats() {
-  const now = Date.now();
-  const active = state.signals.filter(s => now - s.timestamp < CONFIG.MAX_AGE_MS);
-  document.getElementById('stat-signals').textContent = active.length;
-  document.getElementById('stat-zones').textContent = state.hexLayers.size;
-
-  // Meilleure zone
-  let best = 0;
-  for (const [, layer] of state.hexLayers) {
-    if (layer._prob > best) best = layer._prob;
-  }
-  const bestEl = document.getElementById('stat-best');
-  if (best > 0) {
-    bestEl.textContent = Math.round(best * 100) + '%';
-    bestEl.style.color = probColor(best).fill;
-  } else {
-    bestEl.textContent = '–';
-    bestEl.style.color = 'var(--text)';
-  }
-  renderTrust();
+// ── SIMULATION ────────────────────────────────────
+function simulateOtherUser() {
+  const types=['SIGNAL_STRONG','SIGNAL_STRONG','SIGNAL_WEAK','SIGNAL_IMPLICIT'];
+  const type=types[Math.floor(Math.random()*types.length)];
+  const uid='u_'+Math.random().toString(36).slice(2,6);
+  const ctr=state.map.getCenter();
+  const lat=ctr.lat+(Math.random()-.5)*.008, lng=ctr.lng+(Math.random()-.5)*.008;
+  const h3=latlngToH3(lat,lng);
+  state.signals.push({id:Math.random().toString(36).slice(2),user_id:uid,type,timestamp:Date.now(),lat,lng,h3_index:h3,accuracy:5+Math.random()*20,trust_score:.7+Math.random()*.3});
+  saveSignals();
+  addFeedItem(type,STREETS[Math.floor(Math.random()*STREETS.length)],uid,false,0);
+  renderZone(h3);
+  updateHeaderCounters();
 }
 
-// ── TOAST ─────────────────────────────────────────────
-let toastTimer;
-function toast(msg, type = '') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'show ' + type;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.className = '', 2500);
+// ── XP TOAST ──────────────────────────────────────
+let _xt;
+function showXPToast(msg){
+  const el=document.getElementById('xp-toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_xt); _xt=setTimeout(()=>el.classList.remove('show'),2000);
 }
 
-// ── DEMO SEEDS (cold start simulation) ────────────────
-function seedDemoData() {
-  const types = ['SIGNAL_STRONG', 'SIGNAL_WEAK', 'SIGNAL_IMPLICIT'];
-  const base = { lat: 48.8566, lng: 2.3522 };
-  const now = Date.now();
+// ── TOAST ─────────────────────────────────────────
+let _tt;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+type;
+  clearTimeout(_tt); _tt=setTimeout(()=>el.className='',2500);
+}
 
-  const seeds = [
-    { dlat:  0.001, dlng:  0.001, type: 'SIGNAL_STRONG', age: 20_000 },
-    { dlat:  0.001, dlng:  0.001, type: 'SIGNAL_STRONG', age: 35_000 },
-    { dlat:  0.001, dlng:  0.001, type: 'SIGNAL_WEAK',   age: 60_000 },
-    { dlat: -0.002, dlng:  0.003, type: 'SIGNAL_STRONG', age: 15_000 },
-    { dlat: -0.002, dlng:  0.003, type: 'SIGNAL_STRONG', age: 45_000 },
-    { dlat:  0.003, dlng: -0.001, type: 'SIGNAL_WEAK',   age: 80_000 },
-    { dlat: -0.001, dlng: -0.002, type: 'SIGNAL_IMPLICIT', age: 120_000 },
-    { dlat:  0.004, dlng:  0.002, type: 'SIGNAL_STRONG', age: 25_000 },
-    { dlat: -0.003, dlng:  0.004, type: 'SIGNAL_WEAK',   age: 200_000 },
-  ];
+// ── INIT MAP ──────────────────────────────────────
+function initMap(){
+  state.map=L.map('map',{center:[48.8566,2.3522],zoom:15,zoomControl:true,attributionControl:false});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(state.map);
+  state.map.on('click',async e=>{
+    const {lat,lng}=e.latlng; updateUserMarker(lat,lng);
+    if(!checkRL()) return;
+    const h3=latlngToH3(lat,lng);
+    state.signals.push({id:Math.random().toString(36).slice(2),user_id:state.userId,type:'SIGNAL_IMPLICIT',timestamp:Date.now(),lat,lng,h3_index:h3,accuracy:20,trust_score:state.trustScore*.8});
+    state.signalsThisMin++;
+    addPoints(CFG.PTS_IMPLICIT,'SIGNAL_IMPLICIT');
+    saveSignals(); renderZone(h3); updateZonePanel(); updateHeaderCounters(); updateRLBar(); applyVisibility();
+  });
+  updateUserMarker(48.8566,2.3522);
+}
 
-  seeds.forEach((s, i) => {
-    const lat = base.lat + s.dlat;
-    const lng = base.lng + s.dlng;
-    state.signals.push({
-      id: 'demo_' + i,
-      user_id: 'demo',
-      type: s.type,
-      timestamp: now - s.age,
-      lat, lng,
-      h3_index: latLngToH3(lat, lng),
-      accuracy: 10,
-      trust_score: 0.9,
-    });
+// ── SEED ──────────────────────────────────────────
+function seedDemo(){
+  const base={lat:48.8566,lng:2.3522},now=Date.now();
+  [{d:[.001,.001],t:'SIGNAL_STRONG',age:20000,u:'demo1'},
+   {d:[.001,.001],t:'SIGNAL_STRONG',age:40000,u:'demo2'},
+   {d:[-.002,.003],t:'SIGNAL_STRONG',age:15000,u:'demo3'},
+   {d:[-.002,.003],t:'SIGNAL_WEAK',age:60000,u:'demo4'},
+   {d:[.003,-.001],t:'SIGNAL_WEAK',age:80000,u:'demo5'},
+   {d:[.004,.002],t:'SIGNAL_STRONG',age:25000,u:'demo6'},
+   {d:[-.001,.005],t:'SIGNAL_STRONG',age:10000,u:'demo7'},
+  ].forEach((s,i)=>{
+    const lat=base.lat+s.d[0],lng=base.lng+s.d[1];
+    state.signals.push({id:'d'+i,user_id:s.u,type:s.t,timestamp:now-s.age,lat,lng,h3_index:latlngToH3(lat,lng),accuracy:8,trust_score:.9});
+    addFeedItem(s.t,STREETS[i%STREETS.length],s.u,false,0);
   });
   saveSignals();
 }
 
-// ── INIT MAP ──────────────────────────────────────────
-function initMap() {
-  state.map = L.map('map', {
-    center: [48.8566, 2.3522],
-    zoom: 15,
-    zoomControl: true,
-    attributionControl: false,
-  });
+// ── LOOPS ─────────────────────────────────────────
+setInterval(()=>{ renderAllZones(); updateZonePanel(); updateHeaderCounters(); updateRLBar(); renderFeed(); },5000);
+setInterval(simulateOtherUser, CFG.SIM_INTERVAL);
 
-  // Tile sombre
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
-  }).addTo(state.map);
-
-  // Attribution discrète
-  L.control.attribution({ prefix: '' }).addTo(state.map);
-
-  // Signal implicite au clic sur la carte
-  state.map.on('click', async (e) => {
-    const { lat, lng } = e.latlng;
-    updateUserMarker(lat, lng);
-    if (!checkRateLimit()) return;
-    const h3 = latLngToH3(lat, lng);
-    const implicit = {
-      id: Math.random().toString(36).slice(2),
-      user_id: state.userId,
-      type: 'SIGNAL_IMPLICIT',
-      timestamp: Date.now(),
-      lat, lng,
-      h3_index: h3,
-      accuracy: 20,
-      trust_score: state.trustScore * 0.8,
-    };
-    state.signals.push(implicit);
-    saveSignals();
-    renderZone(h3);
-    updateStats();
-  });
-
-  updateUserMarker(48.8566, 2.3522);
+// ── BOOT ──────────────────────────────────────────
+function boot(){
+  initUser(); loadSignals(); initMap();
+  if(state.signals.length===0){ seedDemo(); toast('Démo chargée',''); }
+  renderAllZones(); updateZonePanel(); updateHeaderCounters(); updateXP();
+  getPos().then(p=>{
+    updateUserMarker(p.lat,p.lng);
+    state.map.setView([p.lat,p.lng],15);
+    updateZonePanel();
+    loadCarburants(p.lat,p.lng);
+  }).catch(()=>{});
 }
-
-// ── REFRESH LOOP ──────────────────────────────────────
-// Re-calcul toutes les 10s (decay temporel)
-setInterval(() => {
-  renderAllZones();
-  updateStats();
-  updateRLBar();
-}, 10_000);
-
-// ── BOOT ─────────────────────────────────────────────
-function boot() {
-  initUser();
-  loadSignals();
-  initMap();
-
-  // Seed si 1ère visite
-  if (state.signals.length === 0) {
-    seedDemoData();
-    toast('Données de démo chargées · Vacuum', '');
-  }
-
-  renderAllZones();
-  updateStats();
-
-  // Tenter géoloc silencieuse
-  getPosition().then(pos => {
-    updateUserMarker(pos.lat, pos.lng);
-    state.map.setView([pos.lat, pos.lng], 15);
-  }).catch(() => {});
-}
-
 boot();
 </script>
 </body>
