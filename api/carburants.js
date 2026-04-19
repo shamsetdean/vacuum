@@ -3,58 +3,37 @@
 // Gratuit · Licence Ouverte v2.0
 
 export default async function handler(req, res) {
-  // CORS — autorise GitHub Pages et localhost
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Cache-Control', 's-maxage=600'); // cache 10min (= fréquence MAJ source)
+  res.setHeader('Cache-Control', 's-maxage=600');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { lat, lng, rayon = 5 } = req.query;
-
-  if (!lat || !lng) {
-    return res.status(400).json({ error: 'Paramètres lat et lng requis' });
-  }
+  if (!lat || !lng) return res.status(400).json({ error: 'lat/lng requis' });
 
   try {
-    // API officielle data.economie.gouv.fr — flux instantané v2
     const url = new URL(
       'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
     );
-
-    // Filtre géospatial : stations dans un rayon (km) autour du point
-    url.searchParams.set('where',
-      `distance(geom, geom'POINT(${lng} ${lat})', ${rayon}km)`
-    );
-    url.searchParams.set('select',
-      'id,nom,adresse,ville,cp,geom,gazole_prix,gazole_maj,sp95_prix,sp95_maj,sp98_prix,sp98_maj,e10_prix,e10_maj,e85_prix,e85_maj,gplc_prix,gplc_maj,services_service,horaires_automate_24_24'
-    );
-    url.searchParams.set('order_by', 'dist(geom, geom\'POINT(' + lng + ' ' + lat + ')\')');
+    url.searchParams.set('where', `distance(geom, geom'POINT(${lng} ${lat})', ${rayon}km)`);
+    url.searchParams.set('select', 'id,nom,adresse,ville,cp,geom,gazole_prix,gazole_maj,sp95_prix,sp95_maj,sp98_prix,sp98_maj,e10_prix,e10_maj,e85_prix,e85_maj,gplc_prix,gplc_maj,horaires_automate_24_24');
+    url.searchParams.set('order_by', `dist(geom, geom'POINT(${lng} ${lat})')`);
     url.searchParams.set('limit', '20');
 
     const upstream = await fetch(url.toString(), {
       headers: { 'Accept': 'application/json' },
-      // timeout 8s
       signal: AbortSignal.timeout(8000),
     });
-
-    if (!upstream.ok) {
-      return res.status(upstream.status).json({ error: 'Erreur API upstream', status: upstream.status });
-    }
-
+    if (!upstream.ok) throw new Error('API upstream ' + upstream.status);
     const data = await upstream.json();
 
-    // Normaliser la réponse
     const stations = (data.results || []).map(s => ({
-      id:        s.id,
-      nom:       s.nom || 'Station',
-      adresse:   s.adresse || '',
-      ville:     s.ville || '',
-      cp:        s.cp || '',
-      lat:       s.geom?.lat,
-      lng:       s.geom?.lon,
-      automate:  s.horaires_automate_24_24 === 'Oui',
+      id: s.id, nom: s.nom || 'Station',
+      adresse: s.adresse || '', ville: s.ville || '', cp: s.cp || '',
+      lat: s.geom?.lat, lng: s.geom?.lon,
+      automate: s.horaires_automate_24_24 === 'Oui',
       prix: {
         gazole: s.gazole_prix ? { val: parseFloat(s.gazole_prix), maj: s.gazole_maj } : null,
         sp95:   s.sp95_prix   ? { val: parseFloat(s.sp95_prix),   maj: s.sp95_maj   } : null,
@@ -65,15 +44,8 @@ export default async function handler(req, res) {
       },
     }));
 
-    return res.status(200).json({
-      stations,
-      total: stations.length,
-      source: 'data.economie.gouv.fr · Licence Ouverte v2.0',
-      updated: new Date().toISOString(),
-    });
-
+    return res.status(200).json({ stations, total: stations.length, source: 'data.economie.gouv.fr · Licence Ouverte v2.0' });
   } catch (err) {
-    console.error('carburants proxy error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
