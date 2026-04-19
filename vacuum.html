@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vacuum · Parking intelligent</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:        #0b0f14;
+    --bg2:       #131920;
+    --bg3:       #1a2230;
+    --border:    rgba(255,255,255,0.07);
+    --text:      #e8edf5;
+    --muted:     #5a6880;
+    --accent:    #3dd68c;
+    --accent2:   #2ab87a;
+    --warn:      #f5a623;
+    --danger:    #e85555;
+    --blue:      #4a9eff;
+    --radius:    14px;
+    --shadow:    0 4px 24px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    z-index: 1000;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 30px; height: 30px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .logo-icon svg { width: 16px; height: 16px; }
+
+  .logo-text {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .user-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+  }
+
+  .trust-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .trust-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* ── MAP ── */
+  #map {
+    flex: 1;
+    z-index: 1;
+  }
+
+  /* ── BOTTOM PANEL ── */
+  .bottom {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 16px 20px 24px;
+    background: linear-gradient(to top, var(--bg2) 60%, transparent);
+    pointer-events: none;
+  }
+
+  .bottom > * { pointer-events: all; }
+
+  /* stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .stat-card {
+    flex: 1;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    backdrop-filter: blur(12px);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .stat-value.green { color: var(--accent); }
+  .stat-value.orange { color: var(--warn); }
+
+  /* CTA BUTTON */
+  .cta-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-signal {
+    flex: 1;
+    height: 56px;
+    background: var(--accent);
+    color: #0b1a12;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: -0.2px;
+    box-shadow: 0 0 24px rgba(61,214,140,0.25);
+  }
+
+  .btn-signal:active { transform: scale(0.97); background: var(--accent2); }
+  .btn-signal:disabled { background: var(--bg3); color: var(--muted); box-shadow: none; cursor: not-allowed; }
+
+  .btn-signal svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  .btn-locate {
+    width: 56px; height: 56px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .btn-locate:hover { background: var(--bg2); }
+  .btn-locate svg { width: 20px; height: 20px; color: var(--text); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    top: 70px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  #toast.success { border-color: rgba(61,214,140,0.4); color: var(--accent); }
+  #toast.warn    { border-color: rgba(245,166,35,0.4); color: var(--warn); }
+  #toast.error   { border-color: rgba(232,85,85,0.4); color: var(--danger); }
+
+  /* ── ZONE POPUP ── */
+  .zone-popup {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow) !important;
+    color: var(--text) !important;
+    font-family: 'DM Sans', sans-serif !important;
+    min-width: 180px;
+  }
+
+  .zone-popup .leaflet-popup-content-wrapper {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .zone-popup .leaflet-popup-tip { background: var(--bg2); }
+
+  .popup-inner { padding: 4px 2px; }
+  .popup-prob { font-size: 28px; font-weight: 600; line-height: 1; }
+  .popup-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .popup-signals { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* ── LEAFLET OVERRIDES ── */
+  .leaflet-control-zoom {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    overflow: hidden;
+  }
+
+  .leaflet-control-zoom a {
+    background: var(--bg2) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+    font-size: 16px !important;
+    width: 32px !important; height: 32px !important;
+    line-height: 32px !important;
+  }
+
+  .leaflet-control-zoom a:hover { background: var(--bg3) !important; }
+
+  /* ── RATE LIMIT BAR ── */
+  .rl-bar {
+    height: 2px;
+    background: var(--bg3);
+    border-radius: 2px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .rl-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    position: fixed;
+    top: 70px; right: 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    z-index: 999;
+    min-width: 130px;
+  }
+
+  .legend-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .legend-dot {
+    width: 12px; height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0b1a12" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="10" r="4"/>
+        <path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/>
+        <text x="9" y="11.5" fill="#0b1a12" font-size="8" font-weight="700" font-family="sans-serif">P</text>
+      </svg>
+    </div>
+    <span class="logo-text">VAC<span>UUM</span></span>
+
+  </div>
+  <div class="header-right">
+    <span class="user-badge" id="uid-badge">–</span>
+    <div class="trust-pill">
+      <div class="trust-dot" id="trust-dot"></div>
+      <span id="trust-val">1.0</span>
+    </div>
+  </div>
+</header>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-title">Disponibilité</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#3dd68c"></div>Élevée &gt;70%</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#f5a623"></div>Moyenne 40–70%</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#e85555"></div>Faible &lt;40%</div>
+  <div class="legend-row"><div class="legend-dot" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15)"></div>Aucun signal</div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- BOTTOM PANEL -->
+<div class="bottom">
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">Signaux actifs</div>
+      <div class="stat-value green" id="stat-signals">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Zones actives</div>
+      <div class="stat-value" id="stat-zones">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Meilleure zone</div>
+      <div class="stat-value green" id="stat-best">–</div>
+    </div>
+  </div>
+
+  <div class="rl-bar">
+    <div class="rl-fill" id="rl-fill" style="width:0%"></div>
+  </div>
+
+  <div class="cta-row">
+    <button class="btn-signal" id="btn-signal" onclick="submitSignal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="12" cy="10" r="3"/>
+        <path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      J'ai vu une place
+    </button>
+    <button class="btn-locate" onclick="centerOnUser()" title="Ma position">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        <circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  PARKZEN · 100% FRONTEND MVP
+//  Algorithme complet en mémoire → localStorage
+//  H3-like grid simulé en JS pur
+// ════════════════════════════════════════════════════════
+
+// ── CONFIG ────────────────────────────────────────────
+const CONFIG = {
+  GRID_SIZE_DEG:  0.002,      // ~150-200m (équivalent H3 res 9)
+  DECAY_SECONDS:  15,          // demi-vie temporelle
+  MAX_AGE_MS:     300_000,     // 5min → signal expiré
+  RATE_LIMIT:     10,          // signaux/min/user
+  COLD_START_N:   5,           // seuil cold start
+  PRIOR:          0.25,        // probabilité a priori
+  RENDER_RADIUS:  8,           // cellules rendues autour de l'user
+  SPAM_THRESHOLD: 8,           // signals/30s dans même zone → spam
+  TRUST_DECAY:    0.08,        // pénalité trust par spam détecté
+};
+
+// ── ÉTAT GLOBAL ───────────────────────────────────────
+const state = {
+  userLat:    48.8566,
+  userLng:    2.3522,
+  userId:     null,
+  trustScore: 1.0,
+  signals:    [],          // en mémoire
+  hexLayers:  new Map(),   // h3index → L.polygon
+  map:        null,
+  markers:    null,
+  signalsThisMin: 0,
+  lastMinReset:   Date.now(),
+};
+
+// ── USER ID ──────────────────────────────────────────
+function initUser() {
+  let uid = localStorage.getItem('vac_uid');
+  if (!uid) {
+    uid = 'u_' + Math.random().toString(36).slice(2, 9);
+    localStorage.setItem('vac_uid', uid);
+  }
+  state.userId = uid;
+  document.getElementById('uid-badge').textContent = uid;
+
+  const ts = parseFloat(localStorage.getItem('vac_trust') || '1.0');
+  state.trustScore = ts;
+  renderTrust();
+}
+
+function renderTrust() {
+  document.getElementById('trust-val').textContent = state.trustScore.toFixed(2);
+  const dot = document.getElementById('trust-dot');
+  dot.style.background = state.trustScore > 0.7
+    ? 'var(--accent)'
+    : state.trustScore > 0.4 ? 'var(--warn)' : 'var(--danger)';
+}
+
+// ── H3-LIKE GRID (pseudo-H3 rectangulaire) ───────────
+// Convertit lat/lng → clé de cellule hexagonale simplifiée
+// Résolution équivalente H3 res 9 (~170m)
+function latLngToH3(lat, lng) {
+  const row = Math.floor(lat / CONFIG.GRID_SIZE_DEG);
+  const col = Math.floor(lng / CONFIG.GRID_SIZE_DEG);
+  // Offset alternance lignes (simule hexagones)
+  const colOffset = (row % 2 === 0) ? 0 : 0.5;
+  const effCol = Math.floor((lng / CONFIG.GRID_SIZE_DEG) - colOffset);
+  return `${row}_${effCol}`;
+}
+
+function h3ToLatLng(h3) {
+  const [r, c] = h3.split('_').map(Number);
+  const colOffset = (r % 2 === 0) ? 0 : 0.5;
+  const lat = (r + 0.5) * CONFIG.GRID_SIZE_DEG;
+  const lng = (c + colOffset + 0.5) * CONFIG.GRID_SIZE_DEG;
+  return { lat, lng };
+}
+
+function h3ToBounds(h3) {
+  const [r, c] = h3.split('_').map(Number);
+  const g = CONFIG.GRID_SIZE_DEG;
+  const colOffset = (r % 2 === 0) ? 0 : 0.5;
+  const lat0 = r * g;
+  const lat1 = (r + 1) * g;
+  const lng0 = (c + colOffset) * g;
+  const lng1 = (c + colOffset + 1) * g;
+  // Hexagone approché : 6 points
+  const midLat = (lat0 + lat1) / 2;
+  const pad = g * 0.15;
+  return [
+    [lat1,         lng0 + pad],
+    [lat1,         lng1 - pad],
+    [midLat + g*0.5, lng1    ],
+    [lat0,         lng1 - pad],
+    [lat0,         lng0 + pad],
+    [midLat + g*0.5, lng0    ],
+  ];
+}
+
+// ── ALGORITHME SCORING ────────────────────────────────
+function typeWeight(type) {
+  return { SIGNAL_STRONG: 1.0, SIGNAL_WEAK: 0.6, SIGNAL_IMPLICIT: 0.4 }[type] || 0.4;
+}
+
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+function computeScore(signal, densityCount) {
+  const nowMs    = Date.now();
+  const dtSec    = Math.max(0, (nowMs - signal.timestamp) / 1000);
+  const decay    = Math.exp(-dtSec / CONFIG.DECAY_SECONDS);
+  const accFact  = Math.max(0.2, Math.min(1, 1 - signal.accuracy / 50));
+  const density  = Math.log1p(densityCount);
+  return typeWeight(signal.type) * signal.trust_score * decay * accFact * density;
+}
+
+function computeZoneProbability(h3Index) {
+  const now = Date.now();
+  const active = state.signals.filter(s =>
+    s.h3_index === h3Index && (now - s.timestamp) < CONFIG.MAX_AGE_MS
+  );
+
+  // Density : events in zone last 30s
+  const density30 = state.signals.filter(s =>
+    s.h3_index === h3Index && (now - s.timestamp) < 30_000
+  ).length;
+
+  const scoreSum = active.reduce((acc, s) => acc + computeScore(s, density30), 0);
+  const n = active.length;
+
+  // Cold start blending
+  const w = Math.min(1, n / CONFIG.COLD_START_N);
+  const rawP = sigmoid(scoreSum);
+  const prob = w * rawP + (1 - w) * CONFIG.PRIOR;
+
+  return { prob, n, scoreSum };
+}
+
+// ── STORAGE ───────────────────────────────────────────
+function loadSignals() {
+  try {
+    const raw = localStorage.getItem('vac_signals');
+    if (raw) {
+      state.signals = JSON.parse(raw);
+      // Purge anciens signals
+      const cutoff = Date.now() - CONFIG.MAX_AGE_MS;
+      state.signals = state.signals.filter(s => s.timestamp > cutoff);
+    }
+  } catch { state.signals = []; }
+}
+
+function saveSignals() {
+  try {
+    const cutoff = Date.now() - CONFIG.MAX_AGE_MS;
+    const fresh = state.signals.filter(s => s.timestamp > cutoff);
+    state.signals = fresh;
+    localStorage.setItem('vac_signals', JSON.stringify(fresh));
+    localStorage.setItem('vac_trust', state.trustScore.toString());
+  } catch {}
+}
+
+// ── RATE LIMIT ────────────────────────────────────────
+function checkRateLimit() {
+  const now = Date.now();
+  if (now - state.lastMinReset > 60_000) {
+    state.signalsThisMin = 0;
+    state.lastMinReset = now;
+  }
+  return state.signalsThisMin < CONFIG.RATE_LIMIT;
+}
+
+function updateRLBar() {
+  const pct = (state.signalsThisMin / CONFIG.RATE_LIMIT) * 100;
+  const fill = document.getElementById('rl-fill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 80 ? 'var(--warn)' : pct > 95 ? 'var(--danger)' : 'var(--accent)';
+}
+
+// ── ANTI-SPAM ─────────────────────────────────────────
+function detectSpam(h3Index) {
+  const now = Date.now();
+  const recent = state.signals.filter(s =>
+    s.h3_index === h3Index &&
+    s.user_id === state.userId &&
+    (now - s.timestamp) < 30_000
+  ).length;
+  return recent >= CONFIG.SPAM_THRESHOLD;
+}
+
+// ── GÉOLOCALISATION ──────────────────────────────────
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('GPS indisponible'));
+    navigator.geolocation.getCurrentPosition(
+      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.min(50, p.coords.accuracy || 10) }),
+      e => resolve({ lat: state.userLat, lng: state.userLng, accuracy: 20 }),
+      { timeout: 4000, maximumAge: 10000 }
+    );
+  });
+}
+
+// ── SIGNAL SUBMISSION ─────────────────────────────────
+async function submitSignal(type = 'SIGNAL_STRONG') {
+  const btn = document.getElementById('btn-signal');
+  if (!checkRateLimit()) {
+    toast('Limite de signaux atteinte (10/min)', 'warn');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Localisation…`;
+
+  let pos;
+  try { pos = await getPosition(); }
+  catch { pos = { lat: state.userLat, lng: state.userLng, accuracy: 20 }; }
+
+  const h3 = latLngToH3(pos.lat, pos.lng);
+
+  // Anti-spam
+  if (detectSpam(h3)) {
+    state.trustScore = Math.max(0.1, state.trustScore - CONFIG.TRUST_DECAY);
+    toast('Signal ignoré : activité suspecte', 'warn');
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="20" height="20"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg> J'ai vu une place`;
+    return;
+  }
+
+  const signal = {
+    id:          Math.random().toString(36).slice(2),
+    user_id:     state.userId,
+    type,
+    timestamp:   Date.now(),
+    lat:         pos.lat,
+    lng:         pos.lng,
+    h3_index:    h3,
+    accuracy:    pos.accuracy,
+    trust_score: state.trustScore,
+  };
+
+  state.signals.push(signal);
+  state.signalsThisMin++;
+  saveSignals();
+
+  // Mettre à jour la carte
+  renderZone(h3);
+  updateStats();
+  updateRLBar();
+
+  toast('Signal enregistré !', 'success');
+
+  // Centrer sur la position
+  state.map.setView([pos.lat, pos.lng], Math.max(state.map.getZoom(), 16));
+  updateUserMarker(pos.lat, pos.lng);
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="20" height="20"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg> J'ai vu une place`;
+  }, 1500);
+}
+
+// ── RENDU CARTE ───────────────────────────────────────
+function probColor(p) {
+  if (p >= 0.7) return { fill: '#3dd68c', stroke: '#2ab87a' };
+  if (p >= 0.4) return { fill: '#f5a623', stroke: '#d4891a' };
+  return       { fill: '#e85555', stroke: '#c43d3d' };
+}
+
+function renderZone(h3Index) {
+  const { prob, n } = computeZoneProbability(h3Index);
+  const bounds = h3ToBounds(h3Index);
+  const { fill, stroke } = probColor(prob);
+  const opacity = 0.15 + prob * 0.5;
+
+  if (state.hexLayers.has(h3Index)) {
+    const layer = state.hexLayers.get(h3Index);
+    layer.setLatLngs(bounds);
+    layer.setStyle({ fillColor: fill, color: stroke, fillOpacity: opacity });
+    // Update popup content
+    layer._prob = prob;
+    layer._n = n;
+  } else {
+    const poly = L.polygon(bounds, {
+      fillColor: fill,
+      color: stroke,
+      weight: 1,
+      fillOpacity: opacity,
+    });
+
+    poly._prob = prob;
+    poly._n = n;
+    poly._h3 = h3Index;
+
+    poly.on('click', function() {
+      const pct = Math.round(this._prob * 100);
+      const center = h3ToLatLng(this._h3);
+      L.popup({ className: 'zone-popup' })
+        .setLatLng([center.lat, center.lng])
+        .setContent(`
+          <div class="popup-inner">
+            <div class="popup-prob" style="color:${probColor(this._prob).fill}">${pct}%</div>
+            <div class="popup-label">Probabilité de trouver une place</div>
+            <div class="popup-signals">${this._n} signal${this._n > 1 ? 's' : ''} actif${this._n > 1 ? 's' : ''}</div>
+          </div>
+        `)
+        .openOn(state.map);
+    });
+
+    poly.addTo(state.map);
+    state.hexLayers.set(h3Index, poly);
+  }
+}
+
+function renderAllZones() {
+  const now = Date.now();
+  const cutoff = now - CONFIG.MAX_AGE_MS;
+  const activeH3s = new Set(
+    state.signals
+      .filter(s => s.timestamp > cutoff)
+      .map(s => s.h3_index)
+  );
+
+  // Supprimer les zones expirées
+  for (const [h3, layer] of state.hexLayers) {
+    if (!activeH3s.has(h3)) {
+      state.map.removeLayer(layer);
+      state.hexLayers.delete(h3);
+    }
+  }
+
+  // Rendre les zones actives
+  for (const h3 of activeH3s) renderZone(h3);
+  updateStats();
+}
+
+// ── MARQUEUR UTILISATEUR ──────────────────────────────
+let userMarker = null;
+function updateUserMarker(lat, lng) {
+  state.userLat = lat;
+  state.userLng = lng;
+  const icon = L.divIcon({
+    html: `<div style="width:16px;height:16px;background:#4a9eff;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(74,158,255,0.3)"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    className: '',
+  });
+  if (userMarker) { userMarker.setLatLng([lat, lng]); }
+  else { userMarker = L.marker([lat, lng], { icon }).addTo(state.map); }
+}
+
+// ── CENTRAGE ──────────────────────────────────────────
+async function centerOnUser() {
+  try {
+    const pos = await getPosition();
+    updateUserMarker(pos.lat, pos.lng);
+    state.map.setView([pos.lat, pos.lng], 16);
+
+    // Signal implicite (déplacement détecté)
+    const h3 = latLngToH3(pos.lat, pos.lng);
+    if (checkRateLimit()) {
+      const implicit = {
+        id: Math.random().toString(36).slice(2),
+        user_id: state.userId,
+        type: 'SIGNAL_IMPLICIT',
+        timestamp: Date.now(),
+        lat: pos.lat,
+        lng: pos.lng,
+        h3_index: h3,
+        accuracy: pos.accuracy,
+        trust_score: state.trustScore,
+      };
+      state.signals.push(implicit);
+      saveSignals();
+      renderZone(h3);
+      updateStats();
+    }
+    toast('Position mise à jour', 'success');
+  } catch {
+    toast('GPS indisponible', 'warn');
+  }
+}
+
+// ── STATS ─────────────────────────────────────────────
+function updateStats() {
+  const now = Date.now();
+  const active = state.signals.filter(s => now - s.timestamp < CONFIG.MAX_AGE_MS);
+  document.getElementById('stat-signals').textContent = active.length;
+  document.getElementById('stat-zones').textContent = state.hexLayers.size;
+
+  // Meilleure zone
+  let best = 0;
+  for (const [, layer] of state.hexLayers) {
+    if (layer._prob > best) best = layer._prob;
+  }
+  const bestEl = document.getElementById('stat-best');
+  if (best > 0) {
+    bestEl.textContent = Math.round(best * 100) + '%';
+    bestEl.style.color = probColor(best).fill;
+  } else {
+    bestEl.textContent = '–';
+    bestEl.style.color = 'var(--text)';
+  }
+  renderTrust();
+}
+
+// ── TOAST ─────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 2500);
+}
+
+// ── DEMO SEEDS (cold start simulation) ────────────────
+function seedDemoData() {
+  const types = ['SIGNAL_STRONG', 'SIGNAL_WEAK', 'SIGNAL_IMPLICIT'];
+  const base = { lat: 48.8566, lng: 2.3522 };
+  const now = Date.now();
+
+  const seeds = [
+    { dlat:  0.001, dlng:  0.001, type: 'SIGNAL_STRONG', age: 20_000 },
+    { dlat:  0.001, dlng:  0.001, type: 'SIGNAL_STRONG', age: 35_000 },
+    { dlat:  0.001, dlng:  0.001, type: 'SIGNAL_WEAK',   age: 60_000 },
+    { dlat: -0.002, dlng:  0.003, type: 'SIGNAL_STRONG', age: 15_000 },
+    { dlat: -0.002, dlng:  0.003, type: 'SIGNAL_STRONG', age: 45_000 },
+    { dlat:  0.003, dlng: -0.001, type: 'SIGNAL_WEAK',   age: 80_000 },
+    { dlat: -0.001, dlng: -0.002, type: 'SIGNAL_IMPLICIT', age: 120_000 },
+    { dlat:  0.004, dlng:  0.002, type: 'SIGNAL_STRONG', age: 25_000 },
+    { dlat: -0.003, dlng:  0.004, type: 'SIGNAL_WEAK',   age: 200_000 },
+  ];
+
+  seeds.forEach((s, i) => {
+    const lat = base.lat + s.dlat;
+    const lng = base.lng + s.dlng;
+    state.signals.push({
+      id: 'demo_' + i,
+      user_id: 'demo',
+      type: s.type,
+      timestamp: now - s.age,
+      lat, lng,
+      h3_index: latLngToH3(lat, lng),
+      accuracy: 10,
+      trust_score: 0.9,
+    });
+  });
+  saveSignals();
+}
+
+// ── INIT MAP ──────────────────────────────────────────
+function initMap() {
+  state.map = L.map('map', {
+    center: [48.8566, 2.3522],
+    zoom: 15,
+    zoomControl: true,
+    attributionControl: false,
+  });
+
+  // Tile sombre
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+  }).addTo(state.map);
+
+  // Attribution discrète
+  L.control.attribution({ prefix: '' }).addTo(state.map);
+
+  // Signal implicite au clic sur la carte
+  state.map.on('click', async (e) => {
+    const { lat, lng } = e.latlng;
+    updateUserMarker(lat, lng);
+    if (!checkRateLimit()) return;
+    const h3 = latLngToH3(lat, lng);
+    const implicit = {
+      id: Math.random().toString(36).slice(2),
+      user_id: state.userId,
+      type: 'SIGNAL_IMPLICIT',
+      timestamp: Date.now(),
+      lat, lng,
+      h3_index: h3,
+      accuracy: 20,
+      trust_score: state.trustScore * 0.8,
+    };
+    state.signals.push(implicit);
+    saveSignals();
+    renderZone(h3);
+    updateStats();
+  });
+
+  updateUserMarker(48.8566, 2.3522);
+}
+
+// ── REFRESH LOOP ──────────────────────────────────────
+// Re-calcul toutes les 10s (decay temporel)
+setInterval(() => {
+  renderAllZones();
+  updateStats();
+  updateRLBar();
+}, 10_000);
+
+// ── BOOT ─────────────────────────────────────────────
+function boot() {
+  initUser();
+  loadSignals();
+  initMap();
+
+  // Seed si 1ère visite
+  if (state.signals.length === 0) {
+    seedDemoData();
+    toast('Données de démo chargées · Vacuum', '');
+  }
+
+  renderAllZones();
+  updateStats();
+
+  // Tenter géoloc silencieuse
+  getPosition().then(pos => {
+    updateUserMarker(pos.lat, pos.lng);
+    state.map.setView([pos.lat, pos.lng], 15);
+  }).catch(() => {});
+}
+
+boot();
+</script>
+</body>
+</html>
