@@ -740,41 +740,79 @@ async function loadBornes(lat, lng) {
   el.innerHTML = '<div class="bornes-nodata">Chargement…</div>';
   clearBorneMarkers();
 
-  // Filtrer par connecteurs du profil si définis
   const prefConn = state.profile.connecteurs;
 
   try {
-    const res = await fetch(`${API_BASE}/api/bornes?lat=${lat}&lng=${lng}&rayon=3`, {signal:AbortSignal.timeout(8000)});
-    if (!res.ok) throw new Error('API');
-    const data = await res.json();
-    if (!data.bornes?.length) { el.innerHTML='<div class="bornes-nodata">Aucune borne à 3 km</div>'; return; }
-
-    // Trier : bornes compatibles avec profil en premier
-    const bornes = data.bornes.sort((a,b) => {
-      const aCompat = prefConn.length===0 || a.types_prise.some(t=>prefConn.includes(t.toLowerCase().replace(' ','').replace('-','')));
-      const bCompat = prefConn.length===0 || b.types_prise.some(t=>prefConn.includes(t.toLowerCase().replace(' ','').replace('-','')));
-      return (bCompat?1:0) - (aCompat?1:0);
+    // Overpass — amenity=charging_station — CORS ouvert, appel direct
+    const query = `[out:json][timeout:12];node[amenity=charging_station](around:4000,${lat},${lng});out 20;`;
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query),
+      signal: AbortSignal.timeout(12000),
     });
+    if (!res.ok) throw new Error('Overpass');
+    const data = await res.json();
+    const nodes = data.elements || [];
+    if (!nodes.length) { el.innerHTML='<div class="bornes-nodata">Aucune borne à 4 km</div>'; return; }
 
-    el.innerHTML = bornes.slice(0,5).map(b => {
+    const bornes = nodes.map(n => {
+      const t = n.tags || {};
+      const dx = (n.lat-lat)*111, dy = (n.lon-lng)*111*Math.cos(lat*Math.PI/180);
+      const dist = Math.sqrt(dx*dx+dy*dy);
+
+      // Connecteurs OSM
+      const types = [];
+      if (t['socket:type2'])       types.push('Type 2');
+      if (t['socket:ccs2'])        types.push('CCS');
+      if (t['socket:chademo'])     types.push('CHAdeMO');
+      if (t['socket:type2_cable']) types.push('Type 2 câble');
+      if (t['socket:schuko'])      types.push('Schuko');
+
+      // Puissance
+      const pw = parseFloat(t['maxpower'] || t['socket:type2:output'] || t['socket:ccs2:output'] || '0');
+      const isDC = pw >= 50 || t['socket:ccs2'] || t['socket:chademo'];
+      const typeCharge = pw >= 100 ? 'DC Ultra-rapide' : pw >= 50 ? 'DC Rapide' : pw >= 22 ? 'AC Semi-rapide' : 'AC Lente';
+
+      // Compatibilité profil
+      const connMap = { type2:'Type 2', ccs:'CCS', chademo:'CHAdeMO', ef:'Schuko' };
+      const isCompat = prefConn.length === 0 || prefConn.some(c => types.includes(connMap[c]||c));
+
+      return {
+        id: n.id,
+        nom: t.brand || t.name || t.operator || 'Borne de recharge',
+        adresse: t['addr:street'] ? `${t['addr:housenumber']||''} ${t['addr:street']}`.trim() : '',
+        ville: t['addr:city'] || '',
+        lat: n.lat, lng: n.lon, dist,
+        nbre_pdc: parseInt(t.capacity || t['charging_station:output'] || '1'),
+        puissance: pw,
+        type_charge: typeCharge,
+        isDC: !!isDC,
+        types,
+        operateur: t.operator || t.brand || t.network || 'Inconnu',
+        gratuit: t.fee === 'no',
+        tarif: t.fee === 'yes' ? (t['charge'] || null) : null,
+        cb: t['payment:credit_cards'] === 'yes',
+        h24: t.opening_hours === '24/7',
+        isCompat,
+      };
+    })
+    .sort((a,b) => (b.isCompat?1:0)-(a.isCompat?1:0) || a.dist-b.dist)
+    .slice(0, 6);
+
+    el.innerHTML = bornes.map(b => {
       const d = distM(lat,lng,b.lat,b.lng);
-      const isDC = b.type_charge.includes('DC');
-      const typeCls = isDC ? 'dc' : 'ac';
-
-      const isCompat = prefConn.length===0 || b.types_prise.some(t=>prefConn.map(c=>c.toLowerCase()).includes(t.toLowerCase().replace(/[ -]/g,'')));
-      const compatBorder = isCompat && prefConn.length>0 ? 'border:1.5px solid rgba(167,139,250,.4);' : '';
-
+      const typeCls = b.isDC ? 'dc' : 'ac';
+      const compatBorder = b.isCompat && prefConn.length>0 ? 'border:1.5px solid rgba(167,139,250,.4);' : '';
       const tarifHtml = b.gratuit
         ? '<span class="borne-gratuit">Gratuit</span>'
-        : b.tarif
-          ? `<span class="tval">${b.tarif.slice(0,40)}</span>`
-          : '<span style="color:var(--muted)">Tarif inconnu</span>';
+        : b.tarif ? `<span class="tval">${b.tarif.slice(0,40)}</span>`
+        : '<span style="color:var(--muted)">Tarif non renseigné</span>';
 
-      // Marqueur carte
       if (b.lat && b.lng) {
-        const icon = L.divIcon({html:`<div class="borne-marker${isDC?' fast':''}">⚡${b.puissance>0?b.puissance+'kW':''}</div>`,iconSize:[60,22],iconAnchor:[30,11],className:''});
+        const label = `⚡${b.puissance>0?b.puissance+'kW':''}`;
+        const icon = L.divIcon({html:`<div class="borne-marker${b.isDC?' fast':''}">${label}</div>`,iconSize:[60,22],iconAnchor:[30,11],className:''});
         const m = L.marker([b.lat,b.lng],{icon}).addTo(state.map);
-        m.bindPopup(`<b>${b.nom}</b><br>${b.adresse}<br>${b.operateur}<br>${b.nbre_pdc} PDC · ${b.type_charge}<br>${b.types_prise.join(' · ')}<br>${b.gratuit?'Gratuit':b.tarif||'Tarif inconnu'}${b.paiement_cb?'<br>CB acceptée':''}`);
+        m.bindPopup(`<b>${b.nom}</b>${b.adresse?'<br>'+b.adresse:''}<br>${b.operateur}<br>${b.nbre_pdc} PDC · ${b.type_charge}${b.types.length?'<br>'+b.types.join(' · '):''}<br>${b.gratuit?'Gratuit':b.tarif||'Tarif inconnu'}${b.cb?'<br>CB acceptée':''}${b.h24?'<br>24h/24':''}`);
         state.borneMarkers.push(m);
       }
 
@@ -783,22 +821,19 @@ async function loadBornes(lat, lng) {
           <div class="borne-name">${b.nom}</div>
           <div class="borne-pdc">${b.nbre_pdc} PDC</div>
         </div>
-        <div class="borne-operateur">${b.operateur}</div>
+        <div class="borne-operateur">${b.operateur}${b.h24?' · <span style="color:var(--accent);font-size:9px">24h/24</span>':''}</div>
         <div class="borne-specs">
           ${b.puissance>0?`<div class="borne-pill power">${b.puissance} kW</div>`:''}
           <div class="borne-pill ${typeCls}">${b.type_charge}</div>
-          ${b.types_prise.map(t=>`<div class="borne-pill type">${t}</div>`).join('')}
+          ${b.types.map(t=>`<div class="borne-pill type">${t}</div>`).join('')}
         </div>
-        <div class="borne-tarif">
-          ${tarifHtml}
-          ${b.paiement_cb?'<span class="borne-cb">CB</span>':''}
-        </div>
+        <div class="borne-tarif">${tarifHtml}${b.cb?'<span class="borne-cb">CB</span>':''}</div>
         <div class="fuel-dist" style="margin-top:4px;">${fmtDist(d)}</div>
       </div>`;
-    }).join('');
+    }).join('') || '<div class="bornes-nodata">Aucune borne trouvée</div>';
 
-  } catch {
-    el.innerHTML = '<div class="bornes-nodata">API non connectée.<br><span style="font-size:9px;color:var(--muted)">Voir README déploiement.</span></div>';
+  } catch(e) {
+    el.innerHTML = '<div class="bornes-nodata">Service indisponible.<br><span style="font-size:9px;color:var(--muted)">Vérifiez votre connexion.</span></div>';
   }
 }
 
