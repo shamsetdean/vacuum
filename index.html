@@ -640,64 +640,95 @@ async function loadCarburants(lat, lng) {
   const el = document.getElementById('fuel-content');
   el.innerHTML = '<div class="fuel-nodata">Chargement…</div>';
 
-  // Carburant pertinent selon profil
   const profCarb = state.profile.carburants[0] || null;
   const vehicleCarbs = VEHICLE_CARBS[state.profile.vehicle] || Object.keys(FUEL_NAMES);
 
   try {
-    const res = await fetch(`${API_BASE}/api/carburants?lat=${lat}&lng=${lng}&rayon=3`, {signal:AbortSignal.timeout(8000)});
-    if (!res.ok) throw new Error('API');
+    // Overpass API — CORS ouvert, appel direct depuis le navigateur
+    const query = `[out:json][timeout:10];node[amenity=fuel](around:4000,${lat},${lng});out 15;`;
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error('Overpass');
     const data = await res.json();
-    if (!data.stations?.length) { el.innerHTML='<div class="fuel-nodata">Aucune station à 3 km</div>'; return; }
+    const nodes = data.elements || [];
+    if (!nodes.length) { el.innerHTML='<div class="fuel-nodata">Aucune station à 4 km</div>'; return; }
 
-    // Min/max par carburant
-    const allP={};
-    data.stations.forEach(s=>Object.entries(s.prix).forEach(([k,v])=>{if(v){if(!allP[k])allP[k]=[];allP[k].push(v.val);}}));
-    const mm={};
-    Object.entries(allP).forEach(([k,v])=>{mm[k]={min:Math.min(...v),max:Math.max(...v)};});
+    // Convertir tags OSM → structure prix
+    const stations = nodes.map(n => {
+      const t = n.tags || {};
+      const dx = (n.lat-lat)*111, dy = (n.lon-lng)*111*Math.cos(lat*Math.PI/180);
+      // Prix OSM : fuel:octane_95, fuel:octane_98, fuel:diesel, fuel:e10, fuel:e85
+      const prix = {
+        sp95:   t['fuel:octane_95'] ? {val:parseFloat(t['fuel:octane_95'])} : null,
+        sp98:   t['fuel:octane_98'] ? {val:parseFloat(t['fuel:octane_98'])} : null,
+        gazole: t['fuel:diesel']    ? {val:parseFloat(t['fuel:diesel'])}    : null,
+        e10:    t['fuel:e10']       ? {val:parseFloat(t['fuel:e10'])}       : null,
+        e85:    t['fuel:e85']       ? {val:parseFloat(t['fuel:e85'])}       : null,
+        gplc:   t['fuel:lpg']       ? {val:parseFloat(t['fuel:lpg'])}       : null,
+      };
+      // Vérifier si au moins un prix > 0 est dispo
+      const hasPrix = Object.values(prix).some(p => p && p.val > 0.5);
+      return {
+        id: n.id, nom: t.brand || t.name || t.operator || 'Station',
+        adresse: t['addr:street'] ? `${t['addr:housenumber']||''} ${t['addr:street']}`.trim() : '',
+        ville: t['addr:city'] || '',
+        lat: n.lat, lng: n.lon,
+        dist: Math.sqrt(dx*dx+dy*dy),
+        automate: t.opening_hours === '24/7',
+        hasPrix, prix,
+      };
+    })
+    .sort((a,b) => {
+      // Priorité aux stations avec prix, puis par distance
+      if (a.hasPrix && !b.hasPrix) return -1;
+      if (!a.hasPrix && b.hasPrix) return 1;
+      return a.dist - b.dist;
+    })
+    .slice(0, 6);
+
+    // Min/max pour coloration
+    const allP = {};
+    stations.forEach(s => Object.entries(s.prix).forEach(([k,v]) => {
+      if (v && v.val > 0.5) { if (!allP[k]) allP[k]=[]; allP[k].push(v.val); }
+    }));
+    const mm = {};
+    Object.entries(allP).forEach(([k,v]) => { mm[k]={min:Math.min(...v),max:Math.max(...v)}; });
 
     clearFuelMarkers();
-    el.innerHTML = data.stations.slice(0,4).map(s => {
-      // Filtrer par carburants du profil (ou tout si pas de profil)
+    el.innerHTML = stations.slice(0,4).map(s => {
       const relevantPrix = Object.entries(s.prix)
-        .filter(([k,v]) => v && vehicleCarbs.includes(k))
-        .sort(([a],[b]) => {
-          // Priorité au carburant préféré
-          if (a===profCarb) return -1;
-          if (b===profCarb) return 1;
-          return 0;
-        });
-
-      if (!relevantPrix.length) return '';
+        .filter(([k,v]) => v && v.val > 0.5 && vehicleCarbs.includes(k))
+        .sort(([a],[b]) => a===profCarb?-1:b===profCarb?1:0);
 
       const d = distM(lat,lng,s.lat,s.lng);
       const prixHtml = relevantPrix.map(([k,v]) => {
         const cls = mm[k] ? (v.val<=mm[k].min?'cheap':v.val>=mm[k].max?'exp':'mid') : '';
-        const star = k===profCarb ? '★ ' : '';
-        return `<div class="fuel-pill ${cls}"><span class="ftype">${star}${FUEL_NAMES[k]}</span><span class="fprice">${v.val.toFixed(3)}€</span></div>`;
+        return `<div class="fuel-pill ${cls}"><span class="ftype">${k===profCarb?'★ ':''}${FUEL_NAMES[k]}</span><span class="fprice">${v.val.toFixed(3)}€</span></div>`;
       }).join('');
 
-      // Marqueur carte
-      const ref = relevantPrix[0];
-      if (ref && s.lat && s.lng) {
-        const rMM = mm[ref[0]];
-        const cheap = rMM && ref[1].val <= rMM.min;
-        const icon = L.divIcon({html:`<div class="fuel-marker${cheap?' cheap':''}">${ref[1].val.toFixed(3)}€</div>`,iconSize:[62,22],iconAnchor:[31,11],className:''});
+      if (s.lat && s.lng) {
+        const ref = relevantPrix[0];
+        const label = ref ? ref[1].val.toFixed(3)+'€' : s.nom.slice(0,8);
+        const cheap = ref && mm[ref[0]] && ref[1].val <= mm[ref[0]].min;
+        const icon = L.divIcon({html:`<div class="fuel-marker${cheap?' cheap':''}">${label}</div>`,iconSize:[64,22],iconAnchor:[32,11],className:''});
         const m = L.marker([s.lat,s.lng],{icon}).addTo(state.map);
-        m.bindPopup(`<b>${s.nom}</b><br>${s.adresse}<br>${relevantPrix.map(([k,v])=>`${FUEL_NAMES[k]}: ${v.val.toFixed(3)}€`).join('<br>')}`);
+        m.bindPopup(`<b>${s.nom}</b>${s.adresse?'<br>'+s.adresse:''}${relevantPrix.length?'<br>'+relevantPrix.map(([k,v])=>`${FUEL_NAMES[k]}: ${v.val.toFixed(3)}€`).join('<br>'):'<br><i>Prix non renseignés</i>'}`);
         state.fuelMarkers.push(m);
       }
 
       return `<div class="fuel-station">
         <div class="fuel-name">${s.nom}</div>
-        <div class="fuel-addr">${s.adresse}, ${s.ville}</div>
-        <div class="fuel-prices">${prixHtml}</div>
+        ${s.adresse?`<div class="fuel-addr">${s.adresse}${s.ville?', '+s.ville:''}</div>`:''}
+        <div class="fuel-prices">${prixHtml||'<span style="font-size:10px;color:var(--muted)">Prix non renseignés dans OSM</span>'}</div>
         <div class="fuel-dist">${fmtDist(d)}${s.automate?'<span class="fuel-auto">24h/24</span>':''}</div>
       </div>`;
-    }).filter(Boolean).join('') || '<div class="fuel-nodata">Pas de données pour ce carburant</div>';
+    }).join('') || '<div class="fuel-nodata">Aucune station trouvée</div>';
 
-  } catch {
-    el.innerHTML = '<div class="fuel-nodata">API non connectée.<br><span style="font-size:9px;color:var(--muted)">Voir README déploiement.</span></div>';
+  } catch(e) {
+    el.innerHTML = '<div class="fuel-nodata">Service indisponible.<br><span style="font-size:9px;color:var(--muted)">Vérifiez votre connexion.</span></div>';
   }
 }
 
