@@ -2,215 +2,252 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Vacuum · Parking intelligent</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Vacuum · Parking</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root {
-  --bg:     #090d12;
-  --bg2:    #111720;
-  --bg3:    #182030;
-  --bg4:    #1e2a3a;
-  --bg5:    #243244;
-  --border: rgba(255,255,255,.06);
-  --border2:rgba(255,255,255,.11);
-  --text:   #dde4f0;
-  --muted:  #4a5a72;
-  --muted2: #7a8fa8;
-  --accent: #34c97a;
-  --accent2:#28a863;
-  --warn:   #e89d1a;
-  --danger: #d94f4f;
-  --blue:   #3d8eef;
-  --gold:   #e8c84a;
-  --purple: #9575f0;
-  --teal:   #26c4b0;
-  --r:      12px;
-  --rs:     8px;
+:root{
+  --bg:#090d12; --bg2:#111720; --bg3:#182030; --bg4:#1e2a3a; --bg5:#243244;
+  --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.12);
+  --text:#dde4f0; --muted:#4a5a72; --muted2:#7a8fa8;
+  --accent:#34c97a; --a2:#28a863;
+  --warn:#e89d1a; --danger:#d94f4f; --blue:#3d8eef;
+  --gold:#e8c84a; --purple:#9575f0; --teal:#26c4b0;
+  --r:14px; --rs:9px; --safe-b:env(safe-area-inset-bottom,0px);
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100dvh;overflow:hidden;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+  display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;
+}
 
-/* ── HEADER ── */
-header{
-  display:flex;align-items:center;gap:12px;
-  padding:0 16px;height:48px;
-  background:var(--bg2);
-  border-bottom:1px solid var(--border);
-  z-index:1000;flex-shrink:0;
-}
-.logo{display:flex;align-items:center;gap:9px;flex-shrink:0;text-decoration:none;}
-.logo-mark{
-  width:26px;height:26px;background:var(--accent);border-radius:6px;
-  display:flex;align-items:center;justify-content:center;
-  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:#071a0f;
-  letter-spacing:-.5px;
-}
-.logo-name{font-size:13px;font-weight:600;letter-spacing:-.2px;color:var(--text);}
-.logo-name b{color:var(--accent);font-weight:600;}
-
-.hdr-stats{display:flex;align-items:center;gap:6px;flex:1;justify-content:center;}
-.hstat{
-  display:flex;align-items:center;gap:5px;
-  background:var(--bg3);border:1px solid var(--border);
-  border-radius:20px;padding:3px 9px;
-  font-size:10px;font-weight:500;color:var(--muted2);white-space:nowrap;
-}
-.hstat-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
-.hstat-dot.green{background:var(--accent);}
-.hstat-dot.blue{background:var(--blue);}
-.hstat-dot.warn{background:var(--warn);}
-.hstat b{color:var(--text);font-weight:600;}
-
-.hdr-right{display:flex;align-items:center;gap:7px;flex-shrink:0;}
-.pts-chip{
-  display:flex;align-items:center;gap:5px;
-  background:rgba(232,200,74,.08);border:1px solid rgba(232,200,74,.2);
-  border-radius:20px;padding:3px 10px;
-  font-size:10px;font-weight:600;color:var(--gold);
-}
-.btn-profile{
-  width:28px;height:28px;background:var(--bg3);border:1px solid var(--border);
-  border-radius:50%;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;flex-shrink:0;transition:background .15s;position:relative;
-}
-.btn-profile:hover{background:var(--bg4);}
-.profile-dot{position:absolute;top:0;right:0;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--bg2);display:none;}
-
-/* ── LAYOUT ── */
-.main{display:flex;flex:1;overflow:hidden;}
+/* ── MAP ── */
 #map{flex:1;z-index:1;}
 
-/* ── PANNEAU DROIT ── */
-.side{
-  width:268px;background:var(--bg2);
-  border-left:1px solid var(--border);
-  display:flex;flex-direction:column;overflow:hidden;
-  z-index:100;flex-shrink:0;
+/* ── TOP BAR ── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:900;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;padding-top:max(10px, env(safe-area-inset-top,10px));
+  pointer-events:none;
 }
+.topbar>*{pointer-events:all;}
+.logo-pill{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(9,13,18,.88);border:1px solid var(--border2);
+  border-radius:20px;padding:6px 11px;backdrop-filter:blur(12px);
+}
+.logo-mark{
+  width:22px;height:22px;background:var(--accent);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;font-size:10px;font-weight:500;color:#071a0f;
+}
+.logo-name{font-size:12px;font-weight:600;color:var(--text);letter-spacing:-.2px;}
+.logo-name b{color:var(--accent);}
 
-/* Section label */
-.sec-label{
-  font-size:8px;font-weight:700;color:var(--muted);
-  text-transform:uppercase;letter-spacing:.8px;
+.top-right{display:flex;align-items:center;gap:7px;}
+.pill{
   display:flex;align-items:center;gap:5px;
+  background:rgba(9,13,18,.88);border:1px solid var(--border2);
+  border-radius:20px;padding:6px 10px;backdrop-filter:blur(12px);
+  font-size:10px;font-weight:600;white-space:nowrap;
 }
-.sec-label .pulse{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pill.pts{color:var(--gold);}
+.pill.traffic{color:var(--accent);}
+.pill.traffic.warn{color:var(--warn);}
+.pill.traffic.danger{color:var(--danger);}
+.pill-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.pill-dot.g{background:var(--accent);}
+.pill-dot.w{background:var(--warn);}
+.pill-dot.r{background:var(--danger);animation:blink 1s ease infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* Zone panel */
-.zone-panel{padding:12px 13px;border-bottom:1px solid var(--border);flex-shrink:0;}
-.zone-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:9px;}
-.zstat{
-  background:var(--bg3);border-radius:var(--rs);padding:8px 10px;
-  display:flex;flex-direction:column;gap:1px;
+.btn-icon{
+  width:36px;height:36px;
+  background:rgba(9,13,18,.88);border:1px solid var(--border2);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;backdrop-filter:blur(12px);transition:background .15s;position:relative;
 }
-.zstat-l{font-size:8px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
-.zstat-v{font-size:17px;font-weight:600;line-height:1.1;color:var(--text);}
-.zstat-v.g{color:var(--accent)}.zstat-v.o{color:var(--warn)}.zstat-v.r{color:var(--danger)}.zstat-v.b{color:var(--blue)}
-.zstat-s{font-size:9px;color:var(--muted);}
-.prob-track{margin-top:9px;height:2px;background:var(--bg4);border-radius:2px;overflow:hidden;}
-.prob-fill{height:100%;border-radius:2px;transition:width .5s,background .4s;}
+.btn-icon:hover{background:rgba(24,32,48,.95);}
+.btn-icon:active{transform:scale(.94);}
+.notif-dot{position:absolute;top:1px;right:1px;width:7px;height:7px;border-radius:50%;background:var(--accent);border:1.5px solid var(--bg);}
+
+/* ── TRAFFIC LAYER TOGGLE ── */
+.map-controls{
+  position:fixed;top:50%;right:14px;transform:translateY(-50%);
+  z-index:800;display:flex;flex-direction:column;gap:7px;
+}
+.map-btn{
+  width:36px;height:36px;
+  background:rgba(9,13,18,.88);border:1px solid var(--border2);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;backdrop-filter:blur(12px);transition:all .15s;color:var(--muted2);
+}
+.map-btn:active{transform:scale(.94);}
+.map-btn.on{background:rgba(52,201,122,.15);border-color:rgba(52,201,122,.4);color:var(--accent);}
+
+/* ── BOTTOM SHEET ── */
+.sheet{
+  position:fixed;bottom:0;left:0;right:0;z-index:800;
+  background:var(--bg2);border-radius:20px 20px 0 0;
+  border-top:1px solid var(--border2);
+  transition:transform .35s cubic-bezier(.4,0,.2,1);
+  padding-bottom:calc(var(--safe-b) + 8px);
+  max-height:88dvh;display:flex;flex-direction:column;
+}
+.sheet-handle{
+  width:36px;height:4px;background:var(--border2);border-radius:2px;
+  margin:10px auto 0;flex-shrink:0;cursor:grab;
+}
+.sheet-handle:active{cursor:grabbing;}
+
+/* CTA row */
+.cta-zone{padding:10px 14px 6px;flex-shrink:0;}
+.rl-track{height:2px;background:var(--bg3);border-radius:2px;margin-bottom:9px;overflow:hidden;}
+.rl-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
+.cta-row{display:flex;gap:8px;}
+.btn-signal{
+  flex:1;height:52px;background:var(--accent);color:#071a0f;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;
+  border:none;border-radius:var(--r);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:background .15s,transform .1s;
+  box-shadow:0 4px 20px rgba(52,201,122,.22);
+}
+.btn-signal:active{transform:scale(.97);background:var(--a2);}
+.btn-signal:disabled{background:var(--bg3);color:var(--muted);box-shadow:none;}
+.btn-loc{
+  width:52px;height:52px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.btn-loc:active{transform:scale(.94);}
+
+/* XP bar */
+.xp-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 14px 8px;flex-shrink:0;
+}
+.xp-lv{font-size:9px;font-weight:700;color:var(--gold);}
+.xp-track{flex:1;height:2px;background:var(--bg3);border-radius:2px;overflow:hidden;margin:0 9px;}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--warn));border-radius:2px;transition:width .5s;}
+.xp-pts{font-size:9px;color:var(--muted);}
 
 /* ── TABS ── */
-.tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tabs{display:flex;border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-shrink:0;}
 .tab{
-  flex:1;height:34px;display:flex;align-items:center;justify-content:center;gap:5px;
+  flex:1;height:40px;display:flex;align-items:center;justify-content:center;gap:5px;
   font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
   cursor:pointer;transition:color .15s;border-bottom:2px solid transparent;
 }
-.tab:hover{color:var(--muted2);}
+.tab:active{background:var(--bg3);}
 .tab.on{color:var(--text);border-bottom-color:var(--accent);}
-.tab-pane{flex:1;overflow:hidden;display:none;flex-direction:column;}
-.tab-pane.on{display:flex;}
-.pane-scroll{flex:1;overflow-y:auto;padding:9px 12px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;}
 
-/* ── CARBURANTS ── */
+/* ── PANES ── */
+.pane-wrap{flex:1;overflow:hidden;min-height:0;}
+.pane{display:none;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 13px 6px;}
+.pane.on{display:block;}
+
+/* ── ZONE STATS ── */
+.zone-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px;}
+.zstat{background:var(--bg3);border-radius:var(--rs);padding:8px 8px 6px;display:flex;flex-direction:column;gap:1px;}
+.zl{font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.zv{font-size:16px;font-weight:600;line-height:1.1;}
+.zv.g{color:var(--accent)}.zv.o{color:var(--warn)}.zv.r{color:var(--danger)}.zv.b{color:var(--blue)}
+.zs{font-size:8px;color:var(--muted);}
+.prob-track{height:2px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:10px;}
+.prob-fill{height:100%;border-radius:2px;transition:width .5s,background .4s;}
+
+/* Traffic card */
+.traffic-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);
+  padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;
+}
+.traffic-card.ok  .tc-icon{color:var(--accent);}
+.traffic-card.warn .tc-icon{color:var(--warn);}
+.traffic-card.bad  .tc-icon{color:var(--danger);}
+.tc-icon{flex-shrink:0;}
+.tc-body{flex:1;}
+.tc-title{font-size:12px;font-weight:600;color:var(--text);}
+.tc-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.tc-time{
+  font-size:13px;font-weight:600;font-family:'DM Mono',monospace;
+  flex-shrink:0;
+}
+.tc-time.ok{color:var(--accent);}
+.tc-time.warn{color:var(--warn);}
+.tc-time.bad{color:var(--danger);}
+
+/* ── CARBURANT ── */
+.fuel-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:9px;
+}
+.fuel-label{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+.fuel-profile-hint{font-size:9px;color:var(--muted2);display:flex;align-items:center;gap:4px;}
 .stn{
   background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--r);padding:9px 10px;margin-bottom:6px;
+  border-radius:var(--r);padding:10px 11px;margin-bottom:7px;
 }
 .stn:last-child{margin-bottom:0;}
-.stn-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.2;}
-.stn-addr{font-size:10px;color:var(--muted);margin:2px 0 7px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.stn-prices{display:flex;flex-wrap:wrap;gap:3px;}
+.stn-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px;}
+.stn-name{font-size:12px;font-weight:600;color:var(--text);}
+.stn-dist{font-size:9px;font-family:'DM Mono',monospace;color:var(--muted);}
+.stn-addr{font-size:10px;color:var(--muted);margin-bottom:7px;line-height:1.3;}
+.stn-prices{display:flex;flex-wrap:wrap;gap:4px;}
 .price-tag{
-  display:flex;align-items:center;gap:3px;
+  display:flex;align-items:center;gap:4px;
   background:var(--bg4);border:1px solid var(--border);
-  border-radius:5px;padding:3px 6px;
+  border-radius:6px;padding:4px 8px;
 }
-.pt-name{font-size:8px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
-.pt-val{font-size:11px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;}
+.pt-name{font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+.pt-val{font-size:12px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;}
 .price-tag.lo .pt-val{color:var(--accent);}
 .price-tag.hi .pt-val{color:var(--danger);}
-.price-tag.fav{border-color:rgba(232,200,74,.3);}
+.price-tag.fav{border-color:rgba(232,200,74,.3);background:rgba(232,200,74,.05);}
 .price-tag.fav .pt-name{color:var(--gold);}
-.stn-meta{display:flex;align-items:center;gap:6px;margin-top:6px;}
-.stn-dist{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
-.badge-h24{
-  font-size:8px;font-weight:700;color:var(--accent);
-  background:rgba(52,201,122,.1);border:1px solid rgba(52,201,122,.2);
-  border-radius:4px;padding:1px 5px;letter-spacing:.3px;
-}
-.badge-demo{
-  font-size:8px;font-weight:700;color:var(--warn);
-  background:rgba(232,157,26,.08);border:1px solid rgba(232,157,26,.2);
-  border-radius:4px;padding:1px 5px;letter-spacing:.3px;
-}
-.no-data{font-size:11px;color:var(--muted);text-align:center;padding:16px 0;line-height:1.6;}
+.stn-footer{display:flex;align-items:center;gap:6px;margin-top:7px;}
+.badge{font-size:8px;font-weight:700;border-radius:4px;padding:2px 6px;letter-spacing:.3px;}
+.badge.h24{background:rgba(52,201,122,.1);border:1px solid rgba(52,201,122,.2);color:var(--accent);}
+.badge.demo{background:rgba(232,157,26,.08);border:1px solid rgba(232,157,26,.2);color:var(--warn);}
 
 /* ── BORNES ── */
 .brn{
   background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--r);padding:9px 10px;margin-bottom:6px;
+  border-radius:var(--r);padding:10px 11px;margin-bottom:7px;
 }
 .brn:last-child{margin-bottom:0;}
 .brn.compat{border-color:rgba(149,117,240,.3);}
-.brn-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:4px;}
-.brn-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.2;}
-.brn-pdc{
-  font-size:9px;font-weight:700;color:var(--purple);
-  background:rgba(149,117,240,.1);border:1px solid rgba(149,117,240,.2);
-  border-radius:5px;padding:2px 6px;flex-shrink:0;
-}
-.brn-op{font-size:10px;color:var(--muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.brn-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;}
-.btag{
-  font-size:9px;font-weight:600;border-radius:5px;padding:2px 6px;
-  background:var(--bg4);border:1px solid var(--border);color:var(--muted2);
-}
-.btag.dc{background:rgba(61,142,239,.1);border-color:rgba(61,142,239,.2);color:var(--blue);}
+.brn-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;}
+.brn-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.3;}
+.brn-pdc{font-size:9px;font-weight:700;color:var(--purple);background:rgba(149,117,240,.1);border:1px solid rgba(149,117,240,.2);border-radius:4px;padding:2px 6px;flex-shrink:0;}
+.brn-op{font-size:10px;color:var(--muted);margin:3px 0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.brn-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;}
+.btag{font-size:9px;font-weight:600;border-radius:4px;padding:2px 7px;background:var(--bg4);border:1px solid var(--border);color:var(--muted2);}
+.btag.dc{background:rgba(61,142,239,.1);border-color:rgba(61,142,239,.25);color:var(--blue);}
 .btag.ac{background:rgba(52,201,122,.08);border-color:rgba(52,201,122,.2);color:var(--accent);}
 .btag.kw{background:rgba(38,196,176,.1);border-color:rgba(38,196,176,.2);color:var(--teal);}
-.brn-tarif{font-size:10px;color:var(--muted2);display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
-.tag-free{font-size:8px;font-weight:700;color:var(--accent);background:rgba(52,201,122,.1);border:1px solid rgba(52,201,122,.2);border-radius:4px;padding:1px 5px;}
-.tag-cb{font-size:8px;font-weight:700;color:var(--blue);background:rgba(61,142,239,.1);border:1px solid rgba(61,142,239,.2);border-radius:4px;padding:1px 5px;}
+.brn-bottom{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.tag-free{font-size:8px;font-weight:700;color:var(--accent);background:rgba(52,201,122,.1);border:1px solid rgba(52,201,122,.2);border-radius:4px;padding:2px 6px;}
+.tag-cb{font-size:8px;font-weight:700;color:var(--blue);background:rgba(61,142,239,.1);border:1px solid rgba(61,142,239,.2);border-radius:4px;padding:2px 6px;}
+.brn-tarif{font-size:10px;color:var(--muted2);}
 
 /* ── FEED ── */
-.feed-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:9px 12px 7px;border-bottom:1px solid var(--border);flex-shrink:0;
-}
-.feed-badge{
-  font-size:9px;font-weight:600;color:var(--muted2);
-  background:var(--bg3);border-radius:20px;padding:2px 7px;
-}
-.feed-scroll{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;}
-.fi{display:flex;align-items:flex-start;gap:8px;padding:6px 12px;transition:background .1s;animation:fadeIn .25s ease;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-.fi:hover{background:var(--bg3);}
-.fi-icon{
-  width:24px;height:24px;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
-}
-.fi-icon.s{background:rgba(52,201,122,.1);}
-.fi-icon.w{background:rgba(232,157,26,.1);}
+.fi{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);animation:fadeIn .25s ease;}
+.fi:last-child{border-bottom:none;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
+.fi-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.fi-icon.s{background:rgba(52,201,122,.12);}
+.fi-icon.w{background:rgba(232,157,26,.12);}
 .fi-icon.i{background:rgba(61,142,239,.08);}
 .fi-body{flex:1;min-width:0;}
-.fi-msg{font-size:11px;font-weight:500;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fi-meta{display:flex;align-items:center;gap:4px;margin-top:2px;}
+.fi-msg{font-size:11px;font-weight:500;color:var(--text);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fi-meta{display:flex;align-items:center;gap:5px;margin-top:2px;}
 .fi-time{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
 .fi-tag{font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px;text-transform:uppercase;letter-spacing:.3px;}
 .fi-tag.s{background:rgba(52,201,122,.12);color:var(--accent);}
@@ -220,162 +257,72 @@ header{
 
 /* ── MODAL PROFIL ── */
 .modal-bg{
-  position:fixed;inset:0;background:rgba(0,0,0,.65);
-  z-index:2000;display:flex;align-items:center;justify-content:center;
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;
+  display:flex;align-items:flex-end;justify-content:center;
   backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity .2s;
 }
 .modal-bg.open{opacity:1;pointer-events:all;}
 .modal{
   background:var(--bg2);border:1px solid var(--border2);
-  border-radius:18px;width:350px;max-width:calc(100vw - 32px);
-  max-height:88dvh;overflow-y:auto;
+  border-radius:20px 20px 0 0;width:100%;max-width:480px;
+  max-height:90dvh;overflow-y:auto;
+  padding-bottom:calc(var(--safe-b) + 10px);
 }
-.modal-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:16px 18px 12px;border-bottom:1px solid var(--border);
-}
+.modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:10px auto 0;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;}
 .modal-title{font-size:15px;font-weight:600;}
-.modal-x{
-  width:26px;height:26px;background:var(--bg3);border:none;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);
-}
-.modal-x:hover{background:var(--bg4);}
-.modal-body{padding:14px 18px 18px;}
-.m-sec{margin-bottom:18px;}
+.modal-x{width:26px;height:26px;background:var(--bg3);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);}
+.modal-body{padding:0 16px 14px;}
+.m-sec{margin-bottom:16px;}
 .m-sec-title{font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px;}
 
 /* Vehicle grid */
-.v-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.v-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
 .v-card{
   background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;
-  padding:11px 8px;cursor:pointer;transition:border-color .15s,background .15s;
-  text-align:center;
+  padding:10px 4px 7px;cursor:pointer;transition:border-color .15s,background .15s;text-align:center;
 }
-.v-card:hover{background:var(--bg4);}
-.v-card.on{border-color:var(--accent);background:rgba(52,201,122,.05);}
-.v-card.on .v-label{color:var(--accent);}
-.v-icon{display:flex;align-items:center;justify-content:center;margin-bottom:5px;color:var(--muted2);}
+.v-card.on{border-color:var(--accent);background:rgba(52,201,122,.06);}
+.v-card.on .v-lbl{color:var(--accent);}
+.v-icon{display:flex;align-items:center;justify-content:center;margin-bottom:4px;color:var(--muted2);}
 .v-card.on .v-icon{color:var(--accent);}
-.v-label{font-size:10px;font-weight:600;color:var(--muted2);}
+.v-lbl{font-size:9px;font-weight:600;color:var(--muted2);}
 
-/* Carb / conn buttons */
 .chip-row{display:flex;flex-wrap:wrap;gap:5px;}
 .chip{
   background:var(--bg3);border:1.5px solid var(--border);border-radius:6px;
-  padding:4px 11px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;
+  padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;
   color:var(--muted2);cursor:pointer;transition:all .15s;
 }
-.chip:hover{background:var(--bg4);}
 .chip.on-c{border-color:var(--warn);background:rgba(232,157,26,.08);color:var(--warn);}
 .chip.on-e{border-color:var(--purple);background:rgba(149,117,240,.08);color:var(--purple);}
-
 .modal-save{
-  width:100%;height:40px;background:var(--accent);color:#071a0f;
+  width:100%;height:44px;background:var(--accent);color:#071a0f;
   font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
-  border:none;border-radius:10px;cursor:pointer;transition:background .15s;
+  border:none;border-radius:11px;cursor:pointer;transition:background .15s;margin-top:4px;
 }
-.modal-save:hover{background:var(--accent2);}
-
-/* ── GAMIFICATION ── */
-.xp-toast{
-  position:fixed;top:56px;left:50%;
-  transform:translateX(-50%) translateY(0);
-  background:rgba(232,200,74,.1);border:1px solid rgba(232,200,74,.3);
-  border-radius:20px;padding:6px 14px;
-  font-size:11px;font-weight:600;color:var(--gold);
-  z-index:9998;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
-}
-.xp-toast.on{opacity:1;transform:translateX(-50%) translateY(8px);}
-
-.xp-wrap{
-  position:fixed;bottom:80px;left:0;right:268px;
-  padding:0 13px;z-index:999;pointer-events:none;
-}
-.xp-info{display:flex;justify-content:space-between;margin-bottom:3px;font-size:8px;color:var(--muted);}
-.xp-lv{color:var(--gold);font-weight:700;}
-.xp-track{height:2px;background:var(--bg3);border-radius:2px;overflow:hidden;}
-.xp-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--warn));border-radius:2px;transition:width .5s;}
+.modal-save:active{background:var(--a2);}
 
 /* ── LOCKED ── */
 .lock-bg{
-  position:absolute;inset:0;background:rgba(9,13,18,.85);
+  position:fixed;inset:0;background:rgba(9,13,18,.88);
   display:flex;align-items:center;justify-content:center;
-  z-index:500;backdrop-filter:blur(4px);transition:opacity .3s;
+  z-index:600;backdrop-filter:blur(4px);transition:opacity .3s;
 }
 .lock-bg.off{opacity:0;pointer-events:none;}
 .lock-box{
-  background:var(--bg2);border:1px solid var(--border2);
-  border-radius:18px;padding:28px 26px;text-align:center;max-width:280px;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:18px;
+  padding:26px 24px;text-align:center;max-width:280px;margin:0 16px;
 }
-.lock-icon{
-  width:48px;height:48px;background:var(--bg3);border-radius:12px;
-  display:flex;align-items:center;justify-content:center;
-  margin:0 auto 14px;color:var(--muted2);
-}
-.lock-title{font-size:16px;font-weight:600;margin-bottom:7px;}
-.lock-sub{font-size:11px;color:var(--muted2);line-height:1.6;margin-bottom:14px;}
-.lock-req{
-  display:inline-flex;align-items:center;gap:5px;
-  background:rgba(232,200,74,.08);border:1px solid rgba(232,200,74,.2);
-  border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--gold);margin-bottom:14px;
-}
-.lock-btn{
-  background:var(--accent);color:#071a0f;border:none;border-radius:10px;
-  padding:10px 20px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;
-}
-
-/* Radius chip */
-.r-chip{
-  position:absolute;top:11px;left:50%;transform:translateX(-50%);
-  background:rgba(17,23,32,.9);border:1px solid var(--border2);
-  border-radius:20px;padding:3px 11px;
-  font-size:9px;font-weight:600;color:var(--muted2);
-  z-index:400;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:4px;
-}
-.r-chip b{color:var(--text);}
-
-/* Legend */
-.lgnd{
-  position:absolute;bottom:84px;left:12px;
-  background:rgba(17,23,32,.92);border:1px solid var(--border);
-  border-radius:10px;padding:8px 10px;z-index:400;
-}
-.lgnd-title{font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
-.lgnd-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:9px;color:var(--muted2);}
-.lgnd-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
-
-/* ── BOTTOM ── */
-.bottom{
-  position:fixed;bottom:0;left:0;
-  width:calc(100% - 268px);
-  z-index:1000;padding:8px 13px 14px;
-  background:linear-gradient(to top,var(--bg2) 50%,transparent);
-  pointer-events:none;
-}
-.bottom>*{pointer-events:all;}
-.rl-track{height:1.5px;background:var(--bg3);border-radius:2px;margin-bottom:8px;overflow:hidden;}
-.rl-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
-.cta{display:flex;gap:7px;}
-.btn-main{
-  flex:1;height:46px;background:var(--accent);color:#071a0f;
-  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
-  border:none;border-radius:var(--r);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  transition:background .15s,transform .1s;
-  box-shadow:0 0 16px rgba(52,201,122,.18);
-}
-.btn-main:active{transform:scale(.97);background:var(--accent2);}
-.btn-main:disabled{background:var(--bg3);color:var(--muted);box-shadow:none;cursor:not-allowed;}
-.btn-loc{
-  width:46px;height:46px;background:var(--bg3);border:1px solid var(--border);
-  border-radius:var(--r);cursor:pointer;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;
-}
-.btn-loc:hover{background:var(--bg4);}
+.lock-icon{width:48px;height:48px;background:var(--bg3);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--muted2);}
+.lock-title{font-size:16px;font-weight:600;margin-bottom:6px;}
+.lock-sub{font-size:11px;color:var(--muted2);line-height:1.6;margin-bottom:13px;}
+.lock-req{display:inline-flex;align-items:center;gap:5px;background:rgba(232,200,74,.08);border:1px solid rgba(232,200,74,.2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--gold);margin-bottom:13px;}
+.lock-btn{background:var(--accent);color:#071a0f;border:none;border-radius:10px;padding:10px 22px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
 
 /* ── TOAST ── */
 #toast{
-  position:fixed;top:56px;left:50%;
+  position:fixed;top:max(68px,calc(env(safe-area-inset-top,0px) + 58px));left:50%;
   transform:translateX(-50%) translateY(-6px);
   background:var(--bg3);border:1px solid var(--border);
   border-radius:8px;padding:7px 14px;
@@ -387,187 +334,219 @@ header{
 #toast.ok{border-color:rgba(52,201,122,.35);color:var(--accent);}
 #toast.wn{border-color:rgba(232,157,26,.35);color:var(--warn);}
 
-/* Fuel / borne markers */
-.fm{
-  background:rgba(17,23,32,.92);border:1px solid rgba(232,157,26,.4);
-  border-radius:6px;padding:2px 6px;
-  font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:var(--warn);
-  white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);
+/* XP toast */
+.xp-toast{
+  position:fixed;top:max(68px,calc(env(safe-area-inset-top,0px) + 58px));left:50%;
+  transform:translateX(-50%) translateY(8px);
+  background:rgba(232,200,74,.1);border:1px solid rgba(232,200,74,.3);
+  border-radius:20px;padding:6px 14px;
+  font-size:11px;font-weight:600;color:var(--gold);
+  z-index:9998;opacity:0;pointer-events:none;transition:opacity .2s;
 }
-.fm.lo{border-color:rgba(52,201,122,.4);color:var(--accent);}
-.bm{
-  background:rgba(17,23,32,.92);border:1px solid rgba(149,117,240,.4);
-  border-radius:6px;padding:2px 6px;
-  font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:var(--purple);
-  white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);
-}
-.bm.dc{border-color:rgba(61,142,239,.4);color:var(--blue);}
+.xp-toast.on{opacity:1;}
 
-/* Leaflet */
+/* Markers */
+.fm{background:rgba(9,13,18,.92);border:1px solid rgba(232,157,26,.45);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:var(--warn);white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+.fm.lo{border-color:rgba(52,201,122,.45);color:var(--accent);}
+.bm{background:rgba(9,13,18,.92);border:1px solid rgba(149,117,240,.45);border-radius:5px;padding:2px 6px;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;color:var(--purple);white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+.bm.dc{border-color:rgba(61,142,239,.45);color:var(--blue);}
+
+/* Legend */
+.lgnd{position:fixed;left:13px;z-index:700;background:rgba(9,13,18,.9);border:1px solid var(--border);border-radius:10px;padding:8px 10px;}
+.lgnd-title{font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px;}
+.lgnd-row{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:9px;color:var(--muted2);}
+.lgnd-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+/* Leaflet overrides */
 .leaflet-popup-content-wrapper{background:var(--bg2)!important;border:1px solid var(--border2)!important;border-radius:var(--r)!important;box-shadow:0 8px 28px rgba(0,0,0,.6)!important;color:var(--text)!important;font-family:'DM Sans',sans-serif!important;}
 .leaflet-popup-tip{background:var(--bg2)!important;}
 .leaflet-popup-content{margin:11px 13px!important;font-size:12px!important;line-height:1.5!important;}
-.leaflet-control-zoom{border:1px solid var(--border)!important;border-radius:var(--rs)!important;overflow:hidden;}
-.leaflet-control-zoom a{background:var(--bg2)!important;color:var(--text)!important;border-color:var(--border)!important;width:28px!important;height:28px!important;line-height:28px!important;}
-.leaflet-control-zoom a:hover{background:var(--bg3)!important;}
+.leaflet-control-zoom{border:1px solid var(--border)!important;border-radius:var(--rs)!important;overflow:hidden;right:14px!important;}
+.leaflet-control-zoom a{background:rgba(9,13,18,.92)!important;color:var(--text)!important;border-color:var(--border)!important;width:32px!important;height:32px!important;line-height:32px!important;}
 
-@media(max-width:640px){.side{display:none;}.bottom{width:100%;}.hdr-stats{display:none;}.xp-wrap{right:0;}}
+/* No data */
+.no-data{font-size:11px;color:var(--muted);text-align:center;padding:18px 0;line-height:1.7;}
+
+/* Section divider */
+.sec-div{font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+.sec-div-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
-<!-- HEADER -->
-<header>
-  <div class="logo">
+
+<!-- MAP fills the screen -->
+<div id="map" style="position:fixed;inset:0;z-index:1;"></div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo-pill">
     <div class="logo-mark">V</div>
     <span class="logo-name">VAC<b>UUM</b></span>
   </div>
-  <div class="hdr-stats">
-    <div class="hstat"><div class="hstat-dot green"></div><b id="v-active">0</b> signaux</div>
-    <div class="hstat"><div class="hstat-dot blue"></div><b id="v-zones" style="color:var(--blue)">0</b> zones</div>
-  </div>
-  <div class="hdr-right">
-    <div class="pts-chip">
+  <div class="top-right">
+    <div class="pill traffic" id="traffic-pill" style="display:none;">
+      <div class="pill-dot g" id="traffic-dot"></div>
+      <span id="traffic-label">Trafic fluide</span>
+    </div>
+    <div class="pill pts">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       <span id="hdr-pts">0 pts</span>
     </div>
-    <button class="btn-profile" onclick="openProfile()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-      <div class="profile-dot" id="profile-dot"></div>
+    <button class="btn-icon" onclick="openProfile()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <div class="notif-dot" id="profile-dot" style="display:none;"></div>
     </button>
   </div>
-</header>
+</div>
 
-<div class="main">
-  <div style="position:relative;flex:1;display:flex;flex-direction:column;">
-    <div id="map" style="flex:1;"></div>
+<!-- MAP CONTROLS -->
+<div class="map-controls" id="map-controls">
+  <div class="map-btn on" id="btn-traffic" onclick="toggleTraffic()" title="Trafic">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="17" r="1.5" fill="currentColor"/></svg>
+  </div>
+  <div class="map-btn" id="btn-locate" onclick="centerOnUser()" title="Ma position">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </div>
+</div>
 
-    <!-- Radius -->
-    <div class="r-chip">
-      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
-      Rayon <b id="rc-val">0 cellule</b>
+<!-- LEGEND -->
+<div class="lgnd" id="lgnd" style="bottom:340px;">
+  <div class="lgnd-title">Disponibilité</div>
+  <div class="lgnd-row"><div class="lgnd-dot" style="background:#34c97a"></div>&gt; 70 %</div>
+  <div class="lgnd-row"><div class="lgnd-dot" style="background:#e89d1a"></div>40–70 %</div>
+  <div class="lgnd-row"><div class="lgnd-dot" style="background:#d94f4f"></div>&lt; 40 %</div>
+  <div class="lgnd-row"><div class="lgnd-dot" style="background:#9575f0"></div>Borne</div>
+</div>
+
+<!-- LOCKED -->
+<div class="lock-bg" id="locked-overlay">
+  <div class="lock-box">
+    <div class="lock-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     </div>
-
-    <!-- Locked -->
-    <div class="lock-bg" id="locked-overlay">
-      <div class="lock-box">
-        <div class="lock-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        </div>
-        <div class="lock-title">Carte verrouillée</div>
-        <div class="lock-sub">Signalez des places disponibles pour débloquer les zones autour de vous.</div>
-        <div class="lock-req">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          3 points pour commencer
-        </div>
-        <button class="lock-btn" onclick="submitSignal()">Signaler une place</button>
-      </div>
+    <div class="lock-title">Carte verrouillée</div>
+    <div class="lock-sub">Signalez des places disponibles pour débloquer les zones autour de vous.</div>
+    <div class="lock-req">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      3 points pour commencer
     </div>
+    <button class="lock-btn" onclick="submitSignal()">Signaler une place</button>
+  </div>
+</div>
 
-    <!-- Legend -->
-    <div class="lgnd">
-      <div class="lgnd-title">Disponibilité</div>
-      <div class="lgnd-row"><div class="lgnd-dot" style="background:#34c97a"></div>&gt; 70 %</div>
-      <div class="lgnd-row"><div class="lgnd-dot" style="background:#e89d1a"></div>40 – 70 %</div>
-      <div class="lgnd-row"><div class="lgnd-dot" style="background:#d94f4f"></div>&lt; 40 %</div>
-      <div class="lgnd-row"><div class="lgnd-dot" style="background:#9575f0"></div>Borne élec.</div>
-    </div>
+<!-- BOTTOM SHEET -->
+<div class="sheet" id="sheet">
+  <div class="sheet-handle" id="sheet-handle"></div>
 
-    <!-- XP bar -->
-    <div class="xp-wrap">
-      <div class="xp-info"><span class="xp-lv" id="xp-level">Niv. 0</span><span id="xp-label">0 / 3 pts</span></div>
-      <div class="xp-track"><div class="xp-bar" id="xp-fill" style="width:0%"></div></div>
-    </div>
-
-    <!-- Bottom CTA -->
-    <div class="bottom">
-      <div class="rl-track"><div class="rl-fill" id="rl-fill" style="width:0%"></div></div>
-      <div class="cta">
-        <button class="btn-main" id="btn-signal" onclick="submitSignal()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
-          J'ai vu une place libre
-        </button>
-        <button class="btn-loc" onclick="centerOnUser()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-        </button>
-      </div>
+  <!-- CTA -->
+  <div class="cta-zone">
+    <div class="rl-track"><div class="rl-fill" id="rl-fill" style="width:0%"></div></div>
+    <div class="cta-row">
+      <button class="btn-signal" id="btn-signal" onclick="submitSignal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+        J'ai vu une place libre
+      </button>
+      <button class="btn-loc" onclick="centerOnUser()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      </button>
     </div>
   </div>
 
-  <!-- SIDE PANEL -->
-  <div class="side">
+  <!-- XP -->
+  <div class="xp-row">
+    <span class="xp-lv" id="xp-level">Niv. 0</span>
+    <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+    <span class="xp-pts" id="xp-label">0 / 3 pts</span>
+  </div>
 
-    <!-- Zone stats -->
-    <div class="zone-panel">
-      <div class="sec-label"><div class="pulse"></div>Ma zone</div>
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab on" id="tab-zone-btn" onclick="switchTab('zone')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      Zone
+    </div>
+    <div class="tab" id="tab-fuel-btn" onclick="switchTab('fuel')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 22V8l5-6h8l5 6v14"/><line x1="3" y1="13" x2="18" y2="13"/></svg>
+      Station
+    </div>
+    <div class="tab" id="tab-bornes-btn" onclick="switchTab('bornes')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Borne
+    </div>
+    <div class="tab" id="tab-feed-btn" onclick="switchTab('feed')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 7.76a6 6 0 0 0 0 8.49"/></svg>
+      Flux
+    </div>
+  </div>
+
+  <!-- PANES -->
+  <div class="pane-wrap">
+
+    <!-- ZONE -->
+    <div class="pane on" id="tab-zone">
       <div class="zone-grid">
-        <div class="zstat">
-          <span class="zstat-l">Probabilité</span>
-          <span class="zstat-v g" id="zp-prob">—</span>
-          <span class="zstat-s">de disponibilité</span>
-        </div>
-        <div class="zstat">
-          <span class="zstat-l">Signaux</span>
-          <span class="zstat-v b" id="zp-count">0</span>
-          <span class="zstat-s">actifs</span>
-        </div>
-        <div class="zstat">
-          <span class="zstat-l">Densité</span>
-          <span class="zstat-v o" id="zp-density">0</span>
-          <span class="zstat-s">/ 30 s</span>
-        </div>
-        <div class="zstat">
-          <span class="zstat-l">Dernier</span>
-          <span class="zstat-v" id="zp-age" style="font-size:13px;">—</span>
-          <span class="zstat-s" id="zp-age-sub">—</span>
-        </div>
+        <div class="zstat"><span class="zl">Prob.</span><span class="zv g" id="zp-prob">—</span><span class="zs">dispo.</span></div>
+        <div class="zstat"><span class="zl">Signaux</span><span class="zv b" id="zp-count">0</span><span class="zs">actifs</span></div>
+        <div class="zstat"><span class="zl">Densité</span><span class="zv o" id="zp-density">0</span><span class="zs">/ 30s</span></div>
+        <div class="zstat"><span class="zl">Dernier</span><span class="zv" id="zp-age" style="font-size:12px;">—</span><span class="zs" id="zp-age-sub">—</span></div>
       </div>
       <div class="prob-track"><div class="prob-fill" id="zp-bar" style="width:0%;background:var(--accent)"></div></div>
-    </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <div class="tab on" id="tab-fuel-btn" onclick="switchTab('fuel')">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 22V8l5-6h8l5 6v14"/><line x1="3" y1="13" x2="18" y2="13"/></svg>
-        Carburant
-      </div>
-      <div class="tab" id="tab-bornes-btn" onclick="switchTab('bornes')">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Bornes
-      </div>
-      <div class="tab" id="tab-feed-btn" onclick="switchTab('feed')">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 7.76a6 6 0 0 0 0 8.49"/></svg>
-        Flux
+      <!-- Traffic card -->
+      <div class="traffic-card ok" id="traffic-card" style="display:none;">
+        <div class="tc-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="17" r="1.5" fill="currentColor"/></svg>
+        </div>
+        <div class="tc-body">
+          <div class="tc-title" id="tc-title">Trafic fluide</div>
+          <div class="tc-sub" id="tc-sub">Conditions normales</div>
+        </div>
+        <div class="tc-time ok" id="tc-time">—</div>
       </div>
     </div>
 
-    <!-- Carburant tab -->
-    <div class="tab-pane on" id="tab-fuel">
-      <div class="pane-scroll" id="fuel-content">
-        <div class="no-data">Localisez-vous<br>pour voir les stations proches.</div>
+    <!-- FUEL -->
+    <div class="pane" id="tab-fuel">
+      <div class="fuel-header">
+        <div class="fuel-label">Stations proches</div>
+        <div class="fuel-profile-hint" id="fuel-hint">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <span id="fuel-hint-text">Tous carburants</span>
+        </div>
+      </div>
+      <div id="fuel-content">
+        <div class="no-data">Localisez-vous pour voir les stations proches.</div>
       </div>
     </div>
 
-    <!-- Bornes tab -->
-    <div class="tab-pane" id="tab-bornes">
-      <div class="pane-scroll" id="bornes-content">
-        <div class="no-data">Localisez-vous<br>pour voir les bornes proches.</div>
+    <!-- BORNES -->
+    <div class="pane" id="tab-bornes">
+      <div class="fuel-header">
+        <div class="fuel-label">Bornes de recharge</div>
+        <div class="fuel-profile-hint" id="bornes-hint">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span id="bornes-hint-text">Tous connecteurs</span>
+        </div>
+      </div>
+      <div id="bornes-content">
+        <div class="no-data">Localisez-vous pour voir les bornes proches.</div>
       </div>
     </div>
 
-    <!-- Flux tab -->
-    <div class="tab-pane" id="tab-feed">
-      <div class="feed-head">
-        <div class="sec-label">Activité en direct</div>
-        <span class="feed-badge" id="feed-count">0</span>
-      </div>
-      <div class="feed-scroll" id="feed-list"></div>
+    <!-- FEED -->
+    <div class="pane" id="tab-feed">
+      <div class="sec-div"><div class="sec-div-dot"></div>Activité en direct</div>
+      <div id="feed-list"></div>
     </div>
+
   </div>
 </div>
 
 <!-- MODAL PROFIL -->
 <div class="modal-bg" id="modal-overlay" onclick="closeProfileOutside(event)">
   <div class="modal">
+    <div class="modal-handle"></div>
     <div class="modal-head">
       <span class="modal-title">Profil véhicule</span>
       <button class="modal-x" onclick="closeProfile()">
@@ -579,30 +558,29 @@ header{
         <div class="m-sec-title">Type de véhicule</div>
         <div class="v-grid">
           <div class="v-card" id="vc-thermique" onclick="selectVehicle('thermique')">
-            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg></div>
-            <div class="v-label">Thermique</div>
+            <div class="v-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg></div>
+            <div class="v-lbl">Thermique</div>
           </div>
           <div class="v-card" id="vc-electrique" onclick="selectVehicle('electrique')">
-            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><polyline points="11 3 9 8 13 8 11 13"/></svg></div>
-            <div class="v-label">Électrique</div>
+            <div class="v-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><polyline points="11 3 9 8 13 8 11 13"/></svg></div>
+            <div class="v-lbl">Électrique</div>
           </div>
           <div class="v-card" id="vc-hybride" onclick="selectVehicle('hybride')">
-            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><path d="M9 5h6"/></svg></div>
-            <div class="v-label">Hybride</div>
+            <div class="v-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="9" width="22" height="10" rx="2"/><path d="M5 9V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><path d="M9 5h6"/></svg></div>
+            <div class="v-lbl">Hybride</div>
           </div>
           <div class="v-card" id="vc-moto" onclick="selectVehicle('moto')">
-            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="16" r="3"/><circle cx="18" cy="16" r="3"/><path d="M6 16h3l3-8h4l2 5"/><path d="M9 16l2-5"/></svg></div>
-            <div class="v-label">Moto / Scooter</div>
+            <div class="v-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="16" r="3"/><circle cx="18" cy="16" r="3"/><path d="M6 16h3l3-8h4l2 5"/><path d="M9 16l2-5"/></svg></div>
+            <div class="v-lbl">Moto</div>
           </div>
           <div class="v-card" id="vc-utilitaire" onclick="selectVehicle('utilitaire')">
-            <div class="v-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="7" width="22" height="12" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg></div>
-            <div class="v-label">Utilitaire</div>
+            <div class="v-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="7" width="22" height="12" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/></svg></div>
+            <div class="v-lbl">Utilitaire</div>
           </div>
         </div>
       </div>
-
       <div class="m-sec" id="section-carb">
-        <div class="m-sec-title">Carburant habituel</div>
+        <div class="m-sec-title">Carburant</div>
         <div class="chip-row">
           <button class="chip" id="cb-sp95"   onclick="toggleCarb('sp95')">SP95</button>
           <button class="chip" id="cb-sp98"   onclick="toggleCarb('sp98')">SP98</button>
@@ -612,9 +590,8 @@ header{
           <button class="chip" id="cb-gplc"   onclick="toggleCarb('gplc')">GPLc</button>
         </div>
       </div>
-
       <div class="m-sec" id="section-conn" style="display:none;">
-        <div class="m-sec-title">Connecteur(s)</div>
+        <div class="m-sec-title">Connecteur</div>
         <div class="chip-row">
           <button class="chip" id="cn-type2"   onclick="toggleConn('type2')">Type 2</button>
           <button class="chip" id="cn-ccs"     onclick="toggleConn('ccs')">CCS Combo</button>
@@ -622,7 +599,6 @@ header{
           <button class="chip" id="cn-ef"      onclick="toggleConn('ef')">Prise EF</button>
         </div>
       </div>
-
       <button class="modal-save" onclick="saveProfile()">Enregistrer</button>
     </div>
   </div>
@@ -632,148 +608,192 @@ header{
 <div id="toast"></div>
 
 <script>
-// 
-//  VACUUM · v4 · Profil · Carburants · Bornes
-// 
+// ═══════════════════════════════════════════════
+//  VACUUM v6 · Mobile-first · Trafic · Profil
+// ═══════════════════════════════════════════════
 
-//  Remplace par ton URL Vercel après déploiement
 const API_BASE = 'https://vacuum-63afge048-anthropotech-lab.vercel.app';
+
+// TomTom API — clé gratuite 2500 req/jour
+// https://developer.tomtom.com (inscription gratuite)
+// Remplace par ta clé après inscription
+const TOMTOM_KEY = null; // clé sécurisée côté Vercel
 
 const CFG = {
   GRID:.002, DECAY_S:15, MAX_AGE:300_000,
   RATE_LIMIT:10, COLD_N:5, PRIOR:.25,
-  SPAM_TH:8, TRUST_PEN:.08, FEED_MAX:40, SIM_INTERVAL:7000,
+  SPAM_TH:8, TRUST_PEN:.08, FEED_MAX:40, SIM_INTERVAL:8000,
   PTS_STRONG:3, PTS_WEAK:1, PTS_IMPLICIT:.5, PTS_SPAM_PEN:5,
-};
-
-const STREETS=['rue de Rivoli','bd Haussmann','av. de l\'Opéra','rue du Faubourg St-Honoré','rue de la Paix','bd Saint-Germain','av. Montaigne','rue de Vaugirard','rue Oberkampf','av. de la République','bd Beaumarchais','rue du Temple','rue de Turenne','av. Parmentier','rue Saint-Maur','bd Voltaire','rue de la Roquette','av. Ledru-Rollin','rue du Chemin-Vert','bd Richard-Lenoir'];
-
-// Mapping véhicule → carburants pertinents
-const VEHICLE_CARBS = {
-  thermique:  ['sp95','sp98','e10','gazole','e85','gplc'],
-  electrique: [],
-  hybride:    ['sp95','sp98','e10','gazole','e85'],
-  moto:       ['sp95','sp98','e10'],
-  utilitaire: ['gazole','sp95','e10'],
+  TRAFFIC_INTERVAL: 90_000, // refresh trafic toutes les 90s
 };
 
 const FUEL_NAMES = {gazole:'Gazole',sp95:'SP95',sp98:'SP98',e10:'E10',e85:'E85',gplc:'GPLc'};
+
+// Carburants par type de véhicule — uniquement ce qu'il consomme
+const VEHICLE_FUELS = {
+  thermique:  null,        // tous → déterminé par profil.carburants
+  electrique: [],          // aucun carburant
+  hybride:    null,        // déterminé par profil.carburants
+  moto:       ['sp95','sp98','e10'],
+  utilitaire: ['gazole','e10','sp95'],
+};
+
+const STREETS = ['rue de Rivoli','bd Haussmann','av. de l\'Opéra','rue Faubourg St-Honoré','bd Saint-Germain','av. Montaigne','rue de Vaugirard','rue Oberkampf','av. de la République','bd Beaumarchais','rue du Temple','rue de Turenne','av. Parmentier','rue Saint-Maur','bd Voltaire','rue de la Roquette','av. Ledru-Rollin','rue du Chemin-Vert','bd Richard-Lenoir','rue de Rivoli'];
 
 const state = {
   userLat:48.8566, userLng:2.3522,
   userId:null, trustScore:1.0,
   points:0, streak:0, lastSignalTime:0,
   signals:[], hexLayers:new Map(),
-  fuelMarkers:[], borneMarkers:[], map:null,
-  signalsThisMin:0, lastMinReset:Date.now(),
-  feedItems:[], visRadius:0,
-  dataLoaded:false,
-  // Profil
-  profile: {
-    vehicle: null,      // thermique|electrique|hybride|moto|utilitaire
-    carburants: [],     // ex: ['sp95','e10']
-    connecteurs: [],    // ex: ['type2','ccs']
-  },
+  fuelMarkers:[], borneMarkers:[], trafficLayer:null,
+  map:null, signalsThisMin:0, lastMinReset:Date.now(),
+  feedItems:[], visRadius:0, dataLoaded:false,
+  trafficOn:true, trafficStatus:'ok',
+  profile:{ vehicle:null, carburants:[], connecteurs:[] },
 };
 
-//  USER + PROFIL 
+// ── SHEET DRAG ─────────────────────────────────
+let sheetY = 0, sheetDragging = false, sheetStartY = 0;
+function initSheetDrag() {
+  const handle = document.getElementById('sheet-handle');
+  const sheet  = document.getElementById('sheet');
+  handle.addEventListener('touchstart', e => {
+    sheetDragging = true;
+    sheetStartY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchmove', e => {
+    if (!sheetDragging) return;
+    const dy = e.touches[0].clientY - sheetStartY;
+    // Limiter le drag vers le bas (fermeture partielle)
+    const clamp = Math.max(0, Math.min(dy, 200));
+    sheet.style.transform = `translateY(${clamp}px)`;
+  }, {passive:true});
+  document.addEventListener('touchend', e => {
+    if (!sheetDragging) return;
+    sheetDragging = false;
+    const dy = e.changedTouches[0].clientY - sheetStartY;
+    sheet.style.transform = dy > 100 ? 'translateY(200px)' : '';
+    if (dy < -50) sheet.style.transform = '';
+  }, {passive:true});
+  // Tap sur la carte remet le sheet en position
+  document.getElementById('map').addEventListener('click', () => {
+    sheet.style.transform = '';
+  });
+}
+
+// ── USER + PROFIL ──────────────────────────────
 function initUser() {
   let uid = localStorage.getItem('vac_uid');
   if (!uid) { uid='u_'+Math.random().toString(36).slice(2,9); localStorage.setItem('vac_uid',uid); }
-  state.userId     = uid;
+  state.userId = uid;
   state.trustScore = parseFloat(localStorage.getItem('vac_trust')||'1.0');
   state.points     = parseFloat(localStorage.getItem('vac_pts')  ||'0');
   state.streak     = parseInt(localStorage.getItem('vac_streak') ||'0');
-  const savedProfile = localStorage.getItem('vac_profile');
-  if (savedProfile) { try { state.profile = JSON.parse(savedProfile); } catch {} }
+  const sp = localStorage.getItem('vac_profile');
+  if (sp) { try { state.profile=JSON.parse(sp); } catch {} }
   updateXP();
   applyProfileUI();
+  updateFuelHint();
+}
+
+function getActiveFuels() {
+  const v = state.profile.vehicle;
+  const fixed = VEHICLE_FUELS[v];
+  if (fixed !== null && fixed !== undefined) {
+    // Électrique → aucun / moto/utilitaire → liste fixe
+    if (fixed.length === 0) return [];
+    return fixed;
+  }
+  // thermique / hybride → utiliser le carburant choisi dans le profil
+  if (state.profile.carburants.length > 0) return state.profile.carburants;
+  // pas de profil → tous
+  return Object.keys(FUEL_NAMES);
+}
+
+function updateFuelHint() {
+  const fuels = getActiveFuels();
+  const el = document.getElementById('fuel-hint-text');
+  if (!state.profile.vehicle) { el.textContent = 'Tous carburants'; return; }
+  if (fuels.length === 0) { el.textContent = 'Véhicule électrique'; return; }
+  el.textContent = fuels.map(k => FUEL_NAMES[k]).join(' · ');
 }
 
 function applyProfileUI() {
   if (state.profile.vehicle) {
     document.getElementById('profile-dot').style.display = 'block';
-    // Mettre à jour sélection dans la modal
-    document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('on-c'));
+    document.querySelectorAll('.v-card').forEach(c => c.classList.remove('on'));
     const el = document.getElementById('vc-'+state.profile.vehicle);
-    if (el) el.classList.add('on-c');
+    if (el) el.classList.add('on');
   }
-  // Carburants
-  document.querySelectorAll('.carb-btn').forEach(b => b.classList.remove('on-c'));
-  state.profile.carburants.forEach(c => {
-    const el = document.getElementById('cb-'+c);
-    if (el) el.classList.add('on-c');
+  ['sp95','sp98','e10','gazole','e85','gplc'].forEach(k => {
+    const el = document.getElementById('cb-'+k);
+    if (el) el.classList.toggle('on-c', state.profile.carburants.includes(k));
   });
-  // Connecteurs
-  document.querySelectorAll('.conn-btn').forEach(b => b.classList.remove('on-c'));
-  state.profile.connecteurs.forEach(c => {
-    const el = document.getElementById('cn-'+c);
-    if (el) el.classList.add('on-c');
+  ['type2','ccs','chademo','ef'].forEach(k => {
+    const el = document.getElementById('cn-'+k);
+    if (el) el.classList.toggle('on-e', state.profile.connecteurs.includes(k));
   });
-  // Sections visibles
   updateProfileSections();
 }
 
 function updateProfileSections() {
   const v = state.profile.vehicle;
-  const hasThermo = ['thermique','hybride','moto','utilitaire'].includes(v);
-  const hasElec   = ['electrique','hybride'].includes(v);
-  document.getElementById('section-carb').style.display  = hasThermo ? 'block' : 'none';
-  document.getElementById('section-conn').style.display  = hasElec   ? 'block' : 'none';
-  // Tab bornes visible si électrique ou hybride
-  document.getElementById('tab-bornes-btn').style.opacity = hasElec ? '1' : '0.4';
+  const hasFuel = ['thermique','hybride','moto','utilitaire'].includes(v);
+  const hasElec = ['electrique','hybride'].includes(v);
+  document.getElementById('section-carb').style.display = hasFuel ? 'block' : 'none';
+  document.getElementById('section-conn').style.display = hasElec ? 'block' : 'none';
+  // Masquer/afficher onglet bornes selon profil élec
+  document.getElementById('tab-bornes-btn').style.opacity = hasElec || !v ? '1' : '0.45';
 }
 
 function selectVehicle(v) {
   state.profile.vehicle = v;
-  document.querySelectorAll('.vehicle-card').forEach(c => c.classList.remove('on-c'));
-  document.getElementById('vc-'+v).classList.add('on-c');
-  // Réinitialiser carburant par défaut selon véhicule
+  document.querySelectorAll('.v-card').forEach(c => c.classList.remove('on'));
+  document.getElementById('vc-'+v).classList.add('on');
   if (v === 'electrique') state.profile.carburants = [];
   updateProfileSections();
 }
 
 function toggleCarb(c) {
-  const idx = state.profile.carburants.indexOf(c);
-  if (idx >= 0) state.profile.carburants.splice(idx,1);
-  else { state.profile.carburants = [c]; } // 1 seul à la fois
-  document.querySelectorAll('.carb-btn').forEach(b => b.classList.remove('on-c'));
-  state.profile.carburants.forEach(k => { const el=document.getElementById('cb-'+k); if(el) el.classList.add('on-c'); });
+  state.profile.carburants = [c]; // 1 seul
+  ['sp95','sp98','e10','gazole','e85','gplc'].forEach(k => {
+    const el=document.getElementById('cb-'+k);
+    if(el) el.classList.toggle('on-c', k===c);
+  });
 }
 
 function toggleConn(c) {
   const idx = state.profile.connecteurs.indexOf(c);
-  if (idx >= 0) state.profile.connecteurs.splice(idx,1);
+  if (idx>=0) state.profile.connecteurs.splice(idx,1);
   else state.profile.connecteurs.push(c);
-  document.querySelectorAll('.conn-btn').forEach(b => b.classList.remove('on-c'));
-  state.profile.connecteurs.forEach(k => { const el=document.getElementById('cn-'+k); if(el) el.classList.add('on-c'); });
+  ['type2','ccs','chademo','ef'].forEach(k => {
+    const el=document.getElementById('cn-'+k);
+    if(el) el.classList.toggle('on-e', state.profile.connecteurs.includes(k));
+  });
 }
 
 function saveProfile() {
   localStorage.setItem('vac_profile', JSON.stringify(state.profile));
-  document.getElementById('profile-dot').style.display = 'block';
+  document.getElementById('profile-dot').style.display='block';
+  updateFuelHint();
   closeProfile();
-  toast('Profil enregistré','success');
-  // Recharger données avec nouveau profil
-  if (state.dataLoaded) {
-    loadCarburants(state.userLat, state.userLng);
-    loadBornes(state.userLat, state.userLng);
-  }
+  toast('Profil enregistré','ok');
+  if (state.dataLoaded) { loadCarburants(state.userLat,state.userLng); loadBornes(state.userLat,state.userLng); }
 }
 
 function openProfile()  { document.getElementById('modal-overlay').classList.add('open'); }
 function closeProfile() { document.getElementById('modal-overlay').classList.remove('open'); }
-function closeProfileOutside(e) { if (e.target === document.getElementById('modal-overlay')) closeProfile(); }
+function closeProfileOutside(e) { if(e.target===document.getElementById('modal-overlay')) closeProfile(); }
 
-//  TABS 
-function switchTab(tab) {
-  ['fuel','bornes','feed'].forEach(t => {
-    document.getElementById('tab-'+t).classList.toggle('on', t===tab);
-    document.getElementById('tab-'+t+'-btn').classList.toggle('on', t===tab);
+// ── TABS ──────────────────────────────────────
+function switchTab(t) {
+  ['zone','fuel','bornes','feed'].forEach(id => {
+    document.getElementById('tab-'+id).classList.toggle('on', id===t);
+    document.getElementById('tab-'+id+'-btn').classList.toggle('on', id===t);
   });
 }
 
-//  GAMIFICATION 
+// ── GAMIFICATION ──────────────────────────────
 function visRadius() { return Math.floor(Math.log2(1+state.points)*2); }
 function level()     { const r=visRadius(); return r===0?0:r<=2?1:r<=5?2:r<=8?3:4; }
 function nextThresh(){ return Math.ceil(Math.pow(2,(visRadius()+1)/2)-1); }
@@ -787,265 +807,317 @@ function updateXP() {
   document.getElementById('xp-level').textContent='Niv. '+lv;
   document.getElementById('xp-label').textContent=Math.floor(pts)+' / '+next+' pts';
   state.visRadius=r;
-  document.getElementById('rc-val').textContent=r===0?'0 cellule':r+' cellule'+(r>1?'s':'');
   document.getElementById('locked-overlay').classList.toggle('off', r>=1);
   applyVisibility();
+  // Ajuster position légende selon hauteur sheet
+  updateLegendPos();
+}
+
+function updateLegendPos() {
+  const sheet = document.getElementById('sheet');
+  const h = sheet.offsetHeight || 300;
+  document.getElementById('lgnd').style.bottom = (h + 14) + 'px';
 }
 
 function addPoints(pts) {
-  const streak=checkStreak();
-  const mul=streak>=3?1.5:1, earned=+(pts*mul).toFixed(1);
-  state.points+=earned;
-  localStorage.setItem('vac_pts',state.points.toString());
-  showXPToast(streak>=3?`+${earned} pts · streak ×1.5 `:`+${pts} pt${pts>1?'s':''}`);
+  const s=checkStreak(), mul=s>=3?1.5:1, earned=+(pts*mul).toFixed(1);
+  state.points+=earned; localStorage.setItem('vac_pts',state.points.toString());
+  showXPToast(s>=3?`+${earned} pts · streak ×1.5`:`+${pts} pt${pts>1?'s':''}`);
   updateXP();
 }
 function penalize(pts) {
-  state.points=Math.max(0,state.points-pts);
-  localStorage.setItem('vac_pts',state.points.toString());
-  showXPToast(`-${pts} pts · spam`);
-  updateXP();
+  state.points=Math.max(0,state.points-pts); localStorage.setItem('vac_pts',state.points.toString());
+  showXPToast(`-${pts} pts · spam`); updateXP();
 }
 function checkStreak() {
   const now=Date.now(), gap=now-state.lastSignalTime;
-  state.streak = gap<120_000 ? state.streak+1 : 1;
-  state.lastSignalTime=now;
-  localStorage.setItem('vac_streak',state.streak.toString());
-  return state.streak;
+  state.streak=gap<120_000?state.streak+1:1; state.lastSignalTime=now;
+  localStorage.setItem('vac_streak',state.streak.toString()); return state.streak;
 }
 
-//  VISIBILITÉ 
-function h3Dist(a,b) {
-  const [ra,ca]=a.split('_').map(Number),[rb,cb]=b.split('_').map(Number);
-  return Math.max(Math.abs(ra-rb),Math.abs(ca-cb));
-}
-function applyVisibility() {
-  const r=state.visRadius, me=latlngToH3(state.userLat,state.userLng);
-  for(const [h3,ly] of state.hexLayers){
-    const v=h3Dist(h3,me)<=r;
-    ly.setStyle({opacity:v?1:0,fillOpacity:v?(ly._opacity||.3):0});
-  }
+// ── VISIBILITY ────────────────────────────────
+function h3Dist(a,b){const[ra,ca]=a.split('_').map(Number),[rb,cb]=b.split('_').map(Number);return Math.max(Math.abs(ra-rb),Math.abs(ca-cb));}
+function applyVisibility(){
+  const r=state.visRadius,me=latlngToH3(state.userLat,state.userLng);
+  for(const[h3,ly]of state.hexLayers){const v=h3Dist(h3,me)<=r;ly.setStyle({opacity:v?1:0,fillOpacity:v?(ly._opacity||.3):0});}
 }
 
-//  GRID 
-function latlngToH3(lat,lng){const row=Math.floor(lat/CFG.GRID);return `${row}_${Math.floor((lng/CFG.GRID)-(row%2===0?0:.5))}`;}
-function h3Center(h3){const[r,c]=h3.split('_').map(Number),off=r%2===0?0:.5;return{lat:(r+.5)*CFG.GRID,lng:(c+off+.5)*CFG.GRID};}
-function h3Poly(h3){const[r,c]=h3.split('_').map(Number),g=CFG.GRID,off=r%2===0?0:.5;const la=r*g,lb=(r+1)*g,lo=(c+off)*g,lp=(c+off+1)*g,mid=(la+lb)/2;return[[lb,lo+g*.15],[lb,lp-g*.15],[mid+g*.5,lp],[la,lp-g*.15],[la,lo+g*.15],[mid+g*.5,lo]];}
+// ── GRID ──────────────────────────────────────
+function latlngToH3(lat,lng){const r=Math.floor(lat/CFG.GRID);return `${r}_${Math.floor((lng/CFG.GRID)-(r%2===0?0:.5))}`;}
+function h3Center(h3){const[r,c]=h3.split('_').map(Number),o=r%2===0?0:.5;return{lat:(r+.5)*CFG.GRID,lng:(c+o+.5)*CFG.GRID};}
+function h3Poly(h3){const[r,c]=h3.split('_').map(Number),g=CFG.GRID,o=r%2===0?0:.5;const la=r*g,lb=(r+1)*g,lo=(c+o)*g,lp=(c+o+1)*g,mid=(la+lb)/2;return[[lb,lo+g*.15],[lb,lp-g*.15],[mid+g*.5,lp],[la,lp-g*.15],[la,lo+g*.15],[mid+g*.5,lo]];}
 
-//  SCORING 
+// ── SCORING ───────────────────────────────────
 const TW={SIGNAL_STRONG:1,SIGNAL_WEAK:.6,SIGNAL_IMPLICIT:.4};
 function sigmoid(x){return 1/(1+Math.exp(-x));}
 function scoreSignal(s,d){const dt=Math.max(0,(Date.now()-s.timestamp)/1000),acc=Math.max(.2,Math.min(1,1-s.accuracy/50));return(TW[s.type]||.4)*s.trust_score*Math.exp(-dt/CFG.DECAY_S)*acc*Math.log1p(d);}
-function zoneProb(h3){const now=Date.now(),cut=now-CFG.MAX_AGE;const active=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>cut);const d30=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>(now-30000)).length;const sum=active.reduce((a,s)=>a+scoreSignal(s,d30),0);const w=Math.min(1,active.length/CFG.COLD_N);return{prob:w*sigmoid(sum)+(1-w)*CFG.PRIOR,n:active.length,d30};}
+function zoneProb(h3){const now=Date.now(),cut=now-CFG.MAX_AGE;const a=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>cut);const d30=state.signals.filter(s=>s.h3_index===h3&&s.timestamp>(now-30000)).length;const sum=a.reduce((acc,s)=>acc+scoreSignal(s,d30),0);const w=Math.min(1,a.length/CFG.COLD_N);return{prob:w*sigmoid(sum)+(1-w)*CFG.PRIOR,n:a.length,d30};}
 
-//  STORAGE 
+// ── STORAGE ───────────────────────────────────
 function loadSignals(){try{const r=localStorage.getItem('vac_signals');if(r)state.signals=JSON.parse(r).filter(s=>Date.now()-s.timestamp<CFG.MAX_AGE);}catch{state.signals=[];}}
 function saveSignals(){state.signals=state.signals.filter(s=>Date.now()-s.timestamp<CFG.MAX_AGE);try{localStorage.setItem('vac_signals',JSON.stringify(state.signals));}catch{}localStorage.setItem('vac_trust',state.trustScore.toString());}
 
-//  RATE LIMIT 
+// ── RATE LIMIT ────────────────────────────────
 function checkRL(){if(Date.now()-state.lastMinReset>60000){state.signalsThisMin=0;state.lastMinReset=Date.now();}return state.signalsThisMin<CFG.RATE_LIMIT;}
 function updateRLBar(){const p=(state.signalsThisMin/CFG.RATE_LIMIT)*100,f=document.getElementById('rl-fill');f.style.width=p+'%';f.style.background=p>80?'var(--warn)':'var(--accent)';}
 function isSpam(h3){return state.signals.filter(s=>s.h3_index===h3&&s.user_id===state.userId&&Date.now()-s.timestamp<30000).length>=CFG.SPAM_TH;}
 
-//  GEO 
-function getPos(){return new Promise(res=>{if(!navigator.geolocation)return res({lat:state.userLat,lng:state.userLng,accuracy:20});navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:Math.min(50,p.coords.accuracy||10)}),()=>res({lat:state.userLat,lng:state.userLng,accuracy:20}),{timeout:4000,maximumAge:10000});});}
+// ── GEO ───────────────────────────────────────
+function getPos(){return new Promise(res=>{if(!navigator.geolocation)return res({lat:state.userLat,lng:state.userLng,accuracy:20});navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:Math.min(50,p.coords.accuracy||10)}),()=>res({lat:state.userLat,lng:state.userLng,accuracy:20}),{timeout:5000,maximumAge:15000,enableHighAccuracy:true});});}
 
-//  CARBURANTS 
+// ── TRAFIC ────────────────────────────────────
+async function loadTraffic(lat, lng) {
+  if (!state.trafficOn) return;
+
+  // TomTom Flow API — récupère la vitesse sur les routes proches
+  try {
+    const zoom = 14;
+    const url = `https://api.tomtom.com/traffic/services/4/flowSegmentData/relative0/${zoom}/json?point=${lat},${lng}&key=${TOMTOM_KEY}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    const seg = d.flowSegmentData;
+    if (!seg) throw new Error();
+
+    const ratio = seg.currentSpeed / seg.freeFlowSpeed;
+    const status = ratio > 0.75 ? 'ok' : ratio > 0.4 ? 'warn' : 'bad';
+    const delay = Math.round((1/ratio - 1) * 5); // minutes de retard estimées
+
+    updateTrafficUI(status, seg.currentSpeed, delay, ratio);
+    updateTrafficLayer(lat, lng, status);
+  } catch {
+    simulateTraffic(lat, lng);
+  }
+}
+
+function simulateTraffic(lat, lng) {
+  // Simulation réaliste basée sur l'heure
+  const h = new Date().getHours();
+  const isRush = (h >= 7 && h <= 9) || (h >= 17 && h <= 20);
+  const isNight = h < 6 || h > 22;
+  const status = isNight ? 'ok' : isRush ? (Math.random() > .4 ? 'bad' : 'warn') : (Math.random() > .7 ? 'warn' : 'ok');
+  const speed = isNight ? 55 : isRush ? 18 : 38;
+  const delay = status === 'bad' ? Math.floor(3+Math.random()*8) : status === 'warn' ? Math.floor(1+Math.random()*3) : 0;
+  updateTrafficUI(status, speed, delay, status==='ok'?1:status==='warn'?.6:.3);
+  updateTrafficLayer(lat, lng, status);
+}
+
+function updateTrafficUI(status, speed, delayMin, ratio) {
+  state.trafficStatus = status;
+
+  // Top pill
+  const pill = document.getElementById('traffic-pill');
+  const dot  = document.getElementById('traffic-dot');
+  const lbl  = document.getElementById('traffic-label');
+  pill.style.display = 'flex';
+  pill.className = `pill traffic ${status === 'ok' ? '' : status}`;
+  dot.className  = `pill-dot ${status === 'ok' ? 'g' : status === 'warn' ? 'w' : 'r'}`;
+  lbl.textContent = status === 'ok' ? 'Trafic fluide' : status === 'warn' ? 'Ralentissements' : 'Embouteillage';
+
+  // Zone card
+  const card = document.getElementById('traffic-card');
+  card.style.display = 'flex';
+  card.className = `traffic-card ${status}`;
+  document.getElementById('tc-title').textContent =
+    status === 'ok'   ? 'Circulation fluide' :
+    status === 'warn' ? 'Ralentissements détectés' : 'Embouteillage important';
+  document.getElementById('tc-sub').textContent =
+    `${Math.round(speed)} km/h · ${delayMin > 0 ? '+' + delayMin + ' min estimées' : 'Temps normal'}`;
+  const timeEl = document.getElementById('tc-time');
+  timeEl.textContent = delayMin > 0 ? `+${delayMin} min` : 'OK';
+  timeEl.className = `tc-time ${status}`;
+
+  // Alerte si embouteillage
+  if (status === 'bad') {
+    toast('Embouteillage sur votre route','wn');
+  }
+}
+
+function updateTrafficLayer(lat, lng, status) {
+  if (!state.trafficOn) return;
+  // Couleur trafic sur la carte via un cercle coloré au-dessus des routes
+  if (state.trafficLayer) state.map.removeLayer(state.trafficLayer);
+  const color = status === 'ok' ? '#34c97a' : status === 'warn' ? '#e89d1a' : '#d94f4f';
+  state.trafficLayer = L.circle([lat, lng], {
+    radius: 800,
+    fillColor: color,
+    fillOpacity: 0.08,
+    color: color,
+    weight: 2,
+    opacity: 0.3,
+    dashArray: '6 4',
+  }).addTo(state.map);
+}
+
+function toggleTraffic() {
+  state.trafficOn = !state.trafficOn;
+  const btn = document.getElementById('btn-traffic');
+  btn.classList.toggle('on', state.trafficOn);
+  if (!state.trafficOn) {
+    if (state.trafficLayer) { state.map.removeLayer(state.trafficLayer); state.trafficLayer=null; }
+    document.getElementById('traffic-pill').style.display='none';
+    document.getElementById('traffic-card').style.display='none';
+  } else {
+    loadTraffic(state.userLat, state.userLng);
+  }
+}
+
+// ── CARBURANTS ────────────────────────────────
 async function loadCarburants(lat, lng) {
   const el = document.getElementById('fuel-content');
-  el.innerHTML = '<div class="no-data">Chargement…</div>';
-  const profCarb = state.profile.carburants[0] || null;
-  const vehicleCarbs = VEHICLE_CARBS[state.profile.vehicle] || Object.keys(FUEL_NAMES);
+  const activeFuels = getActiveFuels();
 
-  let stations = [];
-
-  // 1. Vercel proxy → API gouvernementale (prix officiels)
-  try {
-    const r = await fetch(`${API_BASE}/api/carburants?lat=${lat}&lng=${lng}`, {signal:AbortSignal.timeout(8000)});
-    if (r.ok) {
-      const d = await r.json();
-      if (d.stations?.length) stations = d.stations;
-    }
-  } catch(e) {}
-
-  // 2. Si Vercel échoue → données démo avec vrais prix
-  if (!stations.length) {
-    stations = [
-      {id:'d1',nom:'Total Energies',adresse:'Station locale',ville:'',lat:lat+0.003,lng:lng+0.002,automate:true,
-       prix:{gazole:{val:1.718},sp95:{val:1.878},sp98:{val:1.968},e10:{val:1.828},e85:{val:0.898},gplc:null}},
-      {id:'d2',nom:'BP',adresse:'Station locale',ville:'',lat:lat-0.004,lng:lng+0.006,automate:false,
-       prix:{gazole:{val:1.698},sp95:{val:1.858},sp98:{val:1.948},e10:{val:1.808},e85:null,gplc:null}},
-      {id:'d3',nom:'Carrefour',adresse:'Station locale',ville:'',lat:lat+0.008,lng:lng-0.004,automate:true,
-       prix:{gazole:{val:1.678},sp95:{val:1.828},sp98:{val:1.918},e10:{val:1.778},e85:{val:0.868},gplc:null}},
-      {id:'d4',nom:'E.Leclerc',adresse:'Station locale',ville:'',lat:lat-0.007,lng:lng-0.003,automate:true,
-       prix:{gazole:{val:1.659},sp95:{val:1.809},sp98:{val:1.899},e10:{val:1.759},e85:{val:0.849},gplc:{val:0.979}}},
-    ];
-    el.innerHTML = '<div class="no-data" style="color:var(--warn);font-style:normal;"> Prix indicatifs — API indisponible</div>';
-    setTimeout(() => renderFuelStations(stations, lat, lng, profCarb, vehicleCarbs, el), 800);
+  // Véhicule électrique → pas besoin de carburant
+  if (activeFuels.length === 0 && state.profile.vehicle === 'electrique') {
+    el.innerHTML = '<div class="no-data">Véhicule électrique :<br>consultez l\'onglet Bornes.</div>';
     return;
   }
 
-  renderFuelStations(stations, lat, lng, profCarb, vehicleCarbs, el);
-}
+  el.innerHTML = '<div class="no-data">Chargement…</div>';
 
-function renderFuelStations(stations, lat, lng, profCarb, vehicleCarbs, el) {
-  const allP = {};
-  stations.forEach(s => Object.entries(s.prix).forEach(([k,v]) => {
-    if (v?.val > 0.5) { if (!allP[k]) allP[k]=[]; allP[k].push(v.val); }
-  }));
-  const mm = {};
-  Object.entries(allP).forEach(([k,v]) => { mm[k]={min:Math.min(...v),max:Math.max(...v)}; });
+  let stations = [];
+  try {
+    const r = await fetch(`${API_BASE}/api/carburants?lat=${lat}&lng=${lng}`, {signal:AbortSignal.timeout(8000)});
+    if (r.ok) { const d=await r.json(); if(d.stations?.length) stations=d.stations; }
+  } catch {}
+
+  // Fallback démo
+  const isDemo = !stations.length;
+  if (isDemo) {
+    stations = [
+      {id:'d1',nom:'Total Energies',adresse:'Avenue Charles Rouxel',ville:'Pontault-Combault',lat:lat+0.003,lng:lng+0.002,automate:true, prix:{gazole:{val:1.718},sp95:{val:1.878},sp98:{val:1.968},e10:{val:1.828},e85:{val:0.898},gplc:null}},
+      {id:'d2',nom:'BP',adresse:'Route de Combs',ville:'Pontault-Combault',lat:lat-0.004,lng:lng+0.006,automate:false, prix:{gazole:{val:1.698},sp95:{val:1.858},sp98:{val:1.948},e10:{val:1.808},e85:null,gplc:null}},
+      {id:'d3',nom:'Carrefour Market',adresse:'Rue des Berchères',ville:'Pontault-Combault',lat:lat+0.008,lng:lng-0.004,automate:true, prix:{gazole:{val:1.678},sp95:{val:1.828},sp98:{val:1.918},e10:{val:1.778},e85:{val:0.868},gplc:null}},
+      {id:'d4',nom:'E.Leclerc',adresse:'Bd de la Francilienne',ville:'Pontault-Combault',lat:lat-0.007,lng:lng-0.003,automate:true, prix:{gazole:{val:1.659},sp95:{val:1.809},sp98:{val:1.899},e10:{val:1.759},e85:{val:0.849},gplc:{val:0.979}}},
+    ];
+  }
+
+  // Filtrer prix selon profil véhicule
+  const filterKeys = activeFuels.length > 0 ? activeFuels : Object.keys(FUEL_NAMES);
+
+  // Min/max pour coloration
+  const allP={};
+  stations.forEach(s=>filterKeys.forEach(k=>{const v=s.prix[k];if(v?.val>.5){if(!allP[k])allP[k]=[];allP[k].push(v.val);}}));
+  const mm={};
+  Object.entries(allP).forEach(([k,v])=>{mm[k]={min:Math.min(...v),max:Math.max(...v)};});
 
   clearFuelMarkers();
-  const isDemo = stations[0]?.id?.startsWith('d');
-  el.innerHTML = (isDemo ? '<div style="margin-bottom:8px;"><span class="badge-demo">Prix indicatifs</span></div>' : '') +
+
+  el.innerHTML = (isDemo ? '<div style="margin-bottom:8px;"><span class="badge demo">Prix indicatifs · API en cours</span></div>' : '') +
     stations.slice(0,4).map(s => {
-    const relevantPrix = Object.entries(s.prix)
-      .filter(([k,v]) => v?.val > 0.5 && vehicleCarbs.includes(k))
-      .sort(([a],[b]) => a===profCarb?-1:b===profCarb?1:0);
+      const relevantPrix = filterKeys
+        .map(k => [k, s.prix[k]])
+        .filter(([k,v]) => v?.val > .5)
+        .sort(([a],[b]) => {
+          // Carburant préféré en premier
+          const pref = state.profile.carburants[0];
+          if (a===pref) return -1; if (b===pref) return 1; return 0;
+        });
 
-    const d = distM(lat,lng,s.lat,s.lng);
-    const prixHtml = relevantPrix.map(([k,v]) => {
-      const isFav = k === profCarb;
-      const cls = (mm[k] ? (v.val<=mm[k].min?' lo':v.val>=mm[k].max?' hi':'') : '') + (isFav?' fav':'');
-      return `<div class="price-tag${cls}"><span class="pt-name">${FUEL_NAMES[k]}</span><span class="pt-val">${v.val.toFixed(3)}&thinsp;€</span></div>`;
-    }).join('');
+      const d = distM(lat,lng,s.lat,s.lng);
+      const prixHtml = relevantPrix.map(([k,v]) => {
+        const isFav = k === state.profile.carburants[0];
+        const cls = (mm[k]?(v.val<=mm[k].min?' lo':v.val>=mm[k].max?' hi':''):'') + (isFav?' fav':'');
+        return `<div class="price-tag${cls}"><span class="pt-name">${FUEL_NAMES[k]}</span><span class="pt-val">${v.val.toFixed(3)}&thinsp;€</span></div>`;
+      }).join('');
 
-    if (s.lat && s.lng) {
-      const ref = relevantPrix[0];
-      const label = ref ? ref[1].val.toFixed(3)+'€' : s.nom.slice(0,6);
-      const isLo = ref && mm[ref[0]] && ref[1].val <= mm[ref[0]].min;
-      const icon = L.divIcon({html:`<div class="fm${isLo?' lo':''}">${label}</div>`,iconSize:[58,20],iconAnchor:[29,10],className:''});
-      const m = L.marker([s.lat,s.lng],{icon}).addTo(state.map);
-      m.bindPopup(`<b>${s.nom}</b>${s.adresse&&s.adresse!=='Station locale'?'<br>'+s.adresse:''}<br>${relevantPrix.map(([k,v])=>`${FUEL_NAMES[k]}: ${v.val.toFixed(3)} €`).join('<br>')||'Prix non disponibles'}`);
-      state.fuelMarkers.push(m);
-    }
+      if (s.lat && s.lng) {
+        const ref = relevantPrix[0];
+        const isLo = ref && mm[ref[0]] && ref[1].val <= mm[ref[0]].min;
+        const lbl = ref ? ref[1].val.toFixed(3)+'€' : s.nom.slice(0,7);
+        const icon = L.divIcon({html:`<div class="fm${isLo?' lo':''}">${lbl}</div>`,iconSize:[58,20],iconAnchor:[29,10],className:''});
+        const m = L.marker([s.lat,s.lng],{icon}).addTo(state.map);
+        m.bindPopup(`<b>${s.nom}</b>${s.adresse?'<br>'+s.adresse:''}<br>${relevantPrix.map(([k,v])=>`${FUEL_NAMES[k]}: ${v.val.toFixed(3)} €`).join('<br>')||'Prix non disponibles'}`);
+        state.fuelMarkers.push(m);
+      }
 
-    return `<div class="stn">
-      <div class="stn-name">${s.nom}</div>
-      ${s.adresse&&s.adresse!=='Station locale'&&s.adresse?`<div class="stn-addr">${s.adresse}${s.ville?', '+s.ville:''}</div>`:''}
-      <div class="stn-prices" style="margin-top:6px;">${prixHtml||'<span style="font-size:10px;color:var(--muted)">Prix non disponibles</span>'}</div>
-      <div class="stn-meta" style="margin-top:6px;"><span class="stn-dist">${fmtDist(d)}</span>${s.automate?'<span class="badge-h24">24h/24</span>':''}</div>
-    </div>`;
-  }).join('') || '<div class="no-data">Aucune station trouvée</div>';
+      return `<div class="stn">
+        <div class="stn-top"><div class="stn-name">${s.nom}</div><div class="stn-dist">${fmtDist(d)}</div></div>
+        ${s.adresse?`<div class="stn-addr">${s.adresse}, ${s.ville}</div>`:''}
+        <div class="stn-prices">${prixHtml||'<span style="font-size:10px;color:var(--muted)">Prix non disponibles</span>'}</div>
+        <div class="stn-footer">${s.automate?'<span class="badge h24">24h/24</span>':''}</div>
+      </div>`;
+    }).join('') || '<div class="no-data">Aucune station trouvée</div>';
 }
 
 function clearFuelMarkers(){state.fuelMarkers.forEach(m=>state.map.removeLayer(m));state.fuelMarkers=[];}
 
-//  BORNES ÉLECTRIQUES 
+// ── BORNES ────────────────────────────────────
 async function loadBornes(lat, lng) {
   const el = document.getElementById('bornes-content');
   el.innerHTML = '<div class="no-data">Chargement…</div>';
   clearBorneMarkers();
-
   const prefConn = state.profile.connecteurs;
 
   try {
-    // Overpass — amenity=charging_station — CORS ouvert, appel direct
     const query = `[out:json][timeout:12];node[amenity=charging_station](around:4000,${lat},${lng});out 20;`;
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: 'data=' + encodeURIComponent(query),
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!res.ok) throw new Error('Overpass');
+    const res = await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(query),signal:AbortSignal.timeout(12000)});
+    if (!res.ok) throw new Error();
     const data = await res.json();
-    const nodes = data.elements || [];
-    if (!nodes.length) { el.innerHTML='<div class="no-data">Aucune borne à 4 km</div>'; return; }
+    const nodes = data.elements||[];
+    if (!nodes.length){el.innerHTML='<div class="no-data">Aucune borne à 4 km</div>';return;}
 
     const bornes = nodes.map(n => {
-      const t = n.tags || {};
-      const dx = (n.lat-lat)*111, dy = (n.lon-lng)*111*Math.cos(lat*Math.PI/180);
-      const dist = Math.sqrt(dx*dx+dy*dy);
-
-      // Connecteurs OSM
-      const types = [];
-      if (t['socket:type2'])       types.push('Type 2');
-      if (t['socket:ccs2'])        types.push('CCS');
-      if (t['socket:chademo'])     types.push('CHAdeMO');
-      if (t['socket:type2_cable']) types.push('Type 2 câble');
-      if (t['socket:schuko'])      types.push('Schuko');
-
-      // Puissance
-      const pw = parseFloat(t['maxpower'] || t['socket:type2:output'] || t['socket:ccs2:output'] || '0');
-      const isDC = pw >= 50 || t['socket:ccs2'] || t['socket:chademo'];
-      const typeCharge = pw >= 100 ? 'DC Ultra-rapide' : pw >= 50 ? 'DC Rapide' : pw >= 22 ? 'AC Semi-rapide' : 'AC Lente';
-
-      // Compatibilité profil
-      const connMap = { type2:'Type 2', ccs:'CCS', chademo:'CHAdeMO', ef:'Schuko' };
-      const isCompat = prefConn.length === 0 || prefConn.some(c => types.includes(connMap[c]||c));
-
+      const t=n.tags||{};
+      const dx=(n.lat-lat)*111,dy=(n.lon-lng)*111*Math.cos(lat*Math.PI/180);
+      const types=[];
+      if(t['socket:type2'])types.push('Type 2');
+      if(t['socket:ccs2'])types.push('CCS');
+      if(t['socket:chademo'])types.push('CHAdeMO');
+      if(t['socket:schuko'])types.push('Schuko');
+      const pw=parseFloat(t.maxpower||t['socket:type2:output']||t['socket:ccs2:output']||'0');
+      const isDC=pw>=50||t['socket:ccs2']||t['socket:chademo'];
+      const typeCharge=pw>=100?'DC Ultra-rapide':pw>=50?'DC Rapide':pw>=22?'AC Semi-rapide':'AC Lente';
+      const connMap={type2:'Type 2',ccs:'CCS',chademo:'CHAdeMO',ef:'Schuko'};
+      const isCompat=prefConn.length===0||prefConn.some(c=>types.includes(connMap[c]||c));
       return {
-        id: n.id,
-        nom: t.brand || t.name || t.operator || 'Borne de recharge',
-        adresse: t['addr:street'] ? `${t['addr:housenumber']||''} ${t['addr:street']}`.trim() : '',
-        ville: t['addr:city'] || '',
-        lat: n.lat, lng: n.lon, dist,
-        nbre_pdc: parseInt(t.capacity || t['charging_station:output'] || '1'),
-        puissance: pw,
-        type_charge: typeCharge,
-        isDC: !!isDC,
-        types,
-        operateur: t.operator || t.brand || t.network || 'Inconnu',
-        gratuit: t.fee === 'no',
-        tarif: t.fee === 'yes' ? (t['charge'] || null) : null,
-        cb: t['payment:credit_cards'] === 'yes',
-        h24: t.opening_hours === '24/7',
-        isCompat,
+        id:n.id,nom:t.brand||t.name||t.operator||'Borne',
+        adresse:t['addr:street']?`${t['addr:housenumber']||''} ${t['addr:street']}`.trim():'',
+        lat:n.lat,lng:n.lon,dist:Math.sqrt(dx*dx+dy*dy),
+        nbre_pdc:parseInt(t.capacity||'1'),puissance:pw,isDC,typeCharge,types,
+        operateur:t.operator||t.brand||t.network||'Inconnu',
+        gratuit:t.fee==='no',tarif:t.fee==='yes'?(t.charge||null):null,
+        cb:t['payment:credit_cards']==='yes',h24:t.opening_hours==='24/7',isCompat,
       };
-    })
-    .sort((a,b) => (b.isCompat?1:0)-(a.isCompat?1:0) || a.dist-b.dist)
-    .slice(0, 6);
+    }).sort((a,b)=>(b.isCompat?1:0)-(a.isCompat?1:0)||a.dist-b.dist).slice(0,6);
 
     el.innerHTML = bornes.map(b => {
-      const d = distM(lat,lng,b.lat,b.lng);
-      const typeCls = b.isDC ? 'dc' : 'ac';
-      const compatBorder = b.isCompat && prefConn.length>0 ? ' compat' : '';
-      const tarifHtml = b.gratuit
-        ? '<span class="tag-free">Gratuit</span>'
-        : b.tarif ? `<span class="tval">${b.tarif.slice(0,40)}</span>`
-        : '<span style="color:var(--muted)">Tarif non renseigné</span>';
-
-      if (b.lat && b.lng) {
-        const label = `${b.puissance>0?b.puissance+'kW':''}`;
-        const icon = L.divIcon({html:`<div class="bm${b.isDC?' fast':''}">${label}</div>`,iconSize:[60,22],iconAnchor:[30,11],className:''});
-        const m = L.marker([b.lat,b.lng],{icon}).addTo(state.map);
-        m.bindPopup(`<b>${b.nom}</b>${b.adresse?'<br>'+b.adresse:''}<br>${b.operateur}<br>${b.nbre_pdc} PDC · ${b.type_charge}${b.types.length?'<br>'+b.types.join(' · '):''}<br>${b.gratuit?'Gratuit':b.tarif||'Tarif inconnu'}${b.cb?'<br>CB acceptée':''}${b.h24?'<br>24h/24':''}`);
+      const d=distM(lat,lng,b.lat,b.lng);
+      const typeCls=b.isDC?'dc':'ac';
+      if(b.lat&&b.lng){
+        const lbl=`${b.puissance>0?b.puissance+'kW':''}`;
+        const icon=L.divIcon({html:`<div class="bm${b.isDC?' dc':''}">${lbl}</div>`,iconSize:[52,20],iconAnchor:[26,10],className:''});
+        const m=L.marker([b.lat,b.lng],{icon}).addTo(state.map);
+        m.bindPopup(`<b>${b.nom}</b>${b.adresse?'<br>'+b.adresse:''}<br>${b.operateur}<br>${b.nbre_pdc} PDC · ${b.typeCharge}${b.types.length?'<br>'+b.types.join(' · '):''}<br>${b.gratuit?'Gratuit':b.tarif||'Tarif non renseigné'}${b.cb?'<br>CB acceptée':''}${b.h24?'<br>24h/24':''}`);
         state.borneMarkers.push(m);
       }
-
-      return `<div class="brn" class="brn${compatBorder}">
-        <div class="brn-top">
-          <div class="brn-name">${b.nom}</div>
-          <div class="brn-pdc">${b.nbre_pdc} PDC</div>
-        </div>
-        <div class="brn-op">${b.operateur}${b.h24?' · <span style="color:var(--accent);font-size:9px">24h/24</span>':''}</div>
+      return `<div class="brn${b.isCompat&&prefConn.length>0?' compat':''}">
+        <div class="brn-top"><div class="brn-name">${b.nom}</div><div class="brn-pdc">${b.nbre_pdc} PDC</div></div>
+        <div class="brn-op">${b.operateur}${b.h24?' · <span style="color:var(--accent);font-size:8px;font-weight:700;">24h/24</span>':''}</div>
         <div class="brn-tags">
           ${b.puissance>0?`<div class="btag kw">${b.puissance} kW</div>`:''}
-          <div class="borne-pill ${typeCls}">${b.type_charge}</div>
+          <div class="btag ${typeCls}">${b.typeCharge}</div>
           ${b.types.map(t=>`<div class="btag">${t}</div>`).join('')}
         </div>
-        <div class="brn-tarif">${tarifHtml}${b.cb?'<span class="tag-cb">CB</span>':''}</div>
-        <div class="stn-meta" style="margin-top:4px;">${fmtDist(d)}</div>
+        <div class="brn-bottom">
+          <span class="brn-tarif">${b.gratuit?'<span class="tag-free">Gratuit</span>':b.tarif?`<span style="font-size:10px;color:var(--muted2)">${b.tarif.slice(0,40)}</span>`:'<span style="font-size:10px;color:var(--muted)">Tarif non renseigné</span>'}</span>
+          ${b.cb?'<span class="tag-cb">CB</span>':''}
+          <span style="font-size:9px;font-family:\'DM Mono\',monospace;color:var(--muted);margin-left:auto;">${fmtDist(d)}</span>
+        </div>
       </div>`;
-    }).join('') || '<div class="no-data">Aucune borne trouvée</div>';
-
-  } catch(e) {
-    el.innerHTML = '<div class="no-data">Service indisponible.<br><span style="font-size:9px;color:var(--muted)">Vérifiez votre connexion.</span></div>';
+    }).join('')||'<div class="no-data">Aucune borne trouvée</div>';
+  } catch {
+    el.innerHTML='<div class="no-data">Service indisponible.<br>Vérifiez votre connexion.</div>';
   }
 }
 
 function clearBorneMarkers(){state.borneMarkers.forEach(m=>state.map.removeLayer(m));state.borneMarkers=[];}
 
-// Distance en mètres
-function distM(la,lo,lb,lob){if(!lb||!lob)return 0;const dx=(lb-la)*111320,dy=(lob-lo)*111320*Math.cos(la*Math.PI/180);return Math.round(Math.sqrt(dx*dx+dy*dy));}
-function fmtDist(m){return m<1000?m+'m ':(m/1000).toFixed(1)+'km ';}
-
-//  FEED 
-const typeLabel={SIGNAL_STRONG:'fort',SIGNAL_WEAK:'faible',SIGNAL_IMPLICIT:'implicite'};
-const typeIcon = {
-  SIGNAL_STRONG: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>',
-  SIGNAL_WEAK:   '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>',
+// ── FEED ──────────────────────────────────────
+const typeLabel={SIGNAL_STRONG:'Fort',SIGNAL_WEAK:'Faible',SIGNAL_IMPLICIT:'Implicite'};
+const typeIcon={
+  SIGNAL_STRONG:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>',
+  SIGNAL_WEAK:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>',
   SIGNAL_IMPLICIT:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>',
 };
 const typePts={SIGNAL_STRONG:CFG.PTS_STRONG,SIGNAL_WEAK:CFG.PTS_WEAK,SIGNAL_IMPLICIT:CFG.PTS_IMPLICIT};
@@ -1057,45 +1129,46 @@ function addFeedItem(type,street,userId,isMe=false,pts=0){
 }
 function timeSince(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<5)return'à l\'instant';if(s<60)return s+'s';return Math.floor(s/60)+'min';}
 function renderFeed(){
-  document.getElementById('feed-count').textContent=state.feedItems.length;
-  document.getElementById('feed-list').innerHTML=state.feedItems.slice(0,15).map(item=>`
-    <div class="fi">
-      <div class="fi-icon ${item.type==='SIGNAL_STRONG'?'s':item.type==='SIGNAL_WEAK'?'w':'i'}">${typeIcon[item.type]}</div>
+  document.getElementById('feed-list').innerHTML=state.feedItems.slice(0,20).map(item=>{
+    const tc=item.type==='SIGNAL_STRONG'?'s':item.type==='SIGNAL_WEAK'?'w':'i';
+    return`<div class="fi">
+      <div class="fi-icon ${tc}">${typeIcon[item.type]}</div>
       <div class="fi-body">
         <div class="fi-msg">${item.isMe?'<b>Vous</b>':'User '+item.userId.slice(-4)} · ${item.street}</div>
         <div class="fi-meta">
           <span class="fi-time">${timeSince(item.time)}</span>
-          <span class="fi-tag ${item.type==='SIGNAL_STRONG'?'s':item.type==='SIGNAL_WEAK'?'w':'i'}">${typeLabel[item.type]}</span>
-          ${item.pts>0?`<span class="fi-pts">+${item.pts}pts</span>`:''}
+          <span class="fi-tag ${tc}">${typeLabel[item.type]}</span>
+          ${item.pts>0?`<span class="fi-pts">+${item.pts} pts</span>`:''}
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('')||'<div class="no-data">Aucune activité récente.</div>';
 }
 
-//  ZONE PANEL 
+// ── ZONE PANEL ────────────────────────────────
 function updateZonePanel(){
   const h3=latlngToH3(state.userLat,state.userLng),{prob,n,d30}=zoneProb(h3),pct=Math.round(prob*100);
   const el=document.getElementById('zp-prob');
-  el.textContent=pct+'%'; el.className='zstat-val '+(pct>=70?'green':pct>=40?'orange':'red');
+  el.textContent=pct+'%';el.className='zv '+(pct>=70?'g':pct>=40?'o':'r');
   document.getElementById('zp-count').textContent=n;
   document.getElementById('zp-density').textContent=d30;
   const last=state.signals.filter(s=>s.h3_index===h3).sort((a,b)=>b.timestamp-a.timestamp)[0];
   const ageEl=document.getElementById('zp-age'),ageSub=document.getElementById('zp-age-sub');
   if(last){const s=Math.floor((Date.now()-last.timestamp)/1000);ageEl.textContent=s<60?s+'s':Math.floor(s/60)+'min';ageSub.textContent=typeLabel[last.type];ageEl.style.color=s<30?'var(--accent)':s<90?'var(--warn)':'var(--muted2)';}
-  else{ageEl.textContent='–';ageSub.textContent='aucun';ageEl.style.color='var(--muted2)';}
+  else{ageEl.textContent='—';ageSub.textContent='—';ageEl.style.color='var(--muted2)';}
   const bar=document.getElementById('zp-bar');bar.style.width=pct+'%';bar.style.background=pct>=70?'var(--accent)':pct>=40?'var(--warn)':'var(--danger)';
 }
+
 function updateHeaderCounters(){
   const now=Date.now();
-  document.getElementById('v-active').textContent=state.signals.filter(s=>now-s.timestamp<CFG.MAX_AGE).length;
-  document.getElementById('v-zones').textContent=state.hexLayers.size;
+  // Pas de header counters en mobile-first → juste pts
 }
 
-//  CARTE 
-function probColor(p){if(p>=.7)return{fill:'#3dd68c',stroke:'#2ab87a'};if(p>=.4)return{fill:'#f5a623',stroke:'#d4891a'};return{fill:'#e85555',stroke:'#c43d3d'};}
+// ── CARTE ─────────────────────────────────────
+function probColor(p){if(p>=.7)return{fill:'#34c97a',stroke:'#28a863'};if(p>=.4)return{fill:'#e89d1a',stroke:'#c47e10'};return{fill:'#d94f4f',stroke:'#b83030'};}
 
 function renderZone(h3){
-  const{prob,n,d30}=zoneProb(h3),pts=h3Poly(h3),{fill,stroke}=probColor(prob),op=0.12+prob*.5;
+  const{prob,n,d30}=zoneProb(h3),pts=h3Poly(h3),{fill,stroke}=probColor(prob),op=.12+prob*.5;
   const dist=h3Dist(h3,latlngToH3(state.userLat,state.userLng)),vis=dist<=state.visRadius;
   if(state.hexLayers.has(h3)){const ly=state.hexLayers.get(h3);ly.setLatLngs(pts);ly._opacity=op;ly.setStyle({fillColor:fill,color:stroke,fillOpacity:vis?op:0,opacity:vis?1:0});ly._meta={prob,n,d30,h3};}
   else{
@@ -1104,18 +1177,14 @@ function renderZone(h3){
     poly.on('click',function(){
       const m=this._meta,ctr=h3Center(m.h3);
       const last=state.signals.filter(s=>s.h3_index===m.h3).sort((a,b)=>b.timestamp-a.timestamp)[0];
-      L.popup().setLatLng([ctr.lat,ctr.lng]).setContent(`
-        <div><div class="popup-prob" style="color:${probColor(m.prob).fill}">${Math.round(m.prob*100)}%</div>
-        <div class="popup-label">probabilité de disponibilité</div>
-        <div class="popup-row">
-          <div class="popup-stat"><div class="popup-stat-val" style="color:var(--blue)">${m.n}</div><div class="popup-stat-label">signaux</div></div>
-          <div class="popup-stat"><div class="popup-stat-val" style="color:var(--warn)">${m.d30}</div><div class="popup-stat-label">/ 30s</div></div>
-          <div class="popup-stat"><div class="popup-stat-val">${last?Math.floor((Date.now()-last.timestamp)/1000)+'s':'–'}</div><div class="popup-stat-label">dernier</div></div>
-        </div></div>`).openOn(state.map);
+      L.popup().setLatLng([ctr.lat,ctr.lng]).setContent(
+        `<b>${Math.round(m.prob*100)}% de disponibilité</b><br>${m.n} signal${m.n>1?'s':''} · densité ${m.d30}/30s${last?'<br>Dernier : '+Math.floor((Date.now()-last.timestamp)/1000)+'s':''}`
+      ).openOn(state.map);
     });
     poly.addTo(state.map);state.hexLayers.set(h3,poly);
   }
 }
+
 function renderAllZones(){
   const now=Date.now(),active=new Set(state.signals.filter(s=>now-s.timestamp<CFG.MAX_AGE).map(s=>s.h3_index));
   for(const[h3,ly]of state.hexLayers){if(!active.has(h3)){state.map.removeLayer(ly);state.hexLayers.delete(h3);}}
@@ -1125,65 +1194,79 @@ function renderAllZones(){
 let userMarker=null;
 function updateUserMarker(lat,lng){
   state.userLat=lat;state.userLng=lng;
-  const icon=L.divIcon({html:`<div style="width:14px;height:14px;background:#4a9eff;border:2px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(74,158,255,.25)"></div>`,iconSize:[14,14],iconAnchor:[7,7],className:''});
-  if(userMarker)userMarker.setLatLng([lat,lng]);else userMarker=L.marker([lat,lng],{icon}).addTo(state.map);
+  const icon=L.divIcon({html:`<div style="width:14px;height:14px;background:#3d8eef;border:2.5px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(61,142,239,.25)"></div>`,iconSize:[14,14],iconAnchor:[7,7],className:''});
+  if(userMarker)userMarker.setLatLng([lat,lng]);else userMarker=L.marker([lat,lng],{icon,zIndexOffset:1000}).addTo(state.map);
 }
 
-//  SIGNAL 
+// ── SIGNAL ────────────────────────────────────
 async function submitSignal(type='SIGNAL_STRONG'){
   const btn=document.getElementById('btn-signal');
-  if(!checkRL()){toast('Limite 10/min','warn');return;}
+  if(!checkRL()){toast('Limite 10/min atteinte','wn');return;}
   btn.disabled=true;
   const pos=await getPos(),h3=latlngToH3(pos.lat,pos.lng);
-  if(isSpam(h3)){state.trustScore=Math.max(.1,state.trustScore-CFG.TRUST_PEN);penalize(CFG.PTS_SPAM_PEN);toast('Spam détecté','warn');btn.disabled=false;return;}
+  if(isSpam(h3)){state.trustScore=Math.max(.1,state.trustScore-CFG.TRUST_PEN);penalize(CFG.PTS_SPAM_PEN);toast('Spam détecté','wn');btn.disabled=false;return;}
   const sig={id:Math.random().toString(36).slice(2),user_id:state.userId,type,timestamp:Date.now(),lat:pos.lat,lng:pos.lng,h3_index:h3,accuracy:pos.accuracy,trust_score:state.trustScore};
   state.signals.push(sig);state.signalsThisMin++;saveSignals();
-  const pts=typePts[type]||.5; addPoints(pts);
+  const pts=typePts[type]||.5;addPoints(pts);
   addFeedItem(type,STREETS[Math.floor(Math.random()*STREETS.length)],state.userId,true,pts);
-  renderZone(h3);updateZonePanel();updateHeaderCounters();updateRLBar();
+  renderZone(h3);updateZonePanel();updateRLBar();
   state.map.setView([pos.lat,pos.lng],Math.max(state.map.getZoom(),16));
   updateUserMarker(pos.lat,pos.lng);applyVisibility();
-  toast('Signal enregistré !','success');
-  if(!state.dataLoaded){loadCarburants(pos.lat,pos.lng);loadBornes(pos.lat,pos.lng);state.dataLoaded=true;}
-  setTimeout(()=>{btn.disabled=false;btn.innerHTML=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>J'ai vu une place`;},1500);
+  toast('Signal enregistré','ok');
+  if(!state.dataLoaded){loadCarburants(pos.lat,pos.lng);loadBornes(pos.lat,pos.lng);loadTraffic(pos.lat,pos.lng);state.dataLoaded=true;}
+  setTimeout(()=>{btn.disabled=false;btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>J'ai vu une place libre`;},1500);
 }
 
 async function centerOnUser(){
-  const pos=await getPos();updateUserMarker(pos.lat,pos.lng);state.map.setView([pos.lat,pos.lng],16);
+  const pos=await getPos();
+  updateUserMarker(pos.lat,pos.lng);
+  state.map.setView([pos.lat,pos.lng],16);
   updateZonePanel();applyVisibility();
-  loadCarburants(pos.lat,pos.lng);loadBornes(pos.lat,pos.lng);state.dataLoaded=true;
+  loadCarburants(pos.lat,pos.lng);loadBornes(pos.lat,pos.lng);loadTraffic(pos.lat,pos.lng);state.dataLoaded=true;
 }
 
-//  SIMULATION 
+// ── SIMULATION ────────────────────────────────
 function simulateOtherUser(){
   const types=['SIGNAL_STRONG','SIGNAL_STRONG','SIGNAL_WEAK','SIGNAL_IMPLICIT'];
   const type=types[Math.floor(Math.random()*types.length)];
   const uid='u_'+Math.random().toString(36).slice(2,6);
   const ctr=state.map.getCenter();
-  const lat=ctr.lat+(Math.random()-.5)*.008,lng=ctr.lng+(Math.random()-.5)*.008,h3=latlngToH3(lat,lng);
+  const lat=ctr.lat+(Math.random()-.5)*.008,lng=ctr.lng+(Math.random()-.5)*.008;
+  const h3=latlngToH3(lat,lng);
   state.signals.push({id:Math.random().toString(36).slice(2),user_id:uid,type,timestamp:Date.now(),lat,lng,h3_index:h3,accuracy:5+Math.random()*20,trust_score:.7+Math.random()*.3});
-  saveSignals();addFeedItem(type,STREETS[Math.floor(Math.random()*STREETS.length)],uid,false,0);
-  renderZone(h3);updateHeaderCounters();
+  saveSignals();
+  addFeedItem(type,STREETS[Math.floor(Math.random()*STREETS.length)],uid,false,0);
+  renderZone(h3);
 }
 
-//  TOASTS 
-let _xt,_tt;
-function showXPToast(msg){const el=document.getElementById('xp-toast');el.textContent=msg;el.classList.add('on');clearTimeout(_xt);_xt=setTimeout(()=>el.classList.remove('on'),2200);}
-function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='on '+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className='',2500);}
+// ── UTILS ─────────────────────────────────────
+function distM(la,lo,lb,lob){if(!lb||!lob)return 0;const dx=(lb-la)*111320,dy=(lob-lo)*111320*Math.cos(la*Math.PI/180);return Math.round(Math.sqrt(dx*dx+dy*dy));}
+function fmtDist(m){return m<1000?m+'m':+(m/1000).toFixed(1)+'km';}
 
-//  MAP 
+let _tt;
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='on '+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className='',2800);}
+
+let _xt;
+function showXPToast(msg){const el=document.getElementById('xp-toast');el.textContent=msg;el.classList.add('on');clearTimeout(_xt);_xt=setTimeout(()=>el.classList.remove('on'),2200);}
+
+// ── MAP ───────────────────────────────────────
 function initMap(){
-  state.map=L.map('map',{center:[48.8566,2.3522],zoom:15,zoomControl:true,attributionControl:false});
+  state.map=L.map('map',{
+    center:[48.8566,2.3522],zoom:15,
+    zoomControl:false,attributionControl:false,
+  });
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(state.map);
+  L.control.zoom({position:'bottomright'}).addTo(state.map);
   state.map.on('click',async e=>{
     const{lat,lng}=e.latlng;updateUserMarker(lat,lng);if(!checkRL())return;
     const h3=latlngToH3(lat,lng);
     state.signals.push({id:Math.random().toString(36).slice(2),user_id:state.userId,type:'SIGNAL_IMPLICIT',timestamp:Date.now(),lat,lng,h3_index:h3,accuracy:20,trust_score:state.trustScore*.8});
-    state.signalsThisMin++;addPoints(CFG.PTS_IMPLICIT);saveSignals();renderZone(h3);updateZonePanel();updateHeaderCounters();updateRLBar();applyVisibility();
+    state.signalsThisMin++;addPoints(CFG.PTS_IMPLICIT);saveSignals();renderZone(h3);updateZonePanel();updateRLBar();applyVisibility();
   });
   updateUserMarker(48.8566,2.3522);
 }
 
+// ── SEED ──────────────────────────────────────
 function seedDemo(){
   const base={lat:48.8566,lng:2.3522},now=Date.now();
   [{d:[.001,.001],t:'SIGNAL_STRONG',age:20000,u:'demo1'},{d:[.001,.001],t:'SIGNAL_STRONG',age:40000,u:'demo2'},
@@ -1197,17 +1280,25 @@ function seedDemo(){
   saveSignals();
 }
 
-//  LOOPS + BOOT 
-setInterval(()=>{renderAllZones();updateZonePanel();updateHeaderCounters();updateRLBar();renderFeed();},5000);
+// ── LOOPS ─────────────────────────────────────
+setInterval(()=>{renderAllZones();updateZonePanel();updateRLBar();renderFeed();},5000);
 setInterval(simulateOtherUser,CFG.SIM_INTERVAL);
+setInterval(()=>{ if(state.dataLoaded) loadTraffic(state.userLat,state.userLng); },CFG.TRAFFIC_INTERVAL);
 
+// ── BOOT ──────────────────────────────────────
 function boot(){
-  initUser();loadSignals();initMap();
-  if(state.signals.length===0){seedDemo();toast('Démo chargée','');}
-  // Prompt profil si pas encore renseigné
-  if(!state.profile.vehicle){setTimeout(()=>{toast(' Configurez votre profil !','');},2000);}
-  renderAllZones();updateZonePanel();updateHeaderCounters();updateXP();
-  getPos().then(p=>{updateUserMarker(p.lat,p.lng);state.map.setView([p.lat,p.lng],15);updateZonePanel();loadCarburants(p.lat,p.lng);loadBornes(p.lat,p.lng);state.dataLoaded=true;}).catch(()=>{});
+  initUser();loadSignals();initMap();initSheetDrag();
+  if(state.signals.length===0){seedDemo();}
+  if(!state.profile.vehicle){setTimeout(()=>toast('Configurez votre profil véhicule','wn'),2000);}
+  renderAllZones();updateZonePanel();updateXP();
+  getPos().then(p=>{
+    updateUserMarker(p.lat,p.lng);state.map.setView([p.lat,p.lng],15);
+    updateZonePanel();
+    loadCarburants(p.lat,p.lng);loadBornes(p.lat,p.lng);loadTraffic(p.lat,p.lng);
+    state.dataLoaded=true;
+  }).catch(()=>{});
+  // Resize légend on sheet resize
+  window.addEventListener('resize',updateLegendPos);
 }
 boot();
 </script>
