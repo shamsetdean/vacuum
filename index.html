@@ -320,6 +320,35 @@ body{
 .lock-req{display:inline-flex;align-items:center;gap:5px;background:rgba(232,200,74,.08);border:1px solid rgba(232,200,74,.2);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--gold);margin-bottom:13px;}
 .lock-btn{background:var(--accent);color:#071a0f;border:none;border-radius:10px;padding:10px 22px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
 
+
+/* ── SPEED ── */
+.speed-row{display:flex;gap:5px;margin-bottom:10px;}
+.speed-card{
+  flex:1;background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);padding:9px 10px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.speed-card.alert{border-color:rgba(217,79,79,.4);background:rgba(217,79,79,.06);}
+.speed-val{
+  font-size:32px;font-weight:600;line-height:1;
+  font-family:'DM Mono',monospace;color:var(--text);
+}
+.speed-val.ok{color:var(--accent);}
+.speed-val.warn{color:var(--warn);}
+.speed-val.over{color:var(--danger);}
+.speed-unit{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.speed-lbl{font-size:8px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;}
+.speed-limit-badge{
+  display:flex;align-items:center;justify-content:center;
+  width:38px;height:38px;border-radius:50%;
+  border:3px solid var(--danger);
+  font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--text);
+  margin:2px auto 0;
+}
+.speed-limit-badge.ok{border-color:var(--accent);}
+.speed-limit-badge.warn{border-color:var(--warn);}
+.speed-limit-badge.unknown{border-color:var(--muted);color:var(--muted);}
+
 /* ── TOAST ── */
 #toast{
   position:fixed;top:max(68px,calc(env(safe-area-inset-top,0px) + 58px));left:50%;
@@ -485,6 +514,18 @@ body{
 
     <!-- ZONE -->
     <div class="pane on" id="tab-zone">
+      <!-- Speed -->
+      <div class="speed-row" id="speed-row" style="display:none;">
+        <div class="speed-card" id="speed-card-current">
+          <div class="speed-lbl">Ma vitesse</div>
+          <div class="speed-val ok" id="speed-val">0</div>
+          <div class="speed-unit">km/h</div>
+        </div>
+        <div class="speed-card" id="speed-card-limit">
+          <div class="speed-lbl">Limite</div>
+          <div class="speed-limit-badge unknown" id="speed-limit-badge">?</div>
+        </div>
+      </div>
       <div class="zone-grid">
         <div class="zstat"><span class="zl">Prob.</span><span class="zv g" id="zp-prob">—</span><span class="zs">dispo.</span></div>
         <div class="zstat"><span class="zl">Signaux</span><span class="zv b" id="zp-count">0</span><span class="zs">actifs</span></div>
@@ -864,6 +905,108 @@ function isSpam(h3){return state.signals.filter(s=>s.h3_index===h3&&s.user_id===
 
 // ── GEO ───────────────────────────────────────
 function getPos(){return new Promise(res=>{if(!navigator.geolocation)return res({lat:state.userLat,lng:state.userLng,accuracy:20});navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:Math.min(50,p.coords.accuracy||10)}),()=>res({lat:state.userLat,lng:state.userLng,accuracy:20}),{timeout:5000,maximumAge:15000,enableHighAccuracy:true});});}
+
+
+// ── VITESSE ───────────────────────────────────
+let speedWatchId = null;
+let lastSpeedLimit = null;
+let speedLimitTimer = null;
+
+function startSpeedWatch() {
+  if (!navigator.geolocation) return;
+  speedWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const speedMs = pos.coords.speed;
+      if (speedMs === null || speedMs === undefined) return;
+      const speedKmh = Math.round(speedMs * 3.6);
+      document.getElementById('speed-row').style.display = 'flex';
+      updateSpeedUI(speedKmh);
+      // Charger limite si on bouge
+      if (speedKmh > 2) loadSpeedLimit(pos.coords.latitude, pos.coords.longitude);
+    },
+    () => {},
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 2000 }
+  );
+}
+
+function updateSpeedUI(kmh) {
+  const val = document.getElementById('speed-val');
+  const card = document.getElementById('speed-card-current');
+  val.textContent = kmh;
+
+  const limit = lastSpeedLimit;
+  if (!limit) {
+    val.className = 'speed-val ok';
+    card.classList.remove('alert');
+    return;
+  }
+
+  const ratio = kmh / limit;
+  if (ratio < 0.9) {
+    val.className = 'speed-val ok';
+    card.classList.remove('alert');
+  } else if (ratio < 1.05) {
+    val.className = 'speed-val warn';
+    card.classList.remove('alert');
+  } else {
+    val.className = 'speed-val over';
+    card.classList.add('alert');
+    // Alerte si dépassement > 10%
+    if (ratio > 1.1 && kmh > 10) toast('Vitesse limite dépassée', 'wn');
+  }
+}
+
+async function loadSpeedLimit(lat, lng) {
+  // Throttle : pas plus d'1 requête toutes les 30s
+  if (speedLimitTimer) return;
+  speedLimitTimer = setTimeout(() => { speedLimitTimer = null; }, 30000);
+
+  try {
+    const query = `[out:json][timeout:5];way[maxspeed](around:30,${lat},${lng});out 3;`;
+    const r = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    const ways = d.elements || [];
+
+    let limit = null;
+    for (const way of ways) {
+      const raw = way.tags?.maxspeed;
+      if (!raw) continue;
+      // Parser "50", "50 mph", "FR:urban", etc.
+      if (raw === 'FR:urban' || raw === 'FR:living_street') { limit = raw === 'FR:living_street' ? 20 : 50; break; }
+      if (raw === 'FR:rural') { limit = 80; break; }
+      if (raw === 'FR:motorway') { limit = 130; break; }
+      const num = parseInt(raw);
+      if (!isNaN(num) && num > 0) { limit = num; break; }
+    }
+
+    if (limit) {
+      lastSpeedLimit = limit;
+      renderSpeedLimit(limit);
+    } else {
+      renderSpeedLimit(null);
+    }
+  } catch {}
+}
+
+function renderSpeedLimit(limit) {
+  const badge = document.getElementById('speed-limit-badge');
+  const currentKmh = parseInt(document.getElementById('speed-val').textContent) || 0;
+
+  if (!limit) {
+    badge.textContent = '?';
+    badge.className = 'speed-limit-badge unknown';
+    return;
+  }
+
+  badge.textContent = limit;
+  const ratio = currentKmh / limit;
+  badge.className = 'speed-limit-badge ' + (ratio > 1.05 ? 'warn' : 'ok');
+}
 
 // ── TRAFIC ────────────────────────────────────
 async function loadTraffic(lat, lng) {
@@ -1291,6 +1434,7 @@ function boot(){
   if(state.signals.length===0){seedDemo();}
   if(!state.profile.vehicle){setTimeout(()=>toast('Configurez votre profil véhicule','wn'),2000);}
   renderAllZones();updateZonePanel();updateXP();
+  startSpeedWatch();
   getPos().then(p=>{
     updateUserMarker(p.lat,p.lng);state.map.setView([p.lat,p.lng],15);
     updateZonePanel();
