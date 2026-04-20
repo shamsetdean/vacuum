@@ -163,8 +163,17 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);-webkit-font-smoothing:a
   padding-bottom:calc(var(--safe-b) + 6px);
   max-height:82dvh;
   display:flex;flex-direction:column;
-  transition:transform .35s cubic-bezier(.4,0,.2,1);
+  transition:transform .4s cubic-bezier(.4,0,.2,1);
   will-change:transform;
+}
+/* Sheet rétracté — seul le handle + FAB visible */
+.sheet.retracted{
+  transform:translateY(calc(100% - 28px));
+}
+/* Quand rétracté, le FAB remonte */
+.sheet.retracted ~ .fab-wrap .fab,
+body.retracted .fab {
+  bottom: 42px !important;
 }
 
 .sheet-handle{
@@ -424,6 +433,25 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);-webkit-font-smoothing:a
   100%{opacity:0;transform:scale(1.8);}
 }
 
+
+/* ── BOUTON FLOTTANT CARTE ── */
+.fab{
+  position:fixed;bottom:0;left:50%;
+  transform:translateX(-50%);
+  z-index:850;
+  display:flex;align-items:center;gap:7px;
+  background:var(--accent);color:#071a0f;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  border:none;border-radius:20px;
+  padding:0 20px;height:46px;
+  cursor:pointer;
+  box-shadow:0 4px 20px rgba(52,201,122,.3),0 2px 8px rgba(0,0,0,.4);
+  transition:transform .15s,background .15s,bottom .35s cubic-bezier(.4,0,.2,1),box-shadow .3s;
+  white-space:nowrap;
+}
+.fab:active{transform:translateX(-50%) scale(.95);background:var(--a2);}
+.fab:disabled{background:var(--bg3);color:var(--muted);box-shadow:none;}
+
 /* ── TOAST ── */
 #toast{
   position:fixed;top:calc(var(--safe-t) + 64px);left:50%;
@@ -538,20 +566,8 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);-webkit-font-smoothing:a
 <div class="sheet" id="sheet">
   <div class="sheet-handle" id="sheet-handle"></div>
 
-  <div class="cta-zone">
+  <div class="cta-zone" style="padding:7px 14px 4px;">
     <div class="rl-track"><div class="rl-fill" id="rl-fill" style="width:0%"></div></div>
-    <div class="cta-row">
-      <!-- Bouton plus compact, centré -->
-      <div style="flex:1;display:flex;justify-content:center;">
-        <button class="btn-signal" id="btn-signal" onclick="submitSignal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
-          J'ai vu une place
-        </button>
-      </div>
-      <button class="btn-sec" onclick="centerOnUser()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-      </button>
-    </div>
   </div>
 
   <div class="xp-row">
@@ -698,6 +714,12 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);-webkit-font-smoothing:a
 <div class="streak-ring" id="streak-ring"></div>
 <div id="toast"></div>
 
+<!-- FAB — bouton flottant sur la carte -->
+<button class="fab" id="btn-signal" onclick="submitSignal()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+  J'ai vu une place
+</button>
+
 <script>
 // ═══════════════════════════════════════════════
 //  VACUUM v7 · UX Premium · Mobile-first
@@ -734,17 +756,57 @@ const state = {
   newFeedCount:0, newTrafficAlert:false,
 };
 
+
+// ── AUTO-RÉTRACTATION DU SHEET ────────────────
+let _retractTimer = null;
+const RETRACT_DELAY = 4000; // 4s sans interaction
+
+function scheduleRetract() {
+  clearTimeout(_retractTimer);
+  _retractTimer = setTimeout(() => {
+    const sheet = document.getElementById('sheet');
+    sheet.classList.add('retracted');
+    requestAnimationFrame(updateLayout);
+  }, RETRACT_DELAY);
+}
+
+function expandSheet() {
+  const sheet = document.getElementById('sheet');
+  sheet.classList.remove('retracted');
+  clearTimeout(_retractTimer);
+  scheduleRetract();
+  requestAnimationFrame(updateLayout);
+}
+
+function initSheetAutoRetract() {
+  const sheet = document.getElementById('sheet');
+  // Tap sur le handle ou les tabs → expand
+  sheet.addEventListener('touchstart', expandSheet, {passive:true});
+  sheet.addEventListener('click', expandSheet);
+  // Tap sur la carte → rétracte immédiatement
+  document.getElementById('map').addEventListener('click', () => {
+    const sheet = document.getElementById('sheet');
+    sheet.classList.add('retracted');
+    clearTimeout(_retractTimer);
+    requestAnimationFrame(updateLayout);
+  });
+  // Démarrer le timer initial
+  scheduleRetract();
+}
+
 // ── SHEET LAYOUT ───────────────────────────────
 function updateLayout() {
   const sheet = document.getElementById('sheet');
-  const h = sheet.getBoundingClientRect().height || 320;
+  const isRetracted = sheet.classList.contains('retracted');
+  const h = isRetracted ? 28 : (sheet.getBoundingClientRect().height || 320);
   const above = h + 14;
-  // Speed overlay — au-dessus du sheet à gauche
   document.getElementById('speed-overlay').style.bottom = above + 'px';
-  // Map controls — au-dessus du sheet à droite
   document.getElementById('map-ctrl').style.bottom = above + 'px';
-  // Legend — au-dessus speed overlay
-  document.getElementById('lgnd').style.bottom = (above + 80) + 'px';
+  document.getElementById('lgnd').style.bottom = (above + 60) + 'px';
+  // FAB toujours visible, juste au-dessus du sheet visible
+  const fab = document.getElementById('btn-signal');
+  const safeB = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
+  if (fab) fab.style.bottom = (h + 10) + 'px';
 }
 
 // Sheet drag
@@ -856,7 +918,7 @@ function closeProfile(){document.getElementById('modal-overlay').classList.remov
 function closeProfileOutside(e){if(e.target===document.getElementById('modal-overlay'))closeProfile();}
 
 // ── TABS ──────────────────────────────────────
-function switchTab(t){
+function switchTab(t){ expandSheet();
   ['zone','fuel','bornes','feed'].forEach(id=>{
     document.getElementById('tab-'+id).classList.toggle('on',id===t);
     document.getElementById('tab-'+id+'-btn').classList.toggle('on',id===t);
@@ -1308,7 +1370,7 @@ async function submitSignal(type='SIGNAL_STRONG'){
   renderZone(h3);updateZonePanel();updateRLBar();
   state.map.setView([pos.lat,pos.lng],Math.max(state.map.getZoom(),16));
   updateUserMarker(pos.lat,pos.lng);applyVisibility();
-  toast('Signal enregistré','ok');
+  toast('Signal enregistré','ok'); expandSheet();
   if(!state.dataLoaded){loadCarburants(pos.lat,pos.lng);loadBornes(pos.lat,pos.lng);loadTraffic(pos.lat,pos.lng);state.dataLoaded=true;}
   setTimeout(()=>{
     btn.disabled=false;
@@ -1394,7 +1456,7 @@ window.addEventListener('resize',updateLayout);
 
 // ── BOOT ──────────────────────────────────────
 function boot(){
-  initUser();loadSignals();initMap();initSheetDrag();
+  initUser();loadSignals();initMap();initSheetDrag();initSheetAutoRetract();
   if(state.signals.length===0)seedDemo();
   if(!state.profile.vehicle)setTimeout(()=>toast('Configurez votre profil véhicule','wn'),2500);
   renderAllZones();updateZonePanel();updateXP();
