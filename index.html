@@ -168,12 +168,12 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);-webkit-font-smoothing:a
 }
 /* Sheet rétracté — seul le handle + FAB visible */
 .sheet.retracted{
-  transform:translateY(calc(100% - 28px));
+  transform:translateY(100%);
 }
-/* Quand rétracté, le FAB remonte */
+/* Quand rétracté, le FAB remonte au-dessus du safe area */
 .sheet.retracted ~ .fab-wrap .fab,
 body.retracted .fab {
-  bottom: 42px !important;
+  bottom: calc(var(--safe-b) + 18px) !important;
 }
 
 .sheet-handle{
@@ -798,15 +798,15 @@ function initSheetAutoRetract() {
 function updateLayout() {
   const sheet = document.getElementById('sheet');
   const isRetracted = sheet.classList.contains('retracted');
-  const h = isRetracted ? 28 : (sheet.getBoundingClientRect().height || 320);
+  const h = isRetracted ? 0 : (sheet.getBoundingClientRect().height || 320);
+  const safeB = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
   const above = h + 14;
   document.getElementById('speed-overlay').style.bottom = above + 'px';
   document.getElementById('map-ctrl').style.bottom = above + 'px';
   document.getElementById('lgnd').style.bottom = (above + 60) + 'px';
-  // FAB toujours visible, juste au-dessus du sheet visible
+  // FAB : position confortable au-dessus du safe area quand rétracté
   const fab = document.getElementById('btn-signal');
-  const safeB = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
-  if (fab) fab.style.bottom = (h + 10) + 'px';
+  if (fab) fab.style.bottom = isRetracted ? (safeB + 18) + 'px' : (h + 10) + 'px';
 }
 
 // Sheet drag
