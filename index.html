@@ -76,11 +76,11 @@ window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { ok: firebaseO
   -webkit-blur: blur(20px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;overflow:hidden;background:var(--bg);}
+html,body{height:100%;min-height:100vh;overflow:hidden;background:var(--bg);}
 body{font-family:-apple-system,'SF Pro Display','DM Sans',sans-serif;-webkit-font-smoothing:antialiased;}
 
 /* MAP — carte claire */
-#map{position:fixed;inset:0;z-index:1;filter:brightness(1.05) saturate(.9);}
+#map{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;filter:brightness(1.05) saturate(.9);}
 
 /* ── TOP BAR ── */
 .top{
@@ -439,6 +439,15 @@ body{font-family:-apple-system,'SF Pro Display','DM Sans',sans-serif;-webkit-fon
   transition:transform .2s cubic-bezier(.4,0,.2,1);
 }
 .toggle.on::after{transform:translateX(16px);}
+
+/* ── DESKTOP ── */
+@media (min-width: 768px) {
+  .fab-wrap { max-width: 600px; left: 50%; right: auto; transform: translateX(-50%); }
+  .info-bar  { max-width: 500px; }
+  .zone-pill { max-width: 300px; }
+  .filter-panel { max-width: 220px; }
+  .top { max-width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -912,7 +921,15 @@ async function loadEV(lat,lng){
 async function loadTransit(lat,lng){
   clearLayer('transit');
   try{
-    const q=`[out:json][timeout:10];(node[highway=bus_stop](around:400,${lat},${lng});node[railway=station](around:600,${lat},${lng});node[railway=tram_stop](around:400,${lat},${lng});node[railway=subway_entrance](around:400,${lat},${lng}););out 20;`;
+    const q=`[out:json][timeout:12];(
+      node[highway=bus_stop](around:600,${lat},${lng});
+      node[public_transport=stop_position](around:600,${lat},${lng});
+      node[railway=station](around:800,${lat},${lng});
+      node[railway=tram_stop](around:600,${lat},${lng});
+      node[railway=subway_entrance](around:600,${lat},${lng});
+      node[railway=halt](around:600,${lat},${lng});
+      node[amenity=bus_station](around:600,${lat},${lng});
+    );out 30;`;
     const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),signal:AbortSignal.timeout(10000)});
     if(!r.ok)throw new Error();
     const d=await r.json();
@@ -1018,14 +1035,20 @@ function updateMark(lat,lng){
 
 // ── LAYOUT ────────────────────────────────────
 function updateLayout(){
-  const sheet = document.querySelector('.fab-wrap');
-  const fabRect = sheet ? sheet.getBoundingClientRect() : null;
-  const fabTop = fabRect ? window.innerHeight - fabRect.top + 8 : 98;
-  const above = fabTop + 66;
-  document.getElementById('btn-locate').style.bottom = fabTop + 'px';
-  document.getElementById('filter-btn').style.bottom = fabTop + 'px';
-  document.getElementById('filter-panel').style.bottom = (fabTop + 54) + 'px';
-  document.getElementById('info-bar').style.bottom = (fabTop - 56) + 'px';
+  const safeB = parseInt(
+    getComputedStyle(document.documentElement)
+      .getPropertyValue('--safe-b').trim()
+  ) || 0;
+  const base = 28 + safeB;
+  const fabH = 66 + base;
+  document.getElementById('btn-locate').style.bottom  = (fabH + 8) + 'px';
+  document.getElementById('filter-btn').style.bottom  = (fabH + 8) + 'px';
+  document.getElementById('filter-panel').style.bottom = (fabH + 62) + 'px';
+  const infoEl = document.getElementById('info-bar');
+  if(infoEl) infoEl.style.bottom = (fabH - 14) + 'px';
+  // Légende zone
+  const zp = document.getElementById('zone-card');
+  // Toujours positionné par CSS
 }
 
 // ── REPORT ────────────────────────────────────
@@ -1109,6 +1132,9 @@ async function locate(){
 // ── INIT ──────────────────────────────────────
 function init(){
   // Map Leaflet
+  const mapEl = document.getElementById('map');
+  mapEl.style.width  = '100%';
+  mapEl.style.height = '100vh';
   state.map=L.map('map',{center:[48.8566,2.3522],zoom:15,zoomControl:false,attributionControl:false});
   initHereTiles();
   updateMark(48.8566,2.3522);
