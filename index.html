@@ -310,6 +310,51 @@ body{font-family:-apple-system,'SF Pro Display','DM Sans',sans-serif;-webkit-fon
   border-radius:8px 0 0 0!important;
   font-size:9px!important;
 }
+
+/* ── ZONE PILL — sous logo, non invasive ── */
+.zone-pill{
+  position:fixed;left:50%;transform:translateX(-50%);
+  top:calc(max(16px,env(safe-area-inset-top)) + 54px);
+  z-index:15;
+  display:flex;align-items:center;gap:8px;
+  background:var(--glass-b);border:1px solid var(--border);
+  border-radius:20px;padding:7px 16px;
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:var(--shadow-sm);
+  pointer-events:none;
+  transition:opacity .3s;white-space:nowrap;
+}
+.zone-pill.hidden{opacity:0;}
+.zp-prob{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;}
+.zp-label{font-size:12px;color:var(--text2);font-weight:500;}
+
+/* ── INFO BAR — adresse + trafic en bas ── */
+.info-bar{
+  position:fixed;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 104px);
+  left:50%;transform:translateX(-50%);
+  z-index:20;
+  display:flex;align-items:center;gap:7px;
+  background:var(--glass-b);border:1px solid var(--border);
+  border-radius:20px;padding:6px 14px;
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:var(--shadow-sm);
+  pointer-events:none;transition:opacity .3s;white-space:nowrap;
+  max-width:calc(100vw - 32px);overflow:hidden;
+}
+.ib-traffic{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;flex-shrink:0;}
+.ib-traffic.ok  {color:var(--accent);}
+.ib-traffic.warn{color:var(--warn);}
+.ib-traffic.bad {color:var(--danger);}
+.ibt-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.ib-sep{font-size:11px;color:var(--muted);flex-shrink:0;}
+.ib-addr{font-size:11px;color:var(--text2);font-weight:500;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── TRAFFIC LAYER sur la carte ── */
+/* Géré via Leaflet polylines colorées */
+
+/* Supprimer anciens styles inutiles */
+.zone-card,.status-bar,.traffic-pill{display:none!important;}
 </style>
 </head>
 <body>
@@ -322,28 +367,21 @@ body{font-family:-apple-system,'SF Pro Display','DM Sans',sans-serif;-webkit-fon
     <div class="logo-mark">V</div>
     <span class="logo-name">VAC<b>UUM</b></span>
   </div>
-  <div class="traffic-pill ok" id="traffic-pill" style="display:none;">
-    <div class="t-dot ok" id="t-dot"></div>
-    <span id="t-label">Fluide</span>
-  </div>
+
   <div class="counter">
     <div class="counter-dot"></div>
     <b id="ctr">0</b>&nbsp;live
   </div>
 </div>
 
-<!-- ZONE CARD -->
-<div class="zone-card hidden" id="zone-card">
-  <div class="zc-label">Ma zone</div>
-  <div class="zc-prob" id="zc-prob" style="color:var(--accent)">—</div>
-  <div class="zc-sub" id="zc-sub">de disponibilité</div>
+<!-- ZONE PILL — discrète sous le top bar -->
+<div class="zone-pill hidden" id="zone-card">
+  <div class="zp-prob" id="zc-prob">—</div>
+  <div class="zp-label" id="zc-sub">de disponibilité</div>
 </div>
 
-<!-- PARKINGS CARD -->
-<div class="park-card hidden" id="park-card">
-  <div class="pc-title">Parkings proches</div>
-  <div id="park-list"><div style="font-size:10px;color:var(--muted);padding:4px 0;">Chargement…</div></div>
-</div>
+<!-- PARKINGS — marqueurs uniquement sur la carte -->
+<div id="park-card" style="display:none;"></div>
 
 <!-- LOCATE -->
 <button class="btn-locate" id="btn-locate" onclick="locate()">
@@ -361,7 +399,14 @@ body{font-family:-apple-system,'SF Pro Display','DM Sans',sans-serif;-webkit-fon
 <!-- FEEDBACK -->
 <div class="feedback" id="feedback">Place signalée — merci !</div>
 <div class="burst" id="burst"></div>
-<div class="status-bar" id="status-bar">Localisation en cours…</div>
+<div class="info-bar" id="info-bar">
+  <div class="ib-traffic" id="ib-traffic" style="display:none;">
+    <div class="ibt-dot" id="ibt-dot"></div>
+    <span id="ibt-label">Fluide</span>
+  </div>
+  <div class="ib-sep" id="ib-sep" style="display:none;">·</div>
+  <span class="ib-addr" id="status-bar">Localisation…</span>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════
@@ -508,13 +553,18 @@ function simulateTraffic(){
 }
 
 function updateTrafficUI(status,delay){
-  const pill=document.getElementById('traffic-pill');
-  pill.style.display='flex';
-  pill.className=`traffic-pill ${status}`;
-  const dot=document.getElementById('t-dot');
-  dot.style.background=status==='ok'?'var(--accent)':status==='warn'?'var(--warn)':'var(--danger)';
-  document.getElementById('t-label').textContent=
-    status==='ok'?'Fluide':status==='warn'?`+${delay}min`:`Bouchon +${delay}min`;
+  // Info bar — trafic + adresse en une ligne
+  const tb=document.getElementById('ib-traffic');
+  const dot=document.getElementById('ibt-dot');
+  const lbl=document.getElementById('ibt-label');
+  const sep=document.getElementById('ib-sep');
+  if(tb){
+    tb.style.display='flex';
+    tb.className=`ib-traffic ${status}`;
+    dot.style.background=status==='ok'?'var(--accent)':status==='warn'?'var(--warn)':'var(--danger)';
+    lbl.textContent=status==='ok'?'Trafic fluide':status==='warn'?`Ralenti +${delay}min`:`Bouchon +${delay}min`;
+    if(sep)sep.style.display='block';
+  }
 }
 
 function drawTrafficLayer(lat,lng,status){
@@ -585,15 +635,9 @@ async function loadParkings(lat,lng){
 }
 
 function showParkCard(list){
-  const card=document.getElementById('park-card');
-  card.classList.remove('hidden');
-  document.getElementById('park-list').innerHTML=list.map(p=>`
-    <div class="pk-item">
-      <span class="pk-name">${p.name}</span>
-      <span class="pk-spots ${p.cls}">${p.spots||'P'}</span>
-    </div>`).join('');
+  // Pas de card flottante — les marqueurs sur la carte suffisent
 }
-function hideParkCard(){document.getElementById('park-card').classList.add('hidden');}
+function hideParkCard(){}
 
 // ── GEOAPIFY — reverse geocoding ───────────────
 async function reverseGeo(lat,lng){
@@ -648,13 +692,15 @@ function renderAll(){
 function updateZoneCard(){
   const h3=toH3(state.lat,state.lng);
   const p=prob(h3),pct=Math.round(p*100);
-  const card=document.getElementById('zone-card');
+  const pill=document.getElementById('zone-card');
   const el=document.getElementById('zc-prob');
-  card.classList.remove('hidden');
-  el.textContent=pct+'%';
-  el.style.color=pct>=70?'var(--accent)':pct>=40?'var(--warn)':'var(--danger)';
-  document.getElementById('zc-sub').textContent=
-    pct>=70?'Bonne chance':'de disponibilité';
+  if(pill)pill.classList.remove('hidden');
+  if(el){
+    el.textContent=pct+'%';
+    el.style.color=pct>=70?'var(--accent)':pct>=40?'var(--warn)':'var(--danger)';
+  }
+  const sub=document.getElementById('zc-sub');
+  if(sub)sub.textContent=pct>=70?'disponible':'de disponibilité';
 }
 
 function updateCounter(){
@@ -738,8 +784,7 @@ function showFeedback(){
 
 function setStatus(msg){
   const el=document.getElementById('status-bar');
-  el.textContent=msg;
-  el.style.opacity=msg?'1':'0';
+  if(el){el.textContent=msg;el.style.opacity=msg?'1':'0';}
 }
 
 // ── LOCALISATION ──────────────────────────────
