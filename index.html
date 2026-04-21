@@ -355,6 +355,90 @@ body{font-family:-apple-system,'SF Pro Display','DM Sans',sans-serif;-webkit-fon
 
 /* Supprimer anciens styles inutiles */
 .zone-card,.status-bar,.traffic-pill{display:none!important;}
+
+/* ── VÉLO MARKER ── */
+.v-marker{
+  background:var(--glass-b);border:1.5px solid rgba(139,92,246,.5);
+  border-radius:7px;padding:2px 7px;
+  font-size:10px;font-weight:700;
+  font-family:'SF Mono',monospace;
+  color:#7c3aed;white-space:nowrap;
+  box-shadow:var(--shadow-sm);
+  backdrop-filter:blur(8px);
+}
+.v-marker.dispo{border-color:rgba(34,197,94,.5);color:var(--accent);}
+.v-marker.vide {border-color:rgba(239,68,68,.4);color:var(--danger);}
+
+/* ── WC MARKER ── */
+.wc-marker{
+  background:var(--glass-b);border:1.5px solid rgba(59,130,246,.4);
+  border-radius:7px;padding:2px 7px;
+  font-size:10px;font-weight:700;
+  color:var(--blue);white-space:nowrap;
+  box-shadow:var(--shadow-sm);
+  backdrop-filter:blur(8px);
+}
+.wc-marker.free{border-color:rgba(34,197,94,.5);color:var(--accent);}
+.wc-marker.paid{border-color:rgba(245,158,11,.4);color:var(--warn);}
+
+/* ── FILTER PANEL ── */
+.filter-btn{
+  position:fixed;left:14px;z-index:15;
+  width:46px;height:46px;
+  background:var(--glass-b);border:1px solid var(--border);
+  border-radius:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:var(--shadow-sm);color:var(--text2);
+  transition:bottom .35s cubic-bezier(.4,0,.2,1),background .15s;
+}
+.filter-btn:active{transform:scale(.92);}
+.filter-btn.has-active{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.35);color:var(--blue);}
+
+.filter-panel{
+  position:fixed;left:14px;z-index:16;
+  background:var(--glass-b);border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:12px;
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:var(--shadow);
+  min-width:180px;
+  transition:bottom .35s cubic-bezier(.4,0,.2,1),opacity .2s,transform .2s;
+  opacity:0;pointer-events:none;transform:translateY(10px);
+}
+.filter-panel.open{opacity:1;pointer-events:all;transform:translateY(0);}
+
+.fp-title{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;}
+
+.fp-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 0;border-bottom:1px solid rgba(0,0,0,.05);
+  cursor:pointer;gap:10px;
+}
+.fp-item:last-child{border-bottom:none;}
+.fp-left{display:flex;align-items:center;gap:8px;}
+.fp-icon{
+  width:28px;height:28px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.fp-label{font-size:12px;font-weight:500;color:var(--text);}
+.fp-sub{font-size:9px;color:var(--muted);}
+
+/* Toggle switch */
+.toggle{
+  width:36px;height:20px;border-radius:10px;
+  background:#dde1e8;flex-shrink:0;
+  position:relative;transition:background .2s;cursor:pointer;
+}
+.toggle.on{background:var(--accent);}
+.toggle::after{
+  content:'';position:absolute;
+  width:16px;height:16px;border-radius:50%;
+  background:white;top:2px;left:2px;
+  box-shadow:0 1px 4px rgba(0,0,0,.2);
+  transition:transform .2s cubic-bezier(.4,0,.2,1);
+}
+.toggle.on::after{transform:translateX(16px);}
 </style>
 </head>
 <body>
@@ -387,6 +471,72 @@ body{font-family:-apple-system,'SF Pro Display','DM Sans',sans-serif;-webkit-fon
 <button class="btn-locate" id="btn-locate" onclick="locate()">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
 </button>
+
+
+<!-- FILTER BUTTON -->
+<button class="filter-btn" id="filter-btn" onclick="toggleFilterPanel()">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="4" y1="6" x2="20" y2="6"/>
+    <line x1="8" y1="12" x2="16" y2="12"/>
+    <line x1="11" y1="18" x2="13" y2="18"/>
+  </svg>
+</button>
+
+<!-- FILTER PANEL -->
+<div class="filter-panel" id="filter-panel">
+  <div class="fp-title">Afficher sur la carte</div>
+
+  <div class="fp-item" onclick="toggleLayer('wc')">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(59,130,246,.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"><path d="M5 3h14M5 21h14M8 3v18M16 3v18M3 8h2M3 16h2M19 8h2M19 16h2"/></svg>
+      </div>
+      <div><div class="fp-label">Toilettes</div><div class="fp-sub">WC publics</div></div>
+    </div>
+    <div class="toggle on" id="toggle-wc"></div>
+  </div>
+
+  <div class="fp-item" onclick="toggleLayer('water')">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(14,165,233,.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round"><path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/></svg>
+      </div>
+      <div><div class="fp-label">Eau potable</div><div class="fp-sub">Fontaines</div></div>
+    </div>
+    <div class="toggle on" id="toggle-water"></div>
+  </div>
+
+  <div class="fp-item" onclick="toggleLayer('bench')">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(34,197,94,.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><rect x="3" y="10" width="18" height="3" rx="1"/><path d="M6 10V7M18 10V7M4 13v4M20 13v4"/></svg>
+      </div>
+      <div><div class="fp-label">Bancs</div><div class="fp-sub">Parcs, repos</div></div>
+    </div>
+    <div class="toggle on" id="toggle-bench"></div>
+  </div>
+
+  <div class="fp-item" onclick="toggleLayer('ev')">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(139,92,246,.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div><div class="fp-label">Bornes élec.</div><div class="fp-sub">Voitures</div></div>
+    </div>
+    <div class="toggle on" id="toggle-ev"></div>
+  </div>
+
+  <div class="fp-item" onclick="toggleLayer('transit')">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(249,115,22,.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16M8 17l-2 4M16 17l2 4M8 7h.01M16 7h.01"/></svg>
+      </div>
+      <div><div class="fp-label">Transports</div><div class="fp-sub">Bus, métro, tram</div></div>
+    </div>
+    <div class="toggle on" id="toggle-transit"></div>
+  </div>
+
+</div>
 
 <!-- FAB -->
 <div class="fab-wrap">
@@ -433,7 +583,7 @@ const state = {
   lat:48.8566, lng:2.3522,
   signals:[], map:null,
   hexLayers:new Map(), signalMarkers:[],
-  parkingMarkers:[], trafficLayer:null,
+  parkingMarkers:[], veloMarkers:[], trafficLayer:null,
   userId: localStorage.getItem('vac_uid') || (()=>{
     const uid='u_'+Math.random().toString(36).slice(2,9);
     localStorage.setItem('vac_uid',uid);return uid;
@@ -634,10 +784,159 @@ async function loadParkings(lat,lng){
   }
 }
 
-function showParkCard(list){
-  // Pas de card flottante — les marqueurs sur la carte suffisent
+
+// ── LAYER SYSTEM ──────────────────────────────
+const layers = {
+  wc:      { on:true, markers:[] },
+  water:   { on:true, markers:[] },
+  bench:   { on:true, markers:[] },
+  ev:      { on:true, markers:[] },
+  transit: { on:true, markers:[] },
+};
+
+function toggleLayer(id){
+  layers[id].on = !layers[id].on;
+  const tog = document.getElementById('toggle-'+id);
+  if(tog) tog.classList.toggle('on', layers[id].on);
+  layers[id].markers.forEach(m => {
+    if(layers[id].on) state.map.addLayer(m);
+    else state.map.removeLayer(m);
+  });
 }
-function hideParkCard(){}
+
+function toggleFilterPanel(){
+  document.getElementById('filter-panel').classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+  const panel = document.getElementById('filter-panel');
+  const btn   = document.getElementById('filter-btn');
+  if(panel && btn && !panel.contains(e.target) && !btn.contains(e.target)){
+    panel.classList.remove('open');
+  }
+});
+
+function clearLayer(id){
+  (layers[id]?.markers||[]).forEach(m=>state.map.removeLayer(m));
+  if(layers[id]) layers[id].markers=[];
+}
+
+function addLayerMarker(id,lat,lng,html,popup){
+  const icon=L.divIcon({html,iconSize:[84,20],iconAnchor:[42,10],className:''});
+  const m=L.marker([lat,lng],{icon});
+  if(layers[id]?.on) m.addTo(state.map);
+  m.bindPopup(popup);
+  layers[id]?.markers.push(m);
+}
+
+// ── TOILETTES ─────────────────────────────────
+async function loadWC(lat,lng){
+  clearLayer('wc');
+  try{
+    const q=`[out:json][timeout:8];node[amenity=toilets](around:600,${lat},${lng});out 15;`;
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    (d.elements||[]).forEach(n=>{
+      const t=n.tags||{};
+      const free=t.fee==='no';const paid=t.fee==='yes';
+      const lbl=free?'WC Gratuit':paid?'WC Payant':'WC';
+      const col=free?'rgba(34,197,94,.5)':paid?'rgba(245,158,11,.5)':'rgba(59,130,246,.4)';
+      const tcol=free?'#16a34a':paid?'#d97706':'#3b82f6';
+      addLayerMarker('wc',n.lat,n.lon,
+        `<div style="background:rgba(255,255,255,.92);border:1.5px solid ${col};border-radius:7px;padding:2px 7px;font-size:10px;font-weight:700;color:${tcol};white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.1);">${lbl}</div>`,
+        `<b>Toilettes</b><br>${free?'<span style="color:#16a34a">Gratuit</span>':paid?'Payant':'Accès inconnu'}${t.wheelchair==='yes'?'<br>Accessible PMR':''}`
+      );
+    });
+  }catch{}
+}
+
+// ── EAU POTABLE ───────────────────────────────
+async function loadWater(lat,lng){
+  clearLayer('water');
+  try{
+    const q=`[out:json][timeout:8];(node[amenity=drinking_water](around:600,${lat},${lng});node[man_made=water_tap](around:600,${lat},${lng}););out 15;`;
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    (d.elements||[]).forEach(n=>{
+      addLayerMarker('water',n.lat,n.lon,
+        `<div style="background:rgba(255,255,255,.92);border:1.5px solid rgba(14,165,233,.5);border-radius:7px;padding:2px 7px;font-size:10px;font-weight:700;color:#0284c7;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.1);">Eau potable</div>`,
+        `<b>Fontaine d'eau potable</b>`
+      );
+    });
+  }catch{}
+}
+
+// ── BANCS ─────────────────────────────────────
+async function loadBenches(lat,lng){
+  clearLayer('bench');
+  try{
+    const q=`[out:json][timeout:8];(node[amenity=bench](around:400,${lat},${lng});node[leisure=park][name](around:600,${lat},${lng}););out 20;`;
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    (d.elements||[]).forEach(n=>{
+      const t=n.tags||{};
+      const isPark=t.leisure==='park';
+      const lbl=isPark?(t.name||'Parc'):'Banc';
+      addLayerMarker('bench',n.lat,n.lon,
+        `<div style="background:rgba(255,255,255,.92);border:1.5px solid rgba(34,197,94,.4);border-radius:7px;padding:2px 7px;font-size:10px;font-weight:700;color:#15803d;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.1);">${lbl}</div>`,
+        `<b>${lbl}</b>${isPark?'':t.backrest==='yes'?'<br>Avec dossier':''}`
+      );
+    });
+  }catch{}
+}
+
+// ── BORNES ÉLECTRIQUES ────────────────────────
+async function loadEV(lat,lng){
+  clearLayer('ev');
+  try{
+    const q=`[out:json][timeout:10];node[amenity=charging_station](around:800,${lat},${lng});out 15;`;
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),signal:AbortSignal.timeout(10000)});
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    (d.elements||[]).forEach(n=>{
+      const t=n.tags||{};
+      const pw=parseFloat(t.maxpower||'0');
+      const lbl=pw>=50?`DC ${pw}kW`:pw>0?`AC ${pw}kW`:'Borne élec.';
+      addLayerMarker('ev',n.lat,n.lon,
+        `<div style="background:rgba(255,255,255,.92);border:1.5px solid rgba(139,92,246,.5);border-radius:7px;padding:2px 7px;font-size:10px;font-weight:700;color:#7c3aed;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.1);">${lbl}</div>`,
+        `<b>Borne recharge</b><br>${t.operator||''}<br>${pw>0?pw+' kW':''}${t.fee==='no'?'<br><span style="color:#16a34a">Gratuit</span>':''}`
+      );
+    });
+  }catch{}
+}
+
+// ── TRANSPORTS ────────────────────────────────
+async function loadTransit(lat,lng){
+  clearLayer('transit');
+  try{
+    const q=`[out:json][timeout:10];(node[highway=bus_stop](around:400,${lat},${lng});node[railway=station](around:600,${lat},${lng});node[railway=tram_stop](around:400,${lat},${lng});node[railway=subway_entrance](around:400,${lat},${lng}););out 20;`;
+    const r=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:'data='+encodeURIComponent(q),signal:AbortSignal.timeout(10000)});
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    (d.elements||[]).forEach(n=>{
+      const t=n.tags||{};
+      const type=t.railway==='station'?'Gare':t.railway==='tram_stop'?'Tram':t.railway==='subway_entrance'?'Metro':'Bus';
+      const name=(t.name||type).slice(0,14);
+      const col=type==='Metro'?'#ea580c':type==='Gare'?'#dc2626':type==='Tram'?'#9333ea':'#ea580c';
+      addLayerMarker('transit',n.lat,n.lon,
+        `<div style="background:rgba(255,255,255,.92);border:1.5px solid ${col}88;border-radius:7px;padding:2px 7px;font-size:10px;font-weight:700;color:${col};white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.1);">${name}</div>`,
+        `<b>${t.name||type}</b><br>${type}${t.ref?'<br>Ligne '+t.ref:''}`
+      );
+    });
+  }catch{}
+}
+
+function loadAllLayers(lat,lng){
+  loadWC(lat,lng);
+  loadWater(lat,lng);
+  loadBenches(lat,lng);
+  loadEV(lat,lng);
+  loadTransit(lat,lng);
+}
+
 
 // ── GEOAPIFY — reverse geocoding ───────────────
 async function reverseGeo(lat,lng){
@@ -719,9 +1018,14 @@ function updateMark(lat,lng){
 
 // ── LAYOUT ────────────────────────────────────
 function updateLayout(){
-  const fabH=90+parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')||'0');
-  document.getElementById('park-card').style.bottom=(fabH+8)+'px';
-  document.getElementById('btn-locate').style.bottom=(fabH+8)+'px';
+  const sheet = document.querySelector('.fab-wrap');
+  const fabRect = sheet ? sheet.getBoundingClientRect() : null;
+  const fabTop = fabRect ? window.innerHeight - fabRect.top + 8 : 98;
+  const above = fabTop + 66;
+  document.getElementById('btn-locate').style.bottom = fabTop + 'px';
+  document.getElementById('filter-btn').style.bottom = fabTop + 'px';
+  document.getElementById('filter-panel').style.bottom = (fabTop + 54) + 'px';
+  document.getElementById('info-bar').style.bottom = (fabTop - 56) + 'px';
 }
 
 // ── REPORT ────────────────────────────────────
@@ -796,6 +1100,7 @@ async function locate(){
     state.map.setView([lat,lng],16,{animate:true});
     updateZoneCard();
     loadParkings(lat,lng);
+    loadAllLayers(lat,lng);
     loadHereTraffic(lat,lng);
     reverseGeo(lat,lng);
   }catch{setStatus('GPS indisponible');}
@@ -818,7 +1123,8 @@ function init(){
       updateMark(lat,lng);
       state.map.setView([lat,lng],15,{animate:false});
       loadParkings(lat,lng);
-      loadHereTraffic(lat,lng);
+    loadAllLayers(lat,lng);
+    loadHereTraffic(lat,lng);
       reverseGeo(lat,lng);
       setStatus('');
     },()=>{
@@ -839,6 +1145,7 @@ function init(){
   setInterval(()=>{renderAll();updateZoneCard();updateCounter();},5000);
   setInterval(()=>loadHereTraffic(state.lat,state.lng),CFG.TRAFFIC_INTERVAL);
   setInterval(()=>loadParkings(state.lat,state.lng),CFG.PARKING_INTERVAL);
+  setInterval(()=>loadAllLayers(state.lat,state.lng),CFG.PARKING_INTERVAL);
 }
 
 // Attendre DOM + Firebase
