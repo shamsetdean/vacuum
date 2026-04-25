@@ -1,31 +1,27 @@
 {
-  "name": "Vacuum",
+  "name": "Vacuum — places libres",
   "short_name": "Vacuum",
-  "description": "Trouvez une place libre, à plusieurs.",
-  "start_url": "/",
+  "description": "Signalez et trouvez des places de stationnement libres en temps réel, collaborativement.",
+  "start_url": "/vacuum/",
+  "scope": "/vacuum/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#06090f",
-  "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "background_color": "#eef2f7",
+  "theme_color": "#eef2f7",
   "lang": "fr",
+  "categories": ["navigation", "utilities"],
   "icons": [
     {
-      "src": "/favicon-192.png",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/favicon-512.png",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }
