@@ -1,0 +1,2636 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vacuum">
+<meta name="theme-color" content="#eef2f7">
+<link rel="manifest" href="manifest.json">
+<meta name="format-detection" content="telephone=no">
+<meta name="referrer" content="no-referrer">
+<title>Vacuum — places libres</title>
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://shamsetdean.github.io/vacuum/">
+<meta property="og:title" content="Vacuum — Trouvez et signalez des places libres en temps réel">
+<meta property="og:description" content="Signalez et trouvez des places de stationnement libres en temps réel. Collaboratif, gratuit, sans compte, sans pub.">
+<meta property="og:image" content="https://shamsetdean.github.io/vacuum/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Vacuum — Trouvez et signalez des places libres en temps réel">
+<meta name="twitter:description" content="Signalez et trouvez des places de stationnement libres en temps réel.">
+<meta name="twitter:image" content="https://shamsetdean.github.io/vacuum/og-image.jpg">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234caf50'/%3E%3Ctext x='16' y='23' font-family='system-ui,sans-serif' font-size='20' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<!--
+═══════════════════════════════════════════════════════════════════════
+  CONTENT SECURITY POLICY (CSP)
+═══════════════════════════════════════════════════════════════════════
+  Trade-off documenté : 'unsafe-inline' est nécessaire sur script-src et
+  style-src parce que ce projet est en single-file HTML (CSS et JS
+  embedded). Pour passer à du strict-dynamic + nonce, il faudrait un
+  serveur qui génère un nonce par requête — incompatible avec un
+  hébergement statique gratuit (Vercel/Netlify static, GitHub Pages).
+  La CSP appliquée bloque toute source externe non listée, ce qui couvre
+  la majorité des XSS via injection de <script src="...">.
+═══════════════════════════════════════════════════════════════════════
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'self' 'unsafe-inline' https://unpkg.com https://www.gstatic.com;
+  style-src 'self' 'unsafe-inline' https://unpkg.com;
+  connect-src 'self'
+    https://*.basemaps.cartocdn.com
+    https://overpass-api.de
+    https://overpass.kumi.systems
+    https://overpass.openstreetmap.fr
+    https://nominatim.openstreetmap.org
+    https://firestore.googleapis.com
+    https://*.firebaseio.com
+    wss://*.firebaseio.com
+    wss://firestore.googleapis.com;
+  img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://shamsetdean.github.io;
+  font-src 'self';
+  manifest-src 'self';
+  worker-src 'self' blob:;
+  object-src 'none';
+  base-uri 'self';
+  form-action 'none';
+  frame-ancestors 'none';
+">
+
+<!--
+═══════════════════════════════════════════════════════════════════════
+  RÈGLES FIRESTORE — À METTRE À JOUR EN CONSOLE
+═══════════════════════════════════════════════════════════════════════
+  Le TTL natif Firestore nécessite l'activation de la facturation
+  (Blaze plan + carte bancaire), ce qui est exclu pour ce projet pro
+  bono. À la place, la purge des documents expirés est faite par les
+  clients eux-mêmes via la fonction purgeOldSignals() (purge
+  collaborative au démarrage et toutes les 30 minutes).
+
+  Pour que ça fonctionne, il faut ajouter une règle Firestore qui
+  autorise la suppression des documents de plus de 24h. Coller dans
+  Firebase Console > Firestore > Règles :
+
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /signals/{doc} {
+        allow read: if true;
+        allow create: if
+            request.resource.data.keys().hasOnly(['h3','lat','lng','userId','ts'])
+            && request.resource.data.lat is number
+            && request.resource.data.lng is number
+            && request.resource.data.lat >= -90
+            && request.resource.data.lat <= 90
+            && request.resource.data.lng >= -180
+            && request.resource.data.lng <= 180
+            && request.resource.data.h3 is string
+            && request.resource.data.h3.size() < 50
+            && request.resource.data.userId is string
+            && request.resource.data.userId.size() < 50
+            && request.resource.data.ts == request.time;
+        // Purge collaborative : tout client peut supprimer un signal expiré (>24h)
+        allow delete: if resource.data.ts < request.time - duration.value(24, 'h');
+        allow update: if false;
+      }
+      match /{document=**} {
+        allow read, write: if false;
+      }
+    }
+  }
+═══════════════════════════════════════════════════════════════════════
+-->
+
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="anonymous">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin="anonymous"
+        defer></script>
+
+<script type="module">
+import { initializeApp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, onSnapshot, query, where,
+         orderBy, limit, getDocs, deleteDoc,
+         serverTimestamp, Timestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBpE7O7m_D7feXOj-TpgsZ6H8wIALpi-W4",
+  authDomain:        "vacuum-ffb0f.firebaseapp.com",
+  projectId:         "vacuum-ffb0f",
+  storageBucket:     "vacuum-ffb0f.firebasestorage.app",
+  messagingSenderId: "214784696691",
+  appId:             "1:214784696691:web:7532e123c17a1fc501a506",
+};
+
+let firebaseOk = false;
+try {
+  const app = initializeApp(FIREBASE_CONFIG);
+  window._db = getFirestore(app);
+  window._fbModules = { collection, addDoc, onSnapshot, query, where,
+                         orderBy, limit, getDocs, deleteDoc,
+                         serverTimestamp, Timestamp };
+  firebaseOk = true;
+} catch(e) {
+  console.warn('[vacuum] Firebase indisponible — mode local seul', e);
+}
+window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { ok: firebaseOk } }));
+</script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:          #eef2f7;
+  --bg-grad:     radial-gradient(120% 80% at 20% 0%, #f6f9fc 0%, #e7ecf3 60%, #dde3ec 100%);
+  --glass:       rgba(255,255,255,0.62);
+  --glass-soft:  rgba(255,255,255,0.45);
+  --glass-solid: rgba(255,255,255,0.86);
+  --border:      rgba(255,255,255,0.78);
+  --border-soft: rgba(0,0,0,0.06);
+
+  --text:        #0f1d36;
+  --text-2:      #4a5a78;
+  --muted:       #8696b3;
+
+  --accent:      #16a34a;
+  --accent-2:    #15803d;
+  --accent-soft: rgba(22,163,74,0.10);
+  --warn:        #ea8a09;
+  --warn-soft:   rgba(234,138,9,0.10);
+  --danger:      #dc2626;
+  --danger-soft: rgba(220,38,38,0.10);
+  --blue:        #2563eb;
+  --blue-soft:   rgba(37,99,235,0.10);
+  --violet:      #7c3aed;
+  --orange:      #ea580c;
+
+  --r-xl: 22px;
+  --r-lg: 16px;
+  --r-md: 12px;
+  --r-sm: 8px;
+
+  --shadow-1: 0 2px 10px rgba(15,29,54,0.06), 0 1px 2px rgba(15,29,54,0.04);
+  --shadow-2: 0 8px 24px rgba(15,29,54,0.08), 0 2px 6px rgba(15,29,54,0.04);
+  --shadow-3: 0 16px 40px rgba(15,29,54,0.12), 0 4px 10px rgba(15,29,54,0.06);
+  --shadow-accent: 0 8px 24px rgba(22,163,74,0.32), 0 2px 6px rgba(22,163,74,0.18);
+
+  --blur:    blur(12px) saturate(160%);
+  --blur-lg: blur(16px) saturate(170%);
+
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+* { -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+               "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.tap-target { min-width: 44px; min-height: 44px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAP
+   ═══════════════════════════════════════════════════════════════════ */
+#map {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  filter: saturate(0.92) brightness(1.02);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GLASS PRIMITIVE
+   ═══════════════════════════════════════════════════════════════════ */
+.glass {
+  background: var(--glass-solid);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--shadow-1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TOP BAR
+   ═══════════════════════════════════════════════════════════════════ */
+.top {
+  position: fixed;
+  top: calc(var(--safe-t) + 12px);
+  left: calc(var(--safe-l) + 12px);
+  right: calc(var(--safe-r) + 12px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+.top > * { pointer-events: auto; }
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 8px 14px 8px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+.logo-mark {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800;
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(22,163,74,0.3);
+}
+.logo-name b { color: var(--accent); }
+.logo-beta {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--warn);
+  background: var(--warn-soft);
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  align-self: center;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.counter-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 rgba(22,163,74,0.5);
+  animation: dot-pulse 2.4s ease-in-out infinite;
+}
+.counter b { color: var(--text); }
+.counter.offline .counter-dot { background: var(--warn); animation: none; }
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(22,163,74,0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(22,163,74,0); }
+}
+
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-2);
+  transition: transform 0.12s, color 0.2s;
+}
+.icon-btn:active { transform: scale(0.93); }
+.icon-btn:hover { color: var(--text); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ZONE PILL
+   ═══════════════════════════════════════════════════════════════════ */
+.zone-pill {
+  position: fixed;
+  top: calc(var(--safe-t) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  display: flex; align-items: center; gap: 9px;
+  border-radius: 999px;
+  padding: 8px 16px;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity 0.3s, transform 0.3s;
+  opacity: 1;
+}
+.zone-pill.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-6px);
+  pointer-events: none;
+}
+.zp-prob {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+  transition: color 0.4s;
+}
+.zp-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   BOUTONS LATÉRAUX
+   ═══════════════════════════════════════════════════════════════════ */
+.side-btn {
+  position: fixed;
+  z-index: 15;
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-2);
+  transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.12s ease, background 0.2s, color 0.2s;
+}
+.side-btn:active { transform: scale(0.93); }
+.side-btn.active {
+  background: var(--blue-soft);
+  border-color: rgba(37,99,235,0.3);
+  color: var(--blue);
+}
+
+.btn-locate { right: calc(var(--safe-r) + 14px); color: var(--blue); }
+.filter-btn { left:  calc(var(--safe-l) + 14px); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   FILTER PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+.filter-panel {
+  position: fixed;
+  left: calc(var(--safe-l) + 14px);
+  z-index: 16;
+  border-radius: var(--r-xl);
+  padding: 14px;
+  min-width: 220px;
+  max-width: calc(100vw - var(--safe-l) - var(--safe-r) - 80px);
+  max-height: 70vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  pointer-events: none;
+  transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease, transform 0.2s ease;
+}
+.filter-panel.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.fp-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+.fp-divider {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 12px -14px;
+}
+
+.fp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  gap: 12px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.fp-item:last-child { border-bottom: none; }
+.fp-item:active { background: rgba(0,0,0,0.03); }
+
+.fp-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.fp-icon {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.fp-text { min-width: 0; flex: 1; }
+.fp-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.1px;
+}
+.fp-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+
+.fp-action {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--blue-soft);
+  border-radius: var(--r-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  text-align: center;
+  transition: background 0.15s;
+}
+.fp-action:active { background: rgba(37,99,235,0.18); }
+.fp-action.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.fp-action.danger:active { background: rgba(220,38,38,0.18); }
+
+/* Toggle iOS-like */
+.toggle {
+  width: 38px; height: 22px;
+  border-radius: 11px;
+  background: #d6dbe4;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px; left: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.toggle.on::after { transform: translateX(16px); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   FAB
+   ═══════════════════════════════════════════════════════════════════ */
+.fab-wrap {
+  position: fixed;
+  bottom: calc(var(--safe-b) + 24px);
+  left: calc(var(--safe-l) + 24px);
+  right: calc(var(--safe-r) + 24px);
+  display: flex;
+  justify-content: center;
+  z-index: 25;
+  pointer-events: none;
+}
+
+.fab {
+  width: 100%;
+  max-width: 340px;
+  min-height: 60px;
+  pointer-events: auto;
+  background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  border-radius: 22px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px;
+  box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255,255,255,0.25);
+  transition: transform 0.12s ease, opacity 0.2s;
+  -webkit-user-select: none; user-select: none;
+  padding: 0 20px;
+}
+.fab:active { transform: scale(0.97); }
+.fab:disabled { opacity: 0.6; cursor: not-allowed; transform: scale(0.99); }
+.fab svg { width: 22px; height: 22px; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   INFO BAR
+   ═══════════════════════════════════════════════════════════════════ */
+.info-bar {
+  position: fixed;
+  bottom: calc(var(--safe-b) + 96px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex; align-items: center; gap: 8px;
+  border-radius: 999px;
+  padding: 6px 14px;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  transition: opacity 0.3s;
+}
+.info-bar.empty { opacity: 0; }
+
+.ib-traffic { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.ib-traffic.ok   { color: var(--accent); }
+.ib-traffic.warn { color: var(--warn); }
+.ib-traffic.bad  { color: var(--danger); }
+.ibt-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.ib-sep  { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.ib-addr { font-size: 11px; color: var(--text-2); font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ib-est { font-size: 9px; color: var(--muted); font-weight: 500; margin-left: 2px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   FEEDBACK + BURST
+   ═══════════════════════════════════════════════════════════════════ */
+.feedback {
+  position: fixed;
+  bottom: calc(var(--safe-b) + 100px);
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  border: 1px solid rgba(22,163,74,0.3);
+  background: var(--glass-solid);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-2);
+  transition: opacity 0.2s, transform 0.2s;
+  max-width: calc(100vw - 40px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.feedback.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.feedback.error { color: var(--danger); border-color: rgba(220,38,38,0.3); }
+.feedback.warn { color: var(--warn); border-color: rgba(234,138,9,0.3); }
+
+.burst {
+  position: fixed; z-index: 50; pointer-events: none;
+  font-size: 22px; font-weight: 800; color: var(--accent);
+  text-shadow: 0 2px 12px rgba(22,163,74,0.4);
+  opacity: 0;
+}
+.burst.fire { animation: burst-up 0.75s ease forwards; }
+@keyframes burst-up {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  60%  { opacity: 1; transform: translateY(-44px) scale(1.2); }
+  100% { opacity: 0; transform: translateY(-70px) scale(0.9); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODALS — onboarding, privacy, settings
+   ═══════════════════════════════════════════════════════════════════ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,29,54,0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.modal-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.modal {
+  width: 100%;
+  max-width: 520px;
+  background: var(--glass-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  box-shadow: var(--shadow-3);
+  padding: 24px 22px calc(22px + var(--safe-b));
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform: translateY(100%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.modal-backdrop.open .modal { transform: translateY(0); }
+
+@media (min-width: 640px) {
+  .modal-backdrop { align-items: center; padding: 24px; }
+  .modal { border-radius: var(--r-xl); }
+}
+
+.modal-handle {
+  width: 36px; height: 4px;
+  background: rgba(15,29,54,0.18);
+  border-radius: 999px;
+  margin: -8px auto 16px;
+}
+
+.modal h2 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  margin-bottom: 8px;
+}
+.modal h3 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.modal p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+.modal small { font-size: 11px; color: var(--muted); }
+.modal ul { font-size: 13px; color: var(--text-2); padding-left: 18px; line-height: 1.6; }
+.modal ul li { margin-bottom: 4px; }
+
+.consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,0.5);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.consent-row .toggle { margin-top: 2px; }
+.consent-text { flex: 1; min-width: 0; }
+.consent-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.consent-desc { font-size: 11.5px; color: var(--text-2); line-height: 1.45; }
+.consent-required {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-left: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.btn {
+  flex: 1;
+  min-width: 120px;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.1s, opacity 0.2s;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary {
+  background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(22,163,74,0.28);
+}
+.btn-secondary {
+  background: rgba(15,29,54,0.06);
+  color: var(--text);
+}
+.btn-link {
+  flex: none;
+  background: transparent;
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.privacy-link {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--blue);
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MARKERS LEAFLET
+   ═══════════════════════════════════════════════════════════════════ */
+.u-dot {
+  width: 18px; height: 18px;
+  background: var(--blue);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 5px rgba(37,99,235,0.22), 0 2px 6px rgba(0,0,0,0.2);
+}
+.s-marker {
+  width: 14px; height: 14px;
+  background: var(--accent);
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(22,163,74,0.5), 0 2px 4px rgba(0,0,0,0.15);
+  animation: signal-pop 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes signal-pop {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+.poi-marker {
+  background: rgba(255,255,255,0.92);
+  border: 1.5px solid;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(15,29,54,0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.poi-marker.parking-open { border-color: rgba(22,163,74,0.5);  color: var(--accent); }
+.poi-marker.parking-few  { border-color: rgba(234,138,9,0.5);  color: var(--warn); }
+.poi-marker.parking-full { border-color: rgba(220,38,38,0.5);  color: var(--danger); }
+.poi-marker.parking-info { border-color: rgba(37,99,235,0.4);  color: var(--blue); }
+.poi-marker.wc-free      { border-color: rgba(22,163,74,0.5);  color: var(--accent); }
+.poi-marker.wc-paid      { border-color: rgba(234,138,9,0.5);  color: var(--warn); }
+.poi-marker.wc           { border-color: rgba(37,99,235,0.4);  color: var(--blue); }
+.poi-marker.water        { border-color: rgba(14,165,233,0.5); color: #0284c7; }
+.poi-marker.bench        { border-color: rgba(22,163,74,0.4);  color: var(--accent-2); }
+.poi-marker.ev           { border-color: rgba(124,58,237,0.5); color: var(--violet); }
+.poi-marker.bus          { border-color: rgba(234,88,12,0.5);  color: var(--orange); }
+.poi-marker.metro        { border-color: rgba(234,88,12,0.6);  color: var(--orange); }
+.poi-marker.tram         { border-color: rgba(124,58,237,0.5); color: var(--violet); }
+.poi-marker.train        { border-color: rgba(220,38,38,0.5);  color: var(--danger); }
+
+/* Popup Leaflet */
+.leaflet-popup-content-wrapper {
+  background: rgba(255,255,255,0.94) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-md) !important;
+  color: var(--text) !important;
+  font-family: inherit !important;
+  box-shadow: var(--shadow-2) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+.leaflet-popup-tip { background: rgba(255,255,255,0.94) !important; }
+.leaflet-popup-content {
+  margin: 10px 14px !important;
+  font-size: 12.5px !important;
+  line-height: 1.5 !important;
+}
+.leaflet-popup-content b { color: var(--text); }
+.leaflet-control-zoom { display: none !important; }
+.leaflet-control-attribution {
+  background: rgba(255,255,255,0.7) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border-radius: 8px 0 0 0 !important;
+  font-size: 9px !important;
+  color: var(--muted) !important;
+}
+.leaflet-container a { color: var(--blue) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   FATAL ERROR (Leaflet/Firebase down)
+   ═══════════════════════════════════════════════════════════════════ */
+.fatal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  text-align: center;
+}
+.fatal.show { display: flex; }
+.fatal h1 {
+  font-size: 22px; font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: -0.4px;
+}
+.fatal p { color: var(--text-2); font-size: 14px; margin-bottom: 16px; max-width: 320px; }
+.fatal .btn-primary { max-width: 200px; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+  .fab-wrap { left: 0; right: 0; }
+  .info-bar { max-width: 520px; }
+  .filter-panel { max-width: 280px; }
+}
+@media (max-width: 360px) {
+  .filter-panel { min-width: 200px; padding: 12px; }
+  .fp-icon { width: 26px; height: 26px; }
+  .fab { font-size: 15px; }
+  .modal { padding: 20px 18px calc(20px + var(--safe-b)); }
+  .modal h2 { font-size: 18px; }
+  .btn { min-width: 100px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ACCESSIBILITÉ
+   ═══════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DARK MODE
+   ═══════════════════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:          #0e1320;
+    --bg-grad:     radial-gradient(120% 80% at 20% 0%, #182236 0%, #0e1320 60%, #060912 100%);
+    --glass:       rgba(28,38,60,0.55);
+    --glass-soft:  rgba(28,38,60,0.4);
+    --glass-solid: rgba(28,38,60,0.78);
+    --border:      rgba(255,255,255,0.08);
+    --border-soft: rgba(255,255,255,0.06);
+    --text:        #eaf0fb;
+    --text-2:      #b0bcd4;
+    --muted:       #6b7896;
+  }
+  #map { filter: saturate(0.85) brightness(0.85) hue-rotate(180deg) invert(0.92); }
+  .leaflet-popup-content-wrapper { background: rgba(28,38,60,0.92) !important; color: var(--text) !important; }
+  .leaflet-popup-tip { background: rgba(28,38,60,0.92) !important; }
+  .poi-marker { background: rgba(28,38,60,0.92); }
+  .consent-row { background: rgba(255,255,255,0.04); }
+}
+</style>
+</head>
+<body>
+
+<div id="map" role="application" aria-label="Carte des places libres"></div>
+
+<!-- TOP BAR -->
+<header class="top">
+  <div class="logo glass">
+    <div class="logo-mark" aria-hidden="true">V</div>
+    <span class="logo-name">VAC<b>UUM</b></span>
+    <span class="logo-beta" title="Application en développement">Bêta</span>
+  </div>
+  <div class="top-right">
+    <div class="counter glass" id="counter" aria-live="polite">
+      <span class="counter-dot" aria-hidden="true"></span>
+      <b id="ctr">0</b>&nbsp;live
+    </div>
+    <button class="icon-btn glass tap-target" id="menu-btn"
+            aria-label="Menu et paramètres">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+        <circle cx="12" cy="5"  r="1.5" fill="currentColor"/>
+        <circle cx="12" cy="19" r="1.5" fill="currentColor"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- ZONE PILL -->
+<div class="zone-pill glass hidden" id="zone-pill" aria-live="polite">
+  <span class="zp-prob" id="zp-prob">—</span>
+  <span class="zp-label" id="zp-label">de disponibilité</span>
+</div>
+
+<!-- LOCATE -->
+<button class="side-btn btn-locate glass tap-target" id="btn-locate"
+        aria-label="Recentrer sur ma position">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+  </svg>
+</button>
+
+<!-- FILTER -->
+<button class="side-btn filter-btn glass tap-target" id="filter-btn"
+        aria-label="Filtres" aria-expanded="false" aria-controls="filter-panel">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" aria-hidden="true">
+    <line x1="4"  y1="6"  x2="20" y2="6"/>
+    <line x1="8"  y1="12" x2="16" y2="12"/>
+    <line x1="11" y1="18" x2="13" y2="18"/>
+  </svg>
+</button>
+
+<!-- FILTER PANEL -->
+<div class="filter-panel glass" id="filter-panel" role="dialog" aria-label="Filtres">
+  <div class="fp-title">Afficher sur la carte</div>
+
+  <div class="fp-item" data-layer="parking">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:var(--blue-soft);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+          <rect x="6" y="3" width="12" height="18" rx="2"/>
+          <path d="M10 8h3a2 2 0 0 1 0 4h-3v5"/>
+        </svg>
+      </div>
+      <div class="fp-text">
+        <div class="fp-label">Parkings</div>
+        <div class="fp-sub">Public, capacité</div>
+      </div>
+    </div>
+    <div class="toggle on" id="toggle-parking" role="switch" aria-checked="true"></div>
+  </div>
+
+  <div class="fp-item" data-layer="wc">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:var(--blue-soft);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="7"  cy="6" r="1.5"/>
+          <circle cx="17" cy="6" r="1.5"/>
+          <path d="M5 11h4l-1 7h2l1-9M14 9l-1 9h2l1-7h2"/>
+        </svg>
+      </div>
+      <div class="fp-text">
+        <div class="fp-label">Toilettes</div>
+        <div class="fp-sub">WC publics</div>
+      </div>
+    </div>
+    <div class="toggle on" id="toggle-wc" role="switch" aria-checked="true"></div>
+  </div>
+
+  <div class="fp-item" data-layer="water">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(14,165,233,0.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/>
+        </svg>
+      </div>
+      <div class="fp-text">
+        <div class="fp-label">Eau potable</div>
+        <div class="fp-sub">Fontaines</div>
+      </div>
+    </div>
+    <div class="toggle on" id="toggle-water" role="switch" aria-checked="true"></div>
+  </div>
+
+  <div class="fp-item" data-layer="bench">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:var(--accent-soft);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="3" y="10" width="18" height="3" rx="1"/>
+          <path d="M6 10V7M18 10V7M4 13v4M20 13v4"/>
+        </svg>
+      </div>
+      <div class="fp-text">
+        <div class="fp-label">Bancs &amp; parcs</div>
+        <div class="fp-sub">Repos extérieur</div>
+      </div>
+    </div>
+    <div class="toggle on" id="toggle-bench" role="switch" aria-checked="true"></div>
+  </div>
+
+  <div class="fp-item" data-layer="ev">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(124,58,237,0.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="fp-text">
+        <div class="fp-label">Bornes élec.</div>
+        <div class="fp-sub">Recharge VE</div>
+      </div>
+    </div>
+    <div class="toggle on" id="toggle-ev" role="switch" aria-checked="true"></div>
+  </div>
+
+  <div class="fp-item" data-layer="transit">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(234,88,12,0.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="4" y="3" width="16" height="14" rx="2"/>
+          <path d="M4 11h16M8 17l-2 4M16 17l2 4M8 7h.01M16 7h.01"/>
+        </svg>
+      </div>
+      <div class="fp-text">
+        <div class="fp-label">Transports</div>
+        <div class="fp-sub">Bus, métro, tram</div>
+      </div>
+    </div>
+    <div class="toggle on" id="toggle-transit" role="switch" aria-checked="true"></div>
+  </div>
+</div>
+
+<!-- FAB -->
+<div class="fab-wrap">
+  <button class="fab" id="fab" aria-label="Signaler une place libre">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+         stroke-linecap="round" aria-hidden="true">
+      <circle cx="12" cy="10" r="3"/>
+      <path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/>
+    </svg>
+    <span id="fab-label">J'ai vu une place libre</span>
+  </button>
+</div>
+
+<!-- INFO BAR -->
+<div class="info-bar glass empty" id="info-bar">
+  <div class="ib-traffic" id="ib-traffic" hidden>
+    <span class="ibt-dot" id="ibt-dot" aria-hidden="true"></span>
+    <span id="ibt-label">Fluide</span>
+    <span class="ib-est">est.</span>
+  </div>
+  <span class="ib-sep" id="ib-sep" hidden>·</span>
+  <span class="ib-addr" id="ib-addr">Localisation…</span>
+</div>
+
+<!-- FEEDBACK -->
+<div class="feedback" id="feedback" role="status" aria-live="polite">Place signalée</div>
+<div class="burst" id="burst" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODAL — ONBOARDING & CONSENTEMENT
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="onboarding" role="dialog" aria-modal="true"
+     aria-labelledby="onboarding-title">
+  <div class="modal">
+    <div class="modal-handle" aria-hidden="true"></div>
+    <h2 id="onboarding-title">Bienvenue sur Vacuum</h2>
+    <p>Repérez ensemble les places libres en ville. Chacun signale ce qu'il voit, tout le monde en profite.</p>
+    <p style="background:var(--warn-soft);border:1px solid rgba(234,138,9,0.2);padding:10px 12px;border-radius:var(--r-md);font-size:12px;color:var(--text);"><strong>Application en développement.</strong> Certaines fonctionnalités peuvent évoluer. Aucun paiement n'est demandé, aucune donnée bancaire n'est collectée.</p>
+
+    <h3>Vos données, vos choix</h3>
+
+    <label class="consent-row" for="consent-geo">
+      <span class="toggle on" id="consent-geo-toggle" role="switch" aria-checked="true"></span>
+      <input type="checkbox" id="consent-geo" hidden checked>
+      <span class="consent-text">
+        <span class="consent-title">Géolocalisation
+          <span class="consent-required">requis</span>
+        </span>
+        <span class="consent-desc">Pour afficher votre position sur la carte. Aucune position n'est envoyée tant que vous n'appuyez pas sur "Signaler".</span>
+      </span>
+    </label>
+
+    <label class="consent-row" for="consent-share">
+      <span class="toggle on" id="consent-share-toggle" role="switch" aria-checked="true"></span>
+      <input type="checkbox" id="consent-share" hidden checked>
+      <span class="consent-text">
+        <span class="consent-title">Partage anonyme</span>
+        <span class="consent-desc">Vos signalements sont envoyés à un serveur (Firebase) sous forme anonyme et avec une précision réduite (~11&nbsp;m). Une purge collaborative supprime les données de plus de 24&nbsp;h.</span>
+      </span>
+    </label>
+
+    <label class="consent-row" for="consent-watch">
+      <span class="toggle" id="consent-watch-toggle" role="switch" aria-checked="false"></span>
+      <input type="checkbox" id="consent-watch" hidden>
+      <span class="consent-text">
+        <span class="consent-title">Suivi continu</span>
+        <span class="consent-desc">Met à jour votre position pendant votre déplacement. Désactivez si vous voulez préserver la batterie.</span>
+      </span>
+    </label>
+
+    <p><small>En continuant, vous acceptez la <a class="privacy-link" id="open-privacy">politique de confidentialité</a>.</small></p>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="onboarding-decline">Mode local seul</button>
+      <button class="btn btn-primary" id="onboarding-accept">Continuer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODAL — POLITIQUE DE CONFIDENTIALITÉ
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="privacy-modal" role="dialog" aria-modal="true"
+     aria-labelledby="privacy-title">
+  <div class="modal">
+    <div class="modal-handle" aria-hidden="true"></div>
+    <h2 id="privacy-title">Politique de confidentialité</h2>
+
+    <p><small>Dernière mise à jour : avril 2026</small></p>
+
+    <h3>Statut de l'application</h3>
+    <p><strong>Vacuum est en phase de développement actif (version bêta).</strong> Certaines fonctionnalités peuvent être incomplètes, évoluer ou être temporairement indisponibles. Le service ne traite aucun paiement et ne collecte aucune donnée bancaire.</p>
+
+    <h3>Qui traite vos données ?</h3>
+    <p>Vacuum est un projet bénévole et gratuit, sans but commercial. Aucune donnée n'est revendue. Pour exercer vos droits ou poser une question : <strong>shamsetdean@gmail.com</strong>.</p>
+
+    <h3>Quelles données sont collectées ?</h3>
+    <ul>
+      <li><strong>Identifiant anonyme</strong> généré aléatoirement et stocké sur votre appareil (jamais associé à votre identité)</li>
+      <li><strong>Position approximative</strong> (latitude/longitude tronquées à environ 11&nbsp;mètres) au moment où vous appuyez sur "Signaler"</li>
+      <li><strong>Horodatage serveur</strong> du signalement</li>
+    </ul>
+    <p>Aucun nom, e-mail, identifiant d'appareil, donnée bancaire, contenu de communication ou information de navigation n'est collecté. Aucun traceur publicitaire, aucun cookie tiers, aucun outil de mesure d'audience.</p>
+
+    <h3>Pourquoi ces données ?</h3>
+    <p>Pour afficher en temps réel les zones où des places de stationnement ont été récemment signalées, à tous les utilisateurs de l'application. Base légale : votre consentement explicite (article 6.1.a du RGPD), que vous pouvez retirer à tout moment.</p>
+
+    <h3>Combien de temps sont-elles conservées ?</h3>
+    <p>Les signalements ont une durée de vie cible de <strong>24 heures maximum</strong>. La suppression est assurée par un mécanisme de purge collaborative : chaque application connectée supprime automatiquement les signalements de plus de 24 heures qu'elle rencontre. En conséquence, la suppression effective dépend de la fréquentation de l'application — elle peut être différée si l'application est peu utilisée pendant une longue période.</p>
+    <p>L'identifiant anonyme local reste sur votre appareil tant que vous ne le supprimez pas (bouton "Effacer toutes mes données" dans le menu).</p>
+
+    <h3>Où sont hébergées vos données ?</h3>
+    <p>L'hébergeur du back-end est <strong>Firebase / Google Cloud (Google LLC)</strong>. Les données peuvent transiter ou être stockées sur des serveurs situés en dehors de l'Union Européenne, dans le cadre des clauses contractuelles types adoptées par la Commission Européenne (décision 2021/914).</p>
+
+    <h3>Sécurité</h3>
+    <p>Les données sont transmises via des connexions chiffrées (HTTPS/TLS) et validées côté serveur. Le niveau de sécurité de l'application est optimisé selon l'état de l'art à la date de publication, mais <strong>aucun système informatique ne peut garantir une sécurité absolue</strong>. L'éditeur s'engage à corriger toute vulnérabilité signalée dans les meilleurs délais.</p>
+
+    <h3>Vos droits</h3>
+    <p>Conformément aux articles 15 à 22 du RGPD, vous pouvez à tout moment :</p>
+    <ul>
+      <li>Retirer votre consentement (bouton "Désactiver le partage" dans les réglages)</li>
+      <li>Effacer toutes vos données locales (bouton "Effacer toutes mes données")</li>
+      <li>Demander par e-mail l'accès, la rectification ou l'effacement de toute donnée vous concernant</li>
+      <li>Introduire une réclamation auprès de la <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">CNIL</a></li>
+    </ul>
+
+    <h3>Sources de données externes</h3>
+    <p>Les fonds de carte proviennent d'OpenStreetMap et CARTO. Les points d'intérêt (parkings, toilettes, transports, eau, bornes électriques) proviennent d'OpenStreetMap via Overpass API. Le géocodage inverse utilise Nominatim (OpenStreetMap). Aucun de ces services ne reçoit votre identifiant ; seules vos coordonnées approximatives leur sont transmises pour répondre aux requêtes cartographiques.</p>
+
+    <h3>Limitation de responsabilité</h3>
+    <p>Vacuum est mis à disposition à titre gratuit, à des fins informatives et expérimentales. L'éditeur s'efforce d'assurer la fiabilité du service mais <strong>ne fournit aucune garantie expresse ou implicite</strong> de disponibilité, d'exactitude ou d'exhaustivité.</p>
+    <p>L'utilisation de Vacuum se fait sous la seule responsabilité de l'utilisateur. L'éditeur ne saurait être tenu responsable :</p>
+    <ul>
+      <li>des indisponibilités, ralentissements ou interruptions du service</li>
+      <li>des erreurs ou inexactitudes dans les informations affichées, en particulier les signalements de places dont la fiabilité dépend des contributions des utilisateurs</li>
+      <li>des décisions prises sur la base des informations fournies par l'application</li>
+      <li>des dommages directs ou indirects résultant de l'utilisation ou de l'impossibilité d'utiliser le service</li>
+    </ul>
+    <p><strong>L'utilisateur s'engage à respecter le code de la route et les règles de stationnement en vigueur.</strong> Aucune indication fournie par Vacuum ne dispense de cette obligation.</p>
+    <p><small>Dernière mise à jour&nbsp;: avril 2026 · Document amené à évoluer avec l'application.</small></p>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="privacy-close">J'ai compris</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODAL — MENU / RÉGLAGES
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="settings-modal" role="dialog" aria-modal="true"
+     aria-labelledby="settings-title">
+  <div class="modal">
+    <div class="modal-handle" aria-hidden="true"></div>
+    <h2 id="settings-title">Réglages &amp; confidentialité</h2>
+
+    <div class="fp-item" id="settings-share">
+      <div class="fp-left">
+        <div class="fp-icon" style="background:var(--accent-soft);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="fp-text">
+          <div class="fp-label">Partage anonyme</div>
+          <div class="fp-sub" id="settings-share-sub">Vos signalements sont partagés</div>
+        </div>
+      </div>
+      <div class="toggle on" id="toggle-share" role="switch" aria-checked="true"></div>
+    </div>
+
+    <div class="fp-item" id="settings-watch">
+      <div class="fp-left">
+        <div class="fp-icon" style="background:var(--blue-soft);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          </svg>
+        </div>
+        <div class="fp-text">
+          <div class="fp-label">Suivi continu</div>
+          <div class="fp-sub">Met à jour votre position en temps réel</div>
+        </div>
+      </div>
+      <div class="toggle" id="toggle-watch" role="switch" aria-checked="false"></div>
+    </div>
+
+    <div class="fp-divider"></div>
+
+    <div class="fp-item" id="settings-privacy">
+      <div class="fp-left">
+        <div class="fp-icon" style="background:var(--blue-soft);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <div class="fp-text">
+          <div class="fp-label">Politique de confidentialité</div>
+          <div class="fp-sub">Comment vos données sont traitées</div>
+        </div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </div>
+
+    <div class="fp-divider"></div>
+
+    <button class="fp-action danger" id="erase-data" type="button">
+      Effacer toutes mes données
+    </button>
+    <p style="margin-top:10px;"><small>Supprime votre identifiant et vos signalements locaux. Les données envoyées au serveur sont supprimées par la purge collaborative (cible&nbsp;: 24&nbsp;h).</small></p>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="settings-close">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     FATAL ERROR
+     ═══════════════════════════════════════════════════════════════════ -->
+<div class="fatal" id="fatal">
+  <div class="logo-mark" style="width:48px;height:48px;font-size:20px;border-radius:14px;margin-bottom:14px;" aria-hidden="true">V</div>
+  <h1>Impossible de charger</h1>
+  <p id="fatal-msg">Une ressource essentielle n'a pas pu être chargée. Vérifiez votre connexion et réessayez.</p>
+  <button class="btn btn-primary" onclick="location.reload()">Recharger</button>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════════
+   POLYFILLS
+   ═══════════════════════════════════════════════════════════════════ */
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function (ms) {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(new DOMException('TimeoutError', 'TimeoutError')), ms);
+    return ctrl.signal;
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CONFIG
+   ═══════════════════════════════════════════════════════════════════ */
+const CFG = Object.freeze({
+  GRID:             0.002,
+  DECAY_S:          30,
+  MAX_AGE_MS:       5 * 60_000,
+  COLD_N:           4,
+  PRIOR:            0.30,
+  SIGNAL_THRESHOLD: 1,           // Min signaux pour afficher zone-pill
+
+  POI_RADIUS:       700,
+  PARK_RADIUS:      800,
+  POI_REFRESH:      3 * 60_000,
+  TRAFFIC_REFRESH:  90_000,
+  REVERSE_DEBOUNCE_MS: 1_500,
+  REVERSE_MOVE_M:   50,
+  REVERSE_MIN_INTERVAL_MS: 5_000, // Anti-spam Nominatim
+
+  POI_ZOOM_MIN:     14,
+  MOVE_THRESHOLD_M: 60,
+
+  COORD_PRECISION:  4,           // Décimales pour Firebase (~11m)
+  CONSENT_VERSION:  1,           // Bump pour ré-afficher l'onboarding
+  PURGE_AFTER_MS:   24 * 60 * 60_000,   // Cible 24h pour la purge collaborative
+  PURGE_BATCH_SIZE: 30,                  // Max docs supprimés par cycle (rate limit)
+  PURGE_INTERVAL_MS: 30 * 60_000,        // Toutes les 30 min
+});
+
+const OVERPASS_ENDPOINTS = Object.freeze([
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
+]);
+
+const STORAGE_KEYS = Object.freeze({
+  USER_ID:    'vac_uid',
+  CONSENT:    'vac_consent_v',
+  FILTERS:    'vac_filters',
+  LOCAL_SIGS: 'vac_local_signals',
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════════ */
+const state = {
+  lat: 48.8566,
+  lng: 2.3522,
+  lastFetchLat: null,
+  lastFetchLng: null,
+  signals: [],
+  map: null,
+  hexLayers: new Map(),
+  userId: null,
+  firebaseOk: false,
+  unsubscribe: null,
+  watchId: null,
+  reverseTimer: null,
+  lastReverseAt: 0,
+  lastReverseLat: null,
+  lastReverseLng: null,
+  address: '',
+  consent: { geo: false, share: false, watch: false, version: 0 },
+  online: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  ready: false,
+};
+
+const layers = {
+  parking: { on: true, markers: [] },
+  wc:      { on: true, markers: [] },
+  water:   { on: true, markers: [] },
+  bench:   { on: true, markers: [] },
+  ev:      { on: true, markers: [] },
+  transit: { on: true, markers: [] },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   STORAGE — wrappers safe (localStorage peut throw en private mode)
+   ═══════════════════════════════════════════════════════════════════ */
+function lsGet(key, fallback = null) {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  } catch { return fallback; }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch { return false; }
+}
+function lsRemove(key) {
+  try { localStorage.removeItem(key); } catch {}
+}
+
+function getOrCreateUserId() {
+  let id = lsGet(STORAGE_KEYS.USER_ID);
+  if (!id || !/^u_[a-z0-9]{6,12}$/.test(id)) {
+    id = 'u_' + Math.random().toString(36).slice(2, 11);
+    lsSet(STORAGE_KEYS.USER_ID, id);
+  }
+  return id;
+}
+
+function loadConsent() {
+  const raw = lsGet(STORAGE_KEYS.CONSENT);
+  if (!raw) return null;
+  try {
+    const c = JSON.parse(raw);
+    if (typeof c !== 'object' || !c) return null;
+    return {
+      geo:     !!c.geo,
+      share:   !!c.share,
+      watch:   !!c.watch,
+      version: typeof c.version === 'number' ? c.version : 0,
+    };
+  } catch { return null; }
+}
+function saveConsent(c) {
+  lsSet(STORAGE_KEYS.CONSENT, JSON.stringify({ ...c, version: CFG.CONSENT_VERSION }));
+}
+
+function loadFilterPrefs() {
+  const raw = lsGet(STORAGE_KEYS.FILTERS);
+  if (!raw) return null;
+  try {
+    const obj = JSON.parse(raw);
+    if (typeof obj !== 'object' || !obj) return null;
+    return obj;
+  } catch { return null; }
+}
+function saveFilterPrefs() {
+  const prefs = {};
+  for (const id of Object.keys(layers)) prefs[id] = layers[id].on;
+  lsSet(STORAGE_KEYS.FILTERS, JSON.stringify(prefs));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GRID
+   ═══════════════════════════════════════════════════════════════════ */
+function gridKey(lat, lng) {
+  if (typeof lat !== 'number' || typeof lng !== 'number' ||
+      !isFinite(lat) || !isFinite(lng)) return '0_0';
+  const r = Math.floor(lat / CFG.GRID);
+  const offset = (r % 2 === 0) ? 0 : 0.5;
+  const c = Math.floor((lng / CFG.GRID) - offset);
+  return `${r}_${c}`;
+}
+function gridCenter(key) {
+  const [r, c] = key.split('_').map(Number);
+  const offset = (r % 2 === 0) ? 0 : 0.5;
+  return { lat: (r + 0.5) * CFG.GRID, lng: (c + offset + 0.5) * CFG.GRID };
+}
+function gridPoly(key) {
+  const [r, c] = key.split('_').map(Number);
+  const g = CFG.GRID;
+  const offset = (r % 2 === 0) ? 0 : 0.5;
+  const la = r * g, lb = (r + 1) * g;
+  const lo = (c + offset) * g, lp = (c + offset + 1) * g;
+  const m = (la + lb) / 2;
+  return [
+    [lb, lo + g * 0.15], [lb, lp - g * 0.15],
+    [m + g * 0.5, lp],
+    [la, lp - g * 0.15], [la, lo + g * 0.15],
+    [m + g * 0.5, lo],
+  ];
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCORING
+   ═══════════════════════════════════════════════════════════════════ */
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+function probability(key) {
+  const now = Date.now();
+  const cutoff = now - CFG.MAX_AGE_MS;
+  const arr = state.signals.filter(s => s.key === key && s.t > cutoff);
+  if (!arr.length) return CFG.PRIOR;
+  let sum = 0;
+  for (const s of arr) {
+    const dt = (now - s.t) / 1000;
+    sum += Math.exp(-dt / CFG.DECAY_S);
+  }
+  const w = Math.min(1, arr.length / CFG.COLD_N);
+  return w * sigmoid(sum) + (1 - w) * CFG.PRIOR;
+}
+
+function colorFor(p) {
+  if (p >= 0.65) return { fill: '#22c55e', stroke: '#16a34a' };
+  if (p >= 0.40) return { fill: '#f59e0b', stroke: '#c47a10' };
+  return                { fill: '#ef4444', stroke: '#b03030' };
+}
+
+function distanceM(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const dφ = (lat2 - lat1) * Math.PI / 180;
+  const dλ = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dφ/2)**2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(dλ/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ESCAPE / SANITIZE — défense en profondeur pour les popups
+   ═══════════════════════════════════════════════════════════════════ */
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/* Builder de popups : chaque ligne est texte plain + escape, jamais d'HTML brut */
+function popup(title, lines = []) {
+  const safeTitle = esc(title);
+  const safeLines = lines
+    .filter(l => l !== null && l !== undefined && l !== '')
+    .map(l => `<div>${esc(l)}</div>`)
+    .join('');
+  return `<b>${safeTitle}</b>${safeLines}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FIREBASE
+   ═══════════════════════════════════════════════════════════════════ */
+function subscribeToSignals() {
+  if (!window._db || !window._fbModules) return;
+  if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
+  const { collection, onSnapshot, query, where, Timestamp } = window._fbModules;
+  const cutoff = Timestamp.fromMillis(Date.now() - CFG.MAX_AGE_MS);
+  const q = query(collection(window._db, 'signals'), where('ts', '>', cutoff));
+
+  state.unsubscribe = onSnapshot(q,
+    (snap) => {
+      state.signals = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          key: typeof data.h3 === 'string' ? data.h3 : '0_0',
+          lat: typeof data.lat === 'number' ? data.lat : 0,
+          lng: typeof data.lng === 'number' ? data.lng : 0,
+          t:   data.ts?.toMillis?.() ?? Date.now(),
+        };
+      });
+      renderHexes(); updateZonePill(); updateCounter();
+    },
+    (err) => {
+      console.warn('[firestore] erreur, fallback local', err);
+      state.firebaseOk = false;
+      loadLocalSignals();
+      toast('Connexion serveur impossible, mode local activé', 'warn');
+    }
+  );
+}
+
+function unsubscribeFirebase() {
+  if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
+}
+
+async function pushSignalFirebase(lat, lng, key) {
+  if (!window._db || !window._fbModules) throw new Error('firebase-not-ready');
+  const { collection, addDoc, serverTimestamp } = window._fbModules;
+  // Minimisation RGPD : précision ~11m suffit largement pour la grille 220m
+  const round = (x) => Math.round(x * 10**CFG.COORD_PRECISION) / 10**CFG.COORD_PRECISION;
+  return addDoc(collection(window._db, 'signals'), {
+    h3: String(key).slice(0, 49),
+    lat: round(lat),
+    lng: round(lng),
+    userId: String(state.userId).slice(0, 49),
+    ts: serverTimestamp(),
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PURGE COLLABORATIVE — supprime les signaux >24h
+   Le TTL natif Firestore nécessitant Blaze (CB), on remplace par une
+   purge faite par les clients eux-mêmes. Règle Firestore associée :
+     allow delete: if resource.data.ts < request.time - duration.value(24, 'h');
+   Limites : si l'app n'a aucun utilisateur actif, la purge attend.
+   On purge au démarrage et toutes les 30 min.
+   ───────────────────────────────────────────────────────────────── */
+let purgeInflight = false;
+async function purgeOldSignals() {
+  if (purgeInflight) return;
+  if (!window._db || !window._fbModules) return;
+  if (!state.online || !state.consent.share) return;
+
+  purgeInflight = true;
+  try {
+    const { collection, query, where, orderBy, limit, getDocs, deleteDoc, Timestamp } = window._fbModules;
+    const cutoff = Timestamp.fromMillis(Date.now() - CFG.PURGE_AFTER_MS);
+    // Note: on récupère par batch limité pour ne pas surcharger le quota
+    // gratuit Firebase (50K reads/jour, 20K writes/jour sur Spark plan)
+    const q = query(
+      collection(window._db, 'signals'),
+      where('ts', '<', cutoff),
+      orderBy('ts', 'asc'),
+      limit(CFG.PURGE_BATCH_SIZE)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+
+    // Suppressions séquentielles pour respecter les rate limits
+    let deleted = 0;
+    for (const docSnap of snap.docs) {
+      try { await deleteDoc(docSnap.ref); deleted++; }
+      catch (e) { /* règle peut refuser si doc déjà <24h, on ignore */ }
+    }
+    if (deleted > 0) console.info(`[purge] ${deleted} signaux expirés supprimés`);
+  } catch (e) {
+    // Règle de sécurité Firestore manquante ou erreur réseau : on n'alerte
+    // pas l'utilisateur, c'est un mécanisme de fond non critique
+    console.warn('[purge] échec', e?.message || e);
+  } finally {
+    purgeInflight = false;
+  }
+}
+
+function loadLocalSignals() {
+  try {
+    const raw = lsGet(STORAGE_KEYS.LOCAL_SIGS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const now = Date.now();
+        state.signals = parsed
+          .filter(s => s && typeof s === 'object'
+                       && typeof s.t === 'number'
+                       && typeof s.key === 'string'
+                       && typeof s.lat === 'number'
+                       && typeof s.lng === 'number'
+                       && now - s.t < CFG.MAX_AGE_MS);
+      }
+    }
+  } catch { state.signals = []; }
+  renderHexes(); updateZonePill(); updateCounter();
+}
+
+function pushSignalLocal(lat, lng, key) {
+  state.signals.push({ key, lat, lng, t: Date.now() });
+  state.signals = state.signals.filter(s => Date.now() - s.t < CFG.MAX_AGE_MS);
+  try { lsSet(STORAGE_KEYS.LOCAL_SIGS, JSON.stringify(state.signals)); } catch {}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CACHE — sessionStorage avec TTL
+   ═══════════════════════════════════════════════════════════════════ */
+function cacheGet(key, maxAgeMs) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const { t, v } = JSON.parse(raw);
+    if (typeof t !== 'number' || Date.now() - t > maxAgeMs) return null;
+    return v;
+  } catch { return null; }
+}
+function cacheSet(key, v) {
+  try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v })); } catch {}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   OVERPASS
+   ═══════════════════════════════════════════════════════════════════ */
+async function overpassQuery(query, signal) {
+  let lastErr;
+  for (const ep of OVERPASS_ENDPOINTS) {
+    try {
+      const r = await fetch(ep, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query),
+        signal,
+      });
+      if (r.ok) return await r.json();
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('Overpass unreachable');
+}
+
+function buildPoisQuery(lat, lng) {
+  const r1 = CFG.POI_RADIUS;
+  const r2 = CFG.PARK_RADIUS;
+  return `[out:json][timeout:18];
+(
+  node[amenity=parking](around:${r2},${lat},${lng});
+  way[amenity=parking](around:${r2},${lat},${lng});
+  node[amenity=toilets](around:${r1},${lat},${lng});
+  node[amenity=drinking_water](around:${r1},${lat},${lng});
+  node[man_made=water_tap](around:${r1},${lat},${lng});
+  node[amenity=bench](around:400,${lat},${lng});
+  node[leisure=park][name](around:${r1},${lat},${lng});
+  node[amenity=charging_station](around:${r1},${lat},${lng});
+  node[highway=bus_stop](around:${r1},${lat},${lng});
+  node[railway=station](around:${r1},${lat},${lng});
+  node[railway=tram_stop](around:${r1},${lat},${lng});
+  node[railway=subway_entrance](around:${r1},${lat},${lng});
+);
+out center 80;`;
+}
+
+let poisInflight = null;
+async function loadAllPois(lat, lng) {
+  const cacheKey = `pois_${lat.toFixed(3)}_${lng.toFixed(3)}`;
+  const cached = cacheGet(cacheKey, CFG.POI_REFRESH);
+  if (cached) { dispatchPois(cached); return; }
+  if (poisInflight) return; // anti-burst
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 18000);
+  poisInflight = (async () => {
+    try {
+      const data = await overpassQuery(buildPoisQuery(lat, lng), ctrl.signal);
+      const elements = Array.isArray(data?.elements) ? data.elements : [];
+      cacheSet(cacheKey, elements);
+      dispatchPois(elements);
+    } catch (e) {
+      if (e?.name !== 'AbortError') {
+        console.warn('[overpass] échec', e);
+        // Silent : pas de toast pour ne pas spammer si l'utilisateur bouge
+      }
+    } finally {
+      clearTimeout(t);
+      poisInflight = null;
+    }
+  })();
+}
+
+function dispatchPois(elements) {
+  for (const id of Object.keys(layers)) clearLayerMarkers(id);
+  for (const el of elements) {
+    if (!el || typeof el !== 'object') continue;
+    const t = el.tags || {};
+    const lat = el.lat ?? el.center?.lat;
+    const lng = el.lon ?? el.center?.lon;
+    if (typeof lat !== 'number' || typeof lng !== 'number') continue;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+
+    if (t.amenity === 'parking')                              addParkingMarker(t, lat, lng);
+    else if (t.amenity === 'toilets')                         addWcMarker(t, lat, lng);
+    else if (t.amenity === 'drinking_water' ||
+             t.man_made === 'water_tap')                      addWaterMarker(t, lat, lng);
+    else if (t.amenity === 'bench' || t.leisure === 'park')   addBenchMarker(t, lat, lng);
+    else if (t.amenity === 'charging_station')                addEvMarker(t, lat, lng);
+    else if (t.highway === 'bus_stop' || t.railway ||
+             t.amenity === 'bus_station')                     addTransitMarker(t, lat, lng);
+  }
+}
+
+function clearLayerMarkers(id) {
+  const lyr = layers[id];
+  if (!lyr || !state.map) return;
+  for (const m of lyr.markers) state.map.removeLayer(m);
+  lyr.markers = [];
+}
+
+function poiIcon(html) {
+  return L.divIcon({ html, className: '', iconSize: [80, 22], iconAnchor: [40, 11] });
+}
+
+function addLayerMarker(id, lat, lng, html, popupHtml) {
+  if (!state.map || !L) return;
+  const m = L.marker([lat, lng], { icon: poiIcon(html) });
+  m.bindPopup(popupHtml);
+  if (layers[id]?.on && state.map.getZoom() >= CFG.POI_ZOOM_MIN) m.addTo(state.map);
+  layers[id]?.markers.push(m);
+}
+
+function addParkingMarker(t, lat, lng) {
+  if (t.access === 'private' || t.access === 'no') return;
+  const cap = parseInt(t.capacity || '0', 10);
+  const free = parseInt(t['capacity:free'] || '0', 10);
+  const fee = t.fee === 'no' ? 'Gratuit' : t.fee === 'yes' ? 'Payant' : '';
+  const name = String(t.name || t['addr:street'] || 'Parking').slice(0, 22);
+
+  let cls = 'parking-info', label = fee || 'P';
+  if (cap > 0) {
+    if (free > 0) {
+      const ratio = free / cap;
+      cls = ratio > 0.3 ? 'parking-open' : ratio > 0.1 ? 'parking-few' : 'parking-full';
+      label = `${free} pl`;
+    } else if (t['capacity:free'] !== undefined) {
+      cls = 'parking-full'; label = 'Complet';
+    } else { cls = 'parking-info'; label = `${cap} pl`; }
+  }
+
+  addLayerMarker('parking', lat, lng,
+    `<div class="poi-marker ${cls}">${esc(label)}</div>`,
+    popup(name, [
+      cap ? `Capacité : ${cap} places` : null,
+      fee || 'Accès public',
+      t.opening_hours ? String(t.opening_hours).slice(0, 60) : null,
+    ]));
+}
+
+function addWcMarker(t, lat, lng) {
+  const free = t.fee === 'no', paid = t.fee === 'yes';
+  const cls = free ? 'wc-free' : paid ? 'wc-paid' : 'wc';
+  const label = free ? 'WC gratuit' : paid ? 'WC payant' : 'WC';
+  addLayerMarker('wc', lat, lng,
+    `<div class="poi-marker ${cls}">${label}</div>`,
+    popup('Toilettes publiques', [
+      free ? 'Gratuit' : paid ? 'Payant' : 'Accès inconnu',
+      t.wheelchair === 'yes' ? 'Accessible PMR' : null,
+    ]));
+}
+
+function addWaterMarker(_t, lat, lng) {
+  addLayerMarker('water', lat, lng,
+    `<div class="poi-marker water">Eau potable</div>`,
+    popup('Fontaine d\'eau potable'));
+}
+
+function addBenchMarker(t, lat, lng) {
+  const isPark = t.leisure === 'park';
+  const label = isPark ? (t.name ? String(t.name).slice(0, 16) : 'Parc') : 'Banc';
+  addLayerMarker('bench', lat, lng,
+    `<div class="poi-marker bench">${esc(label)}</div>`,
+    popup(label, [
+      isPark ? null : (t.backrest === 'yes' ? 'Avec dossier' : null),
+    ]));
+}
+
+function addEvMarker(t, lat, lng) {
+  const pw = parseFloat(t.maxpower || '0');
+  const label = pw >= 50 ? `DC ${pw}kW` : pw > 0 ? `AC ${pw}kW` : 'Borne';
+  addLayerMarker('ev', lat, lng,
+    `<div class="poi-marker ev">${esc(label)}</div>`,
+    popup('Borne recharge', [
+      t.operator ? String(t.operator).slice(0, 40) : null,
+      pw > 0 ? `${pw} kW` : null,
+      t.fee === 'no' ? 'Gratuit' : null,
+    ]));
+}
+
+function addTransitMarker(t, lat, lng) {
+  let cls = 'bus', kind = 'Bus';
+  if (t.railway === 'station' || t.railway === 'halt') { cls = 'train'; kind = 'Gare'; }
+  else if (t.railway === 'tram_stop')                  { cls = 'tram'; kind = 'Tram'; }
+  else if (t.railway === 'subway_entrance')            { cls = 'metro'; kind = 'Métro'; }
+  const name = String(t.name || kind).slice(0, 14);
+  addLayerMarker('transit', lat, lng,
+    `<div class="poi-marker ${cls}">${esc(name)}</div>`,
+    popup(t.name ? String(t.name).slice(0, 40) : kind, [
+      kind,
+      t.ref ? `Ligne ${String(t.ref).slice(0, 10)}` : null,
+    ]));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   REVERSE GEO — Nominatim, debounced + throttled + cached
+   ═══════════════════════════════════════════════════════════════════ */
+function debouncedReverseGeo(lat, lng) {
+  // Skip si déplacement < seuil depuis le dernier appel
+  if (state.lastReverseLat !== null) {
+    const d = distanceM(lat, lng, state.lastReverseLat, state.lastReverseLng);
+    if (d < CFG.REVERSE_MOVE_M) return;
+  }
+  clearTimeout(state.reverseTimer);
+  state.reverseTimer = setTimeout(() => reverseGeo(lat, lng), CFG.REVERSE_DEBOUNCE_MS);
+}
+
+async function reverseGeo(lat, lng) {
+  // Throttle global anti-spam
+  const now = Date.now();
+  if (now - state.lastReverseAt < CFG.REVERSE_MIN_INTERVAL_MS) return;
+
+  const cacheKey = `geo_${lat.toFixed(4)}_${lng.toFixed(4)}`;
+  const cached = cacheGet(cacheKey, 30 * 60_000);
+  if (cached) {
+    state.address = cached;
+    state.lastReverseLat = lat; state.lastReverseLng = lng;
+    setStatus(cached);
+    return;
+  }
+  state.lastReverseAt = now;
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=17&addressdetails=1&accept-language=fr`;
+    const r = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) throw new Error('nominatim http ' + r.status);
+    const d = await r.json();
+    const a = d?.address || {};
+    const street = a.road || a.pedestrian || a.cycleway || a.footway || '';
+    const num = a.house_number || '';
+    const city = a.city || a.town || a.village || a.suburb || '';
+    const addr = [num && street ? `${num} ${street}` : street, city]
+      .filter(Boolean).join(', ');
+    state.address = addr;
+    state.lastReverseLat = lat; state.lastReverseLng = lng;
+    cacheSet(cacheKey, addr);
+    setStatus(addr);
+  } catch {
+    /* silent */
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TRAFIC ESTIMÉ — modèle local
+   ═══════════════════════════════════════════════════════════════════ */
+function estimatedTraffic() {
+  const d = new Date();
+  const h = d.getHours(), m = d.getMinutes(), day = d.getDay();
+  const isWeekend = day === 0 || day === 6;
+  const hMin = h * 60 + m;
+  const morning = !isWeekend && hMin >= 7*60+30 && hMin <= 9*60+30;
+  const evening = !isWeekend && hMin >= 17*60   && hMin <= 19*60+30;
+  const night = h < 6 || h >= 23;
+  let status, delay;
+  if (night) { status = 'ok'; delay = 0; }
+  else if (morning || evening) {
+    const hard = evening && hMin >= 17*60+30 && hMin <= 18*60+30;
+    status = hard ? 'bad' : 'warn';
+    delay = hard ? 6 + Math.floor(Math.random() * 5) : 2 + Math.floor(Math.random() * 3);
+  } else if (isWeekend && h >= 11 && h <= 18) {
+    status = Math.random() > 0.7 ? 'warn' : 'ok';
+    delay = status === 'warn' ? 1 + Math.floor(Math.random() * 2) : 0;
+  } else { status = 'ok'; delay = 0; }
+  return { status, delay };
+}
+
+function applyTraffic() {
+  const { status, delay } = estimatedTraffic();
+  const tb = document.getElementById('ib-traffic');
+  const dot = document.getElementById('ibt-dot');
+  const lbl = document.getElementById('ibt-label');
+  const sep = document.getElementById('ib-sep');
+  if (!tb) return;
+  tb.hidden = false; sep.hidden = false;
+  tb.className = `ib-traffic ${status}`;
+  dot.style.background = status === 'ok' ? 'var(--accent)' :
+                         status === 'warn' ? 'var(--warn)' : 'var(--danger)';
+  lbl.textContent = status === 'ok' ? 'Fluide' :
+                    status === 'warn' ? `Ralenti +${delay}min` : `Bouchon +${delay}min`;
+  document.getElementById('info-bar').classList.remove('empty');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RENDU HEX
+   ═══════════════════════════════════════════════════════════════════ */
+function renderHex(key) {
+  if (!state.map || !L) return;
+  const p = probability(key);
+  const pts = gridPoly(key);
+  const { fill, stroke } = colorFor(p);
+  const opacity = 0.14 + p * 0.45;
+  const existing = state.hexLayers.get(key);
+  if (existing) {
+    existing.setLatLngs(pts);
+    existing.setStyle({ fillColor: fill, color: stroke, fillOpacity: opacity });
+    existing._prob = p;
+    return;
+  }
+  const poly = L.polygon(pts, {
+    fillColor: fill, color: stroke, weight: 1, fillOpacity: opacity,
+  });
+  poly._prob = p; poly._key = key;
+  poly.on('click', function () {
+    const c = gridCenter(this._key);
+    const n = state.signals.filter(s => s.key === this._key).length;
+    L.popup().setLatLng([c.lat, c.lng]).setContent(
+      popup(`${Math.round(this._prob * 100)}% de disponibilité`, [
+        `${n} signal${n > 1 ? 's' : ''} actif${n > 1 ? 's' : ''}`,
+      ])
+    ).openOn(state.map);
+  });
+  poly.addTo(state.map);
+  state.hexLayers.set(key, poly);
+}
+
+function renderHexes() {
+  if (!state.map) return;
+  const now = Date.now();
+  const active = new Set(
+    state.signals
+      .filter(s => now - s.t < CFG.MAX_AGE_MS)
+      .map(s => s.key)
+  );
+  for (const [key, ly] of state.hexLayers) {
+    if (!active.has(key)) {
+      state.map.removeLayer(ly);
+      state.hexLayers.delete(key);
+    }
+  }
+  for (const key of active) renderHex(key);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UI HELPERS
+   ═══════════════════════════════════════════════════════════════════ */
+function updateZonePill() {
+  const key = gridKey(state.lat, state.lng);
+  const now = Date.now();
+  const n = state.signals.filter(s => s.key === key && now - s.t < CFG.MAX_AGE_MS).length;
+  const pill = document.getElementById('zone-pill');
+  if (!pill) return;
+  if (n < CFG.SIGNAL_THRESHOLD) {
+    pill.classList.add('hidden');
+    return;
+  }
+  const p = probability(key);
+  const pct = Math.round(p * 100);
+  document.getElementById('zp-prob').textContent = pct + '%';
+  document.getElementById('zp-prob').style.color =
+    pct >= 65 ? 'var(--accent)' : pct >= 40 ? 'var(--warn)' : 'var(--danger)';
+  document.getElementById('zp-label').textContent =
+    pct >= 65 ? 'disponible' : 'de disponibilité';
+  pill.classList.remove('hidden');
+}
+
+function updateCounter() {
+  const now = Date.now();
+  const n = state.signals.filter(s => now - s.t < CFG.MAX_AGE_MS).length;
+  const el = document.getElementById('ctr');
+  if (el) el.textContent = n;
+  const counter = document.getElementById('counter');
+  if (counter) counter.classList.toggle('offline', !state.online);
+}
+
+function setStatus(msg) {
+  const bar = document.getElementById('info-bar');
+  const addr = document.getElementById('ib-addr');
+  if (!addr) return;
+  addr.textContent = msg || 'Localisation…';
+  if (msg) bar.classList.remove('empty');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   USER MARKER
+   ═══════════════════════════════════════════════════════════════════ */
+let userMarker = null;
+function updateUserMarker(lat, lng) {
+  state.lat = lat; state.lng = lng;
+  if (!state.map || !L) return;
+  const icon = L.divIcon({
+    html: '<div class="u-dot"></div>',
+    iconSize: [18, 18], iconAnchor: [9, 9], className: '',
+  });
+  if (userMarker) userMarker.setLatLng([lat, lng]);
+  else userMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(state.map);
+}
+
+function onUserMoved(lat, lng) {
+  if (state.lastFetchLat === null) {
+    state.lastFetchLat = lat; state.lastFetchLng = lng;
+    loadAllPois(lat, lng);
+    return;
+  }
+  const dist = distanceM(lat, lng, state.lastFetchLat, state.lastFetchLng);
+  if (dist >= CFG.MOVE_THRESHOLD_M) {
+    state.lastFetchLat = lat; state.lastFetchLng = lng;
+    loadAllPois(lat, lng);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ACTIONS UTILISATEUR
+   ═══════════════════════════════════════════════════════════════════ */
+async function reportPlace() {
+  const fab = document.getElementById('fab');
+  if (fab.disabled) return;
+  if (!state.consent.geo) {
+    toast('Géolocalisation requise pour signaler', 'warn');
+    openOnboarding();
+    return;
+  }
+  fab.disabled = true;
+  const labelEl = document.getElementById('fab-label');
+  const oldLabel = labelEl.textContent;
+  labelEl.textContent = 'Localisation…';
+
+  let lat = state.lat, lng = state.lng;
+  let gotPos = false;
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej,
+        { timeout: 5000, enableHighAccuracy: true }));
+    if (pos?.coords && isFinite(pos.coords.latitude) && isFinite(pos.coords.longitude)) {
+      lat = pos.coords.latitude; lng = pos.coords.longitude;
+      gotPos = true;
+    }
+  } catch {}
+
+  const key = gridKey(lat, lng);
+  let saved = false, savedRemotely = false;
+
+  if (state.firebaseOk && state.consent.share && state.online) {
+    try {
+      labelEl.textContent = 'Envoi…';
+      await pushSignalFirebase(lat, lng, key);
+      saved = true; savedRemotely = true;
+    } catch (e) {
+      console.warn('[firebase] write failed, fallback local', e);
+      pushSignalLocal(lat, lng, key);
+      saved = true;
+      renderHexes(); updateZonePill(); updateCounter();
+    }
+  } else {
+    pushSignalLocal(lat, lng, key);
+    saved = true;
+    renderHexes(); updateZonePill(); updateCounter();
+  }
+
+  if (gotPos) {
+    updateUserMarker(lat, lng);
+    state.map.setView([lat, lng], Math.max(state.map.getZoom(), 16), { animate: true });
+
+    if (L) {
+      const sm = L.marker([lat, lng], {
+        icon: L.divIcon({
+          html: '<div class="s-marker"></div>',
+          iconSize: [12, 12], iconAnchor: [6, 6], className: '',
+        }),
+      }).addTo(state.map);
+      setTimeout(() => state.map.removeLayer(sm), 4000);
+    }
+  }
+
+  if (saved && savedRemotely) showFeedback('Place signalée — merci', '+3');
+  else if (saved && !savedRemotely && !state.consent.share) showFeedback('Signalé localement', '+1');
+  else if (saved) showFeedback('Signalé localement', '+1', 'warn');
+  else showFeedback('Échec — réessayez', null, 'error');
+
+  if (gotPos) debouncedReverseGeo(lat, lng);
+
+  setTimeout(() => {
+    fab.disabled = false;
+    labelEl.textContent = oldLabel;
+  }, 1600);
+}
+
+function showFeedback(text, burst, type = 'ok') {
+  const fb = document.getElementById('feedback');
+  fb.textContent = text;
+  fb.classList.remove('error', 'warn');
+  if (type === 'error') fb.classList.add('error');
+  if (type === 'warn') fb.classList.add('warn');
+  fb.classList.add('show');
+  setTimeout(() => fb.classList.remove('show'), 2400);
+
+  if (burst && type === 'ok') {
+    const fab = document.getElementById('fab');
+    const rect = fab.getBoundingClientRect();
+    const b = document.getElementById('burst');
+    b.style.left = (rect.left + rect.width / 2 - 14) + 'px';
+    b.style.top  = (rect.top - 8) + 'px';
+    b.textContent = burst;
+    b.className = 'burst';
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => b.classList.add('fire')));
+    setTimeout(() => b.className = 'burst', 800);
+  }
+  if (navigator.vibrate) navigator.vibrate(type === 'error' ? [40, 20, 40] : [20, 8, 20]);
+}
+
+function toast(text, type = 'ok') {
+  showFeedback(text, null, type);
+}
+
+async function locateMe() {
+  if (!navigator.geolocation) {
+    toast('GPS indisponible', 'error');
+    return;
+  }
+  if (!state.consent.geo) {
+    openOnboarding();
+    return;
+  }
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej,
+        { timeout: 6000, enableHighAccuracy: true }));
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    if (!isFinite(lat) || !isFinite(lng)) throw new Error('invalid coords');
+    updateUserMarker(lat, lng);
+    state.map.setView([lat, lng], 16, { animate: true });
+    onUserMoved(lat, lng);
+    debouncedReverseGeo(lat, lng);
+    updateZonePill();
+  } catch {
+    toast('Position introuvable', 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FILTRES
+   ═══════════════════════════════════════════════════════════════════ */
+function applyLayerVisibility(id) {
+  const lyr = layers[id];
+  if (!lyr || !state.map) return;
+  const zoomOk = state.map.getZoom() >= CFG.POI_ZOOM_MIN;
+  for (const m of lyr.markers) {
+    if (lyr.on && zoomOk) {
+      if (!state.map.hasLayer(m)) state.map.addLayer(m);
+    } else {
+      if (state.map.hasLayer(m)) state.map.removeLayer(m);
+    }
+  }
+}
+
+function toggleLayer(id) {
+  const lyr = layers[id];
+  if (!lyr) return;
+  lyr.on = !lyr.on;
+  const tog = document.getElementById('toggle-' + id);
+  if (tog) {
+    tog.classList.toggle('on', lyr.on);
+    tog.setAttribute('aria-checked', String(lyr.on));
+  }
+  applyLayerVisibility(id);
+  saveFilterPrefs();
+  updateFilterBtnState();
+}
+
+function updateFilterBtnState() {
+  const allOn = Object.values(layers).every(l => l.on);
+  document.getElementById('filter-btn').classList.toggle('active', !allOn);
+}
+
+function toggleFilterPanel(force) {
+  const panel = document.getElementById('filter-panel');
+  const btn = document.getElementById('filter-btn');
+  const open = typeof force === 'boolean' ? force : !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  btn.setAttribute('aria-expanded', String(open));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODALS
+   ═══════════════════════════════════════════════════════════════════ */
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  // Réinitialise overflow seulement si aucun modal n'est ouvert
+  const anyOpen = !!document.querySelector('.modal-backdrop.open');
+  if (!anyOpen) document.body.style.overflow = '';
+}
+
+function openOnboarding() { openModal('onboarding'); }
+function openPrivacy()    { openModal('privacy-modal'); }
+function openSettings()   { openModal('settings-modal'); refreshSettingsUI(); }
+
+function refreshSettingsUI() {
+  document.getElementById('toggle-share').classList.toggle('on', state.consent.share);
+  document.getElementById('toggle-share').setAttribute('aria-checked', String(state.consent.share));
+  document.getElementById('toggle-watch').classList.toggle('on', state.consent.watch);
+  document.getElementById('toggle-watch').setAttribute('aria-checked', String(state.consent.watch));
+  document.getElementById('settings-share-sub').textContent =
+    state.consent.share ? 'Vos signalements sont partagés' : 'Partage désactivé — mode local';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CONSENTEMENT — application des choix
+   ═══════════════════════════════════════════════════════════════════ */
+function applyConsent(newConsent) {
+  const prev = { ...state.consent };
+  state.consent = { ...newConsent, version: CFG.CONSENT_VERSION };
+  saveConsent(state.consent);
+
+  // Geo : démarrer/arrêter le watch
+  if (state.consent.geo && state.consent.watch) startWatch();
+  else stopWatch();
+
+  // Si geo activé pour la 1re fois, demander la position
+  if (state.consent.geo && !prev.geo) firstGeolocation();
+
+  // Share : (dés)abonner Firebase
+  if (state.consent.share && state.firebaseOk) {
+    if (!state.unsubscribe) subscribeToSignals();
+    setTimeout(purgeOldSignals, 8000);
+  } else {
+    unsubscribeFirebase();
+    loadLocalSignals();
+  }
+
+  refreshSettingsUI();
+}
+
+function eraseAllData() {
+  // Confirmation native
+  if (!window.confirm(
+    'Effacer toutes vos données locales ?\n\n' +
+    '• Identifiant anonyme : supprimé\n' +
+    '• Signalements locaux : supprimés\n' +
+    '• Préférences de filtres : conservées\n\n' +
+    'Les données envoyées au serveur sont effacées par la purge collaborative (cible 24h).'
+  )) return;
+
+  lsRemove(STORAGE_KEYS.USER_ID);
+  lsRemove(STORAGE_KEYS.LOCAL_SIGS);
+  lsRemove(STORAGE_KEYS.CONSENT);
+  try { sessionStorage.clear(); } catch {}
+
+  state.userId = getOrCreateUserId();
+  state.consent = { geo: false, share: false, watch: false, version: 0 };
+  state.signals = [];
+  unsubscribeFirebase();
+  stopWatch();
+  renderHexes(); updateZonePill(); updateCounter();
+  closeModal('settings-modal');
+  toast('Données effacées', 'ok');
+  setTimeout(() => openOnboarding(), 400);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GEOLOCATION
+   ═══════════════════════════════════════════════════════════════════ */
+function firstGeolocation() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      if (!isFinite(lat) || !isFinite(lng)) return;
+      updateUserMarker(lat, lng);
+      state.map.setView([lat, lng], 15, { animate: false });
+      onUserMoved(lat, lng);
+      debouncedReverseGeo(lat, lng);
+    },
+    (err) => {
+      console.warn('[geo] getCurrentPosition failed', err?.code);
+      if (err?.code === 1) toast('Géolocalisation refusée', 'warn');
+    },
+    { timeout: 6000, enableHighAccuracy: true }
+  );
+}
+
+function startWatch() {
+  if (state.watchId !== null) return;
+  if (!navigator.geolocation) return;
+  state.watchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const lat = pos.coords.latitude, lng = pos.coords.longitude;
+      if (!isFinite(lat) || !isFinite(lng)) return;
+      updateUserMarker(lat, lng);
+      onUserMoved(lat, lng);
+      debouncedReverseGeo(lat, lng);
+      updateZonePill();
+    },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 5000 }
+  );
+}
+
+function stopWatch() {
+  if (state.watchId !== null) {
+    navigator.geolocation.clearWatch(state.watchId);
+    state.watchId = null;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════════════════════════ */
+function updateLayout() {
+  const cs = getComputedStyle(document.documentElement);
+  const safeB = parseFloat(cs.getPropertyValue('--safe-b')) || 0;
+  const fabBottom = 24 + safeB;
+  const fabHeight = 60;
+  const fabTop = fabBottom + fabHeight;
+  const sideBtnBottom = fabTop + 12;
+
+  document.getElementById('btn-locate').style.bottom = sideBtnBottom + 'px';
+  document.getElementById('filter-btn').style.bottom = sideBtnBottom + 'px';
+  document.getElementById('filter-panel').style.bottom = (sideBtnBottom + 56) + 'px';
+  document.getElementById('info-bar').style.bottom = (fabTop + 8) + 'px';
+  document.getElementById('feedback').style.bottom = (fabTop + 14) + 'px';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FATAL FALLBACK — si Leaflet n'est pas chargé
+   ═══════════════════════════════════════════════════════════════════ */
+function showFatal(msg) {
+  const f = document.getElementById('fatal');
+  if (msg) document.getElementById('fatal-msg').textContent = msg;
+  f.classList.add('show');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════════ */
+function initMap() {
+  if (typeof L === 'undefined') {
+    showFatal('Le moteur de carte (Leaflet) n\'a pas pu être chargé. Vérifiez votre connexion.');
+    return false;
+  }
+  state.map = L.map('map', {
+    center: [state.lat, state.lng],
+    zoom: 15,
+    zoomControl: false,
+    attributionControl: true,
+    maxZoom: 19,
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap · © CARTO',
+    crossOrigin: 'anonymous',
+  }).addTo(state.map);
+
+  state.map.on('zoomend', () => {
+    for (const id of Object.keys(layers)) applyLayerVisibility(id);
+  });
+
+  updateUserMarker(state.lat, state.lng);
+  return true;
+}
+
+function bindEvents() {
+  // FAB
+  document.getElementById('fab').addEventListener('click', reportPlace);
+  document.getElementById('btn-locate').addEventListener('click', locateMe);
+  document.getElementById('filter-btn').addEventListener('click', () => toggleFilterPanel());
+  document.getElementById('menu-btn').addEventListener('click', openSettings);
+
+  // Filtres
+  document.querySelectorAll('.fp-item[data-layer]').forEach(el => {
+    el.addEventListener('click', () => toggleLayer(el.dataset.layer));
+  });
+
+  // Outside click panel
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('filter-panel');
+    const btn = document.getElementById('filter-btn');
+    if (panel.classList.contains('open') &&
+        !panel.contains(e.target) && !btn.contains(e.target)) {
+      toggleFilterPanel(false);
+    }
+  });
+
+  // Onboarding
+  const consents = [
+    { id: 'consent-geo',   key: 'geo' },
+    { id: 'consent-share', key: 'share' },
+    { id: 'consent-watch', key: 'watch' },
+  ];
+  consents.forEach(({ id, key }) => {
+    const row = document.querySelector(`label[for="${id}"]`);
+    const tog = document.getElementById(id + '-toggle');
+    const chk = document.getElementById(id);
+    row?.addEventListener('click', (e) => {
+      e.preventDefault();
+      // geo est requis : on bloque le décochage
+      if (key === 'geo') {
+        chk.checked = true; tog.classList.add('on');
+        tog.setAttribute('aria-checked', 'true');
+        return;
+      }
+      const next = !chk.checked;
+      chk.checked = next;
+      tog.classList.toggle('on', next);
+      tog.setAttribute('aria-checked', String(next));
+    });
+  });
+
+  document.getElementById('onboarding-accept').addEventListener('click', () => {
+    applyConsent({
+      geo:   document.getElementById('consent-geo').checked,
+      share: document.getElementById('consent-share').checked,
+      watch: document.getElementById('consent-watch').checked,
+    });
+    closeModal('onboarding');
+  });
+  document.getElementById('onboarding-decline').addEventListener('click', () => {
+    applyConsent({
+      geo:   document.getElementById('consent-geo').checked,
+      share: false,
+      watch: false,
+    });
+    closeModal('onboarding');
+  });
+  document.getElementById('open-privacy').addEventListener('click', (e) => {
+    e.preventDefault(); openPrivacy();
+  });
+
+  // Privacy
+  document.getElementById('privacy-close').addEventListener('click', () => closeModal('privacy-modal'));
+
+  // Settings
+  document.getElementById('settings-close').addEventListener('click', () => closeModal('settings-modal'));
+  document.getElementById('settings-share').addEventListener('click', () => {
+    applyConsent({ ...state.consent, share: !state.consent.share });
+  });
+  document.getElementById('settings-watch').addEventListener('click', () => {
+    applyConsent({ ...state.consent, watch: !state.consent.watch });
+  });
+  document.getElementById('settings-privacy').addEventListener('click', () => {
+    closeModal('settings-modal');
+    setTimeout(openPrivacy, 250);
+  });
+  document.getElementById('erase-data').addEventListener('click', eraseAllData);
+
+  // Backdrops : tap to close
+  document.querySelectorAll('.modal-backdrop').forEach(bd => {
+    bd.addEventListener('click', (e) => {
+      if (e.target === bd && bd.id !== 'onboarding') {
+        closeModal(bd.id);
+      }
+    });
+  });
+
+  // ESC pour fermer modals (sauf onboarding qui est obligatoire)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const open = document.querySelector('.modal-backdrop.open');
+      if (open && open.id !== 'onboarding') closeModal(open.id);
+    }
+  });
+
+  // Online/offline
+  window.addEventListener('online',  () => { state.online = true;  updateCounter(); toast('De retour en ligne', 'ok'); });
+  window.addEventListener('offline', () => { state.online = false; updateCounter(); toast('Hors ligne', 'warn'); });
+
+  // Resize
+  window.addEventListener('resize', updateLayout);
+  window.addEventListener('orientationchange', () => setTimeout(updateLayout, 200));
+
+  // Cleanup propre — pagehide est plus fiable que beforeunload sur iOS Safari
+  window.addEventListener('pagehide', () => {
+    stopWatch();
+    unsubscribeFirebase();
+  });
+}
+
+function applyStoredFilterPrefs() {
+  const prefs = loadFilterPrefs();
+  if (!prefs) return;
+  for (const id of Object.keys(layers)) {
+    if (typeof prefs[id] === 'boolean') {
+      layers[id].on = prefs[id];
+      const tog = document.getElementById('toggle-' + id);
+      if (tog) {
+        tog.classList.toggle('on', prefs[id]);
+        tog.setAttribute('aria-checked', String(prefs[id]));
+      }
+    }
+  }
+  updateFilterBtnState();
+}
+
+function init() {
+  state.userId = getOrCreateUserId();
+  if (!initMap()) return;
+
+  bindEvents();
+  applyStoredFilterPrefs();
+  updateLayout();
+  applyTraffic();
+
+  // Consentement : chargement et application
+  const stored = loadConsent();
+  if (!stored || stored.version !== CFG.CONSENT_VERSION) {
+    // 1er lancement OU version du consentement bumpée → onboarding obligatoire
+    setTimeout(openOnboarding, 300);
+  } else {
+    state.consent = stored;
+    if (state.consent.geo)   firstGeolocation();
+    if (state.consent.geo && state.consent.watch) startWatch();
+  }
+
+  // Trafic estimé périodique
+  setInterval(applyTraffic, CFG.TRAFFIC_REFRESH);
+
+  // Cleanup périodique des signaux locaux expirés
+  setInterval(() => {
+    const now = Date.now();
+    const before = state.signals.length;
+    state.signals = state.signals.filter(s => now - s.t < CFG.MAX_AGE_MS);
+    if (state.signals.length !== before) {
+      renderHexes(); updateZonePill(); updateCounter();
+    }
+  }, 15000);
+
+  // Purge collaborative — toutes les 30 min
+  setInterval(purgeOldSignals, CFG.PURGE_INTERVAL_MS);
+
+  state.ready = true;
+}
+
+/* Firebase ready — un seul listener */
+window.addEventListener('firebase-ready', (e) => {
+  state.firebaseOk = !!e.detail?.ok;
+  if (state.firebaseOk && state.consent.share) {
+    subscribeToSignals();
+    // Purge initiale au démarrage avec un léger délai pour ne pas concurrencer
+    // le subscribe (deux requêtes simultanées sur la même collection)
+    setTimeout(purgeOldSignals, 8000);
+  } else if (!state.consent.share) {
+    loadLocalSignals();
+  }
+}, { once: true });
+
+/* DOM ready */
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    // Attendre que Leaflet soit chargé (defer) — petite tolérance
+    if (typeof L === 'undefined') {
+      let tries = 0;
+      const wait = setInterval(() => {
+        if (typeof L !== 'undefined') { clearInterval(wait); init(); }
+        else if (++tries > 30) { clearInterval(wait); showFatal(); }
+      }, 100);
+    } else init();
+  });
+} else {
+  if (typeof L === 'undefined') {
+    let tries = 0;
+    const wait = setInterval(() => {
+      if (typeof L !== 'undefined') { clearInterval(wait); init(); }
+      else if (++tries > 30) { clearInterval(wait); showFatal(); }
+    }, 100);
+  } else init();
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/vacuum/sw.js')
+      .catch(() => {}); /* silencieux si échec (dev local) */
+  });
+}
+</script>
+</body>
+</html>
