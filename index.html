@@ -913,11 +913,165 @@ a:hover { text-decoration: underline; }
   .poi-marker { background: rgba(28,38,60,0.92); }
   .consent-row { background: rgba(255,255,255,0.04); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ONBOARDING 3 ÉCRANS
+═══════════════════════════════════════════════════════════════ */
+.ob-modal { padding: 28px 20px 24px; }
+.ob-screen { display: none; flex-direction: column; align-items: center; text-align: center; }
+.ob-screen.active { display: flex; }
+.ob-icon { margin-bottom: 16px; }
+.ob-title { font-size: 22px; line-height: 1.3; margin-bottom: 12px; font-family: var(--font-serif, Georgia, serif); }
+.ob-desc { font-size: 14px; color: var(--text-soft); line-height: 1.55; margin-bottom: 16px; }
+.ob-steps { display: flex; gap: 6px; justify-content: center; margin: 12px 0; }
+.ob-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .2s; }
+.ob-dot.active { background: var(--accent); }
+.ob-next { width: 100%; margin-top: 4px; }
+.ob-step-row { display: flex; align-items: flex-start; gap: 12px; text-align: left; margin-bottom: 12px; font-size: 14px; line-height: 1.45; color: var(--text-soft); }
+.ob-num { min-width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ob-legal { font-size: 11px; color: var(--text-muted); margin: 8px 0 4px; text-align: center; }
+
+/* ═══════════════════════════════════════════════════════════════
+   BOUTON PLACE PRISE
+═══════════════════════════════════════════════════════════════ */
+.taken-btn {
+  position: absolute;
+  bottom: 110px;
+  right: 16px;
+  background: rgba(234, 67, 53, 0.92);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 1000;
+}
+.taken-btn.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.taken-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   PANNEAU HISTORIQUE
+═══════════════════════════════════════════════════════════════ */
+.hist-btn {
+  position: absolute;
+  bottom: 110px;
+  left: 16px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--glass-bg, rgba(255,255,255,0.88));
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  z-index: 1000;
+  transition: background .2s;
+}
+.hist-btn svg { width: 20px; height: 20px; color: var(--text); }
+.hist-btn .hist-badge {
+  position: absolute;
+  top: -3px; right: -3px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  display: none;
+}
+.hist-btn .hist-badge.visible { display: flex; }
+
+.hist-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: var(--surface, #fff);
+  border-radius: 18px 18px 0 0;
+  padding: 0 0 env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 24px rgba(0,0,0,.14);
+  z-index: 2000;
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(.32,.72,0,1);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.hist-panel.open { transform: translateY(0); }
+.hist-panel-inner { padding: 0 20px 24px; }
+.hist-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 10px auto 16px; }
+.hist-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.hist-header h3 { font-size: 16px; font-weight: 700; }
+.hist-close { background: none; border: none; cursor: pointer; color: var(--text-soft); font-size: 20px; line-height: 1; padding: 4px; }
+.hist-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.hist-stat { background: var(--surface-alt, var(--bg-alt, #f5f5f5)); border-radius: 10px; padding: 12px; text-align: center; }
+.hist-stat-val { font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1; }
+.hist-stat-lbl { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
+.hist-week { margin-bottom: 12px; }
+.hist-week-title { font-size: 12px; color: var(--text-soft); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.hist-bars { display: flex; align-items: flex-end; gap: 4px; height: 48px; }
+.hist-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.hist-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 3px; opacity: .75; transition: height .4s; }
+.hist-bar-day { font-size: 9px; color: var(--text-muted); }
+.hist-empty { text-align: center; color: var(--text-soft); font-size: 13px; padding: 24px 0; }
+
 </style>
 </head>
 <body>
 
 <div id="map" role="application" aria-label="Carte des places libres"></div>
+
+<!-- Bouton place prise -->
+<button class="taken-btn" id="taken-btn" aria-label="Signaler place prise">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/>
+  </svg>
+  Place prise
+</button>
+
+<!-- Bouton historique -->
+<button class="hist-btn" id="hist-btn" aria-label="Mon historique">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>
+  </svg>
+  <span class="hist-badge" id="hist-badge"></span>
+</button>
+
+<!-- Panneau historique -->
+<div class="hist-panel" id="hist-panel" role="dialog" aria-modal="false" aria-label="Mon historique">
+  <div class="hist-panel-inner">
+    <div class="hist-handle" aria-hidden="true"></div>
+    <div class="hist-header">
+      <h3>Mes signalements</h3>
+      <button class="hist-close" id="hist-close" aria-label="Fermer">&#x2715;</button>
+    </div>
+    <div class="hist-stats">
+      <div class="hist-stat">
+        <div class="hist-stat-val" id="hist-total">0</div>
+        <div class="hist-stat-lbl">cette semaine</div>
+      </div>
+      <div class="hist-stat">
+        <div class="hist-stat-val" id="hist-helped">~0</div>
+        <div class="hist-stat-lbl">automobilistes aidés</div>
+      </div>
+    </div>
+    <div class="hist-week">
+      <div class="hist-week-title">7 derniers jours</div>
+      <div class="hist-bars" id="hist-bars"></div>
+    </div>
+    <div class="hist-empty" id="hist-empty">Aucun signalement cette semaine.<br>Appuyez sur le bouton pour commencer.</div>
+  </div>
+</div>
 
 <!-- TOP BAR -->
 <header class="top">
@@ -1102,49 +1256,83 @@ a:hover { text-decoration: underline; }
      ═══════════════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="onboarding" role="dialog" aria-modal="true"
      aria-labelledby="onboarding-title">
-  <div class="modal">
+  <div class="modal ob-modal">
     <div class="modal-handle" aria-hidden="true"></div>
-    <h2 id="onboarding-title">Bienvenue sur Vacuum</h2>
-    <p>Repérez ensemble les places libres en ville. Chacun signale ce qu'il voit, tout le monde en profite.</p>
-    <p style="background:var(--warn-soft);border:1px solid rgba(234,138,9,0.2);padding:10px 12px;border-radius:var(--r-md);font-size:12px;color:var(--text);"><strong>Application en développement.</strong> Certaines fonctionnalités peuvent évoluer. Aucun paiement n'est demandé, aucune donnée bancaire n'est collectée.</p>
 
-    <h3>Vos données, vos choix</h3>
-
-    <label class="consent-row" for="consent-geo">
-      <span class="toggle on" id="consent-geo-toggle" role="switch" aria-checked="true"></span>
-      <input type="checkbox" id="consent-geo" hidden checked>
-      <span class="consent-text">
-        <span class="consent-title">Géolocalisation
-          <span class="consent-required">requis</span>
-        </span>
-        <span class="consent-desc">Pour afficher votre position sur la carte. Aucune position n'est envoyée tant que vous n'appuyez pas sur "Signaler".</span>
-      </span>
-    </label>
-
-    <label class="consent-row" for="consent-share">
-      <span class="toggle on" id="consent-share-toggle" role="switch" aria-checked="true"></span>
-      <input type="checkbox" id="consent-share" hidden checked>
-      <span class="consent-text">
-        <span class="consent-title">Partage anonyme</span>
-        <span class="consent-desc">Vos signalements sont envoyés à un serveur (Firebase) sous forme anonyme et avec une précision réduite (~11&nbsp;m). Une purge collaborative supprime les données de plus de 24&nbsp;h.</span>
-      </span>
-    </label>
-
-    <label class="consent-row" for="consent-watch">
-      <span class="toggle" id="consent-watch-toggle" role="switch" aria-checked="false"></span>
-      <input type="checkbox" id="consent-watch" hidden>
-      <span class="consent-text">
-        <span class="consent-title">Suivi continu</span>
-        <span class="consent-desc">Met à jour votre position pendant votre déplacement. Désactivez si vous voulez préserver la batterie.</span>
-      </span>
-    </label>
-
-    <p><small>En continuant, vous acceptez la <a class="privacy-link" id="open-privacy">politique de confidentialité</a>.</small></p>
-
-    <div class="modal-actions">
-      <button class="btn btn-secondary" id="onboarding-decline">Mode local seul</button>
-      <button class="btn btn-primary" id="onboarding-accept">Continuer</button>
+    <!-- Écran 1 : Principe -->
+    <div class="ob-screen active" id="ob-screen-1">
+      <div class="ob-icon">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="56" height="56">
+          <circle cx="24" cy="24" r="22" fill="var(--accent)" opacity=".12"/>
+          <path d="M24 8C15.16 8 8 15.16 8 24s7.16 16 16 16 16-7.16 16-16S32.84 8 24 8zm0 4a12 12 0 0 1 0 24 12 12 0 0 1 0-24zm0 4a8 8 0 0 0 0 16 8 8 0 0 0 0-16zm0 4a4 4 0 0 1 0 8 4 4 0 0 1 0-8z" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <h2 id="onboarding-title" class="ob-title">Trouvez une place.<br>Aidez les autres.</h2>
+      <p class="ob-desc">Vacuum est une carte collaborative. Chacun signale les places libres qu'il voit. Tout le monde en profite en temps réel.</p>
+      <div class="ob-steps"><span class="ob-dot active"></span><span class="ob-dot"></span><span class="ob-dot"></span></div>
+      <button class="btn btn-primary ob-next" data-next="2">Suivant</button>
     </div>
+
+    <!-- Écran 2 : Comment ça marche -->
+    <div class="ob-screen" id="ob-screen-2">
+      <div class="ob-icon">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="56" height="56">
+          <circle cx="24" cy="24" r="22" fill="var(--accent)" opacity=".12"/>
+          <path d="M24 12l-10 10v14h7v-8h6v8h7V22L24 12z" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" fill="none"/>
+          <circle cx="24" cy="19" r="2.5" fill="var(--accent)"/>
+        </svg>
+      </div>
+      <h2 class="ob-title">Un geste,<br>une place signalée.</h2>
+      <div style="width:100%;margin-bottom:8px;">
+        <div class="ob-step-row"><span class="ob-num">1</span><span>Vous libérez une place ou en apercevez une libre</span></div>
+        <div class="ob-step-row"><span class="ob-num">2</span><span>Appuyez sur le bouton — la zone s'illumine sur la carte</span></div>
+        <div class="ob-step-row"><span class="ob-num">3</span><span>Les automobilistes proches voient la zone en temps réel</span></div>
+      </div>
+      <div class="ob-steps"><span class="ob-dot"></span><span class="ob-dot active"></span><span class="ob-dot"></span></div>
+      <button class="btn btn-primary ob-next" data-next="3">Suivant</button>
+    </div>
+
+    <!-- Écran 3 : Consentement -->
+    <div class="ob-screen" id="ob-screen-3">
+      <div class="ob-icon">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="56" height="56">
+          <circle cx="24" cy="24" r="22" fill="var(--accent)" opacity=".12"/>
+          <path d="M24 10c-3.86 0-7 3.14-7 7 0 2.8 1.64 5.22 4 6.4V36l3 3 3-3v-3l2-2-2-2v-3.6c2.36-1.18 4-3.6 4-6.4 0-3.86-3.14-7-7-7z" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
+      <h2 class="ob-title">Vos données,<br>vos choix.</h2>
+      <label class="consent-row" for="consent-geo">
+        <span class="toggle on" id="consent-geo-toggle" role="switch" aria-checked="true"></span>
+        <input type="checkbox" id="consent-geo" hidden checked>
+        <span class="consent-text">
+          <span class="consent-title">Géolocalisation <span class="consent-required">requis</span></span>
+          <span class="consent-desc">Votre position n'est jamais envoyée automatiquement.</span>
+        </span>
+      </label>
+      <label class="consent-row" for="consent-share">
+        <span class="toggle on" id="consent-share-toggle" role="switch" aria-checked="true"></span>
+        <input type="checkbox" id="consent-share" hidden checked>
+        <span class="consent-text">
+          <span class="consent-title">Partage anonyme</span>
+          <span class="consent-desc">Signalements anonymes, précision réduite. Purge automatique en 24 h.</span>
+        </span>
+      </label>
+      <label class="consent-row" for="consent-watch">
+        <span class="toggle" id="consent-watch-toggle" role="switch" aria-checked="false"></span>
+        <input type="checkbox" id="consent-watch" hidden>
+        <span class="consent-text">
+          <span class="consent-title">Suivi continu</span>
+          <span class="consent-desc">Position mise à jour en déplacement. Désactivez pour économiser la batterie.</span>
+        </span>
+      </label>
+      <p class="ob-legal"><small>En continuant, vous acceptez la <a class="privacy-link" id="open-privacy">politique de confidentialité</a>. Gratuit, sans pub, sans compte.</small></p>
+      <div class="ob-steps"><span class="ob-dot"></span><span class="ob-dot"></span><span class="ob-dot active"></span></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="onboarding-decline">Mode local</button>
+        <button class="btn btn-primary" id="onboarding-accept">C'est parti</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1354,6 +1542,8 @@ const STORAGE_KEYS = Object.freeze({
   CONSENT:    'vac_consent_v',
   FILTERS:    'vac_filters',
   LOCAL_SIGS: 'vac_local_signals',
+  HISTORY:    'vac_history',
+  OFFLINE_CACHE: 'vac_offline_cache',
 });
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1557,12 +1747,14 @@ function subscribeToSignals() {
         };
       });
       renderHexes(); updateZonePill(); updateCounter();
+      saveOfflineCache();
+      showTakenBtn(hasActiveSignalNearby());
     },
     (err) => {
       console.warn('[firestore] erreur, fallback local', err);
       state.firebaseOk = false;
-      loadLocalSignals();
-      toast('Connexion serveur impossible, mode local activé', 'warn');
+      if (!loadOfflineCache()) loadLocalSignals();
+      else toast('Mode hors ligne — signalements récents affichés', 'warn');
     }
   );
 }
@@ -2130,6 +2322,12 @@ async function reportPlace() {
     }
   }
 
+  if (saved) {
+    addToHistory(lat, lng);
+    saveOfflineCache();
+    // Afficher le bouton "place prise" si la zone a des signaux
+    setTimeout(() => showTakenBtn(hasActiveSignalNearby()), 500);
+  }
   if (saved && savedRemotely) showFeedback('Place signalée — merci', '+3');
   else if (saved && !savedRemotely && !state.consent.share) showFeedback('Signalé localement', '+1');
   else if (saved) showFeedback('Signalé localement', '+1', 'warn');
@@ -2421,9 +2619,175 @@ function initMap() {
   return true;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   HISTORIQUE PERSONNEL
+   ═══════════════════════════════════════════════════════════════════ */
+function getHistory() {
+  try {
+    const raw = lsGet(STORAGE_KEYS.HISTORY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function addToHistory(lat, lng) {
+  const history = getHistory();
+  history.push({ t: Date.now(), lat, lng });
+  // Garder 90 jours max, 500 entrées max
+  const cutoff = Date.now() - 90 * 24 * 60 * 60_000;
+  const trimmed = history.filter(h => h.t > cutoff).slice(-500);
+  try { lsSet(STORAGE_KEYS.HISTORY, JSON.stringify(trimmed)); } catch {}
+  updateHistoryUI();
+}
+
+function getWeekStats() {
+  const history = getHistory();
+  const now = Date.now();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const start = now - (i + 1) * 86400000;
+    const end   = now - i * 86400000;
+    days.push(history.filter(h => h.t >= start && h.t < end).length);
+  }
+  const total = days.reduce((a, b) => a + b, 0);
+  return { days, total };
+}
+
+function updateHistoryUI() {
+  const { days, total } = getWeekStats();
+  const el = document.getElementById('hist-total');
+  const helped = document.getElementById('hist-helped');
+  const badge = document.getElementById('hist-badge');
+  const empty = document.getElementById('hist-empty');
+  const bars = document.getElementById('hist-bars');
+  if (!el) return;
+
+  el.textContent = total;
+  // Estimation : ~65% des signalements aident au moins 1 automobiliste
+  helped.textContent = '~' + Math.round(total * 0.65);
+  badge.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
+  badge.classList.toggle('visible', total > 0);
+  empty.style.display = total === 0 ? 'block' : 'none';
+
+  // Barres hebdo
+  const maxVal = Math.max(...days, 1);
+  const dayNames = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const today = new Date().getDay(); // 0=dim
+  bars.innerHTML = '';
+  days.forEach((val, i) => {
+    // i=0 = il y a 6 jours
+    const dayIdx = ((today - 6 + i) + 7) % 7;
+    const wrap = document.createElement('div');
+    wrap.className = 'hist-bar-wrap';
+    const bar = document.createElement('div');
+    bar.className = 'hist-bar';
+    bar.style.height = Math.round((val / maxVal) * 44) + 'px';
+    bar.title = val + ' signal' + (val > 1 ? 's' : '');
+    const label = document.createElement('div');
+    label.className = 'hist-bar-day';
+    label.textContent = dayNames[dayIdx];
+    wrap.appendChild(bar);
+    wrap.appendChild(label);
+    bars.appendChild(wrap);
+  });
+}
+
+function openHistPanel() {
+  updateHistoryUI();
+  document.getElementById('hist-panel').classList.add('open');
+}
+function closeHistPanel() {
+  document.getElementById('hist-panel').classList.remove('open');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PLACE PRISE — invalider un signalement actif dans la zone
+   ═══════════════════════════════════════════════════════════════════ */
+let takenCooldown = false;
+
+function showTakenBtn(show) {
+  const btn = document.getElementById('taken-btn');
+  if (btn) btn.classList.toggle('visible', show);
+}
+
+function hasActiveSignalNearby() {
+  if (!state.signals.length) return false;
+  const key = gridKey(state.lat, state.lng);
+  const now = Date.now();
+  return state.signals.some(s => s.key === key && now - s.t < CFG.MAX_AGE_MS);
+}
+
+async function reportTaken() {
+  if (takenCooldown) return;
+  const key = gridKey(state.lat, state.lng);
+  const now = Date.now();
+  // Supprimer localement les signaux de cette zone
+  state.signals = state.signals.filter(s => !(s.key === key && now - s.t < CFG.MAX_AGE_MS));
+  renderHexes(); updateZonePill(); updateCounter();
+  // Supprimer sur Firebase si connecté
+  if (state.firebaseOk && state.consent.share && state.online && window._fbModules) {
+    try {
+      const { collection, query, where, getDocs, deleteDoc, Timestamp } = window._fbModules;
+      const cutoff = Timestamp.fromMillis(now - CFG.MAX_AGE_MS);
+      const q = query(
+        collection(window._db, 'signals'),
+        where('h3', '==', key),
+        where('ts', '>', cutoff)
+      );
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        try { await deleteDoc(d.ref); } catch {}
+      }
+    } catch (e) { console.warn('[taken] firebase delete failed', e); }
+  }
+  showTakenBtn(false);
+  toast('Place prise — zone mise à jour', 'ok');
+  takenCooldown = true;
+  setTimeout(() => { takenCooldown = false; }, 30000);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CACHE HORS LIGNE — sauvegarde les signaux au changement
+   ═══════════════════════════════════════════════════════════════════ */
+function saveOfflineCache() {
+  try {
+    lsSet(STORAGE_KEYS.OFFLINE_CACHE, JSON.stringify({
+      t: Date.now(),
+      signals: state.signals.slice(-200),
+    }));
+  } catch {}
+}
+
+function loadOfflineCache() {
+  try {
+    const raw = lsGet(STORAGE_KEYS.OFFLINE_CACHE);
+    if (!raw) return false;
+    const { t, signals } = JSON.parse(raw);
+    if (!Array.isArray(signals) || !signals.length) return false;
+    // Cache valide 10 minutes max
+    if (Date.now() - t > 10 * 60 * 1000) return false;
+    state.signals = signals.filter(s =>
+      typeof s.key === 'string' &&
+      typeof s.lat === 'number' &&
+      typeof s.lng === 'number' &&
+      typeof s.t === 'number' &&
+      Date.now() - s.t < CFG.MAX_AGE_MS
+    );
+    renderHexes(); updateZonePill(); updateCounter();
+    toast('Mode hors ligne — données récentes affichées', 'warn');
+    return true;
+  } catch { return false; }
+}
+
 function bindEvents() {
   // FAB
   document.getElementById('fab').addEventListener('click', reportPlace);
+  document.getElementById('taken-btn')?.addEventListener('click', reportTaken);
+  document.getElementById('hist-btn')?.addEventListener('click', openHistPanel);
+  document.getElementById('hist-close')?.addEventListener('click', closeHistPanel);
+  document.getElementById('hist-panel')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('hist-panel')) closeHistPanel();
+  });
   document.getElementById('btn-locate').addEventListener('click', locateMe);
   document.getElementById('filter-btn').addEventListener('click', () => toggleFilterPanel());
   document.getElementById('menu-btn').addEventListener('click', openSettings);
@@ -2465,6 +2829,16 @@ function bindEvents() {
       chk.checked = next;
       tog.classList.toggle('on', next);
       tog.setAttribute('aria-checked', String(next));
+    });
+  });
+
+  // Navigation onboarding multi-écrans
+  document.querySelectorAll('.ob-next').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = parseInt(btn.dataset.next);
+      document.querySelectorAll('.ob-screen').forEach(s => s.classList.remove('active'));
+      const nextScreen = document.getElementById('ob-screen-' + next);
+      if (nextScreen) nextScreen.classList.add('active');
     });
   });
 
@@ -2590,6 +2964,7 @@ function init() {
   setInterval(purgeOldSignals, CFG.PURGE_INTERVAL_MS);
 
   state.ready = true;
+  updateHistoryUI();
 }
 
 /* Firebase ready — un seul listener */
