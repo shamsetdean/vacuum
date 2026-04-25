@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#1a1a1a"/>
+      <stop offset="100%" stop-color="#050505"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#a0a0a0" stop-opacity="0.55"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)" rx="96" ry="96"/>
+  <circle cx="256" cy="256" r="130"
+          fill="none" stroke="url(#ring)" stroke-width="12"
+          filter="url(#glow)"/>
+  <text x="256" y="256"
+        dominant-baseline="central" text-anchor="middle"
+        fill="#eaeaea"
+        font-size="40"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif"
+        font-weight="500"
+        letter-spacing="6"
+        opacity="0.9">VACUUM</text>
+</svg>
