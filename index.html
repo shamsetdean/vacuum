@@ -2584,7 +2584,7 @@ async function reportPlace() {
 
   if (state.firebaseOk && state.consent.share && state.online) {
     try {
-      labelEl.textContent = 'Envoi…';
+      labelEl.textContent = 'Envoi en cours…';
       await pushSignalFirebase(lat, lng, key);
       saved = true; savedRemotely = true;
     } catch (e) {
@@ -2896,7 +2896,7 @@ function updateLayout() {
   setBottom('taken-btn',     sideBtn2ndBottom);
   setBottom('filter-panel',  sideBtnBottom + 56);
   setBottom('info-bar',      fabTop + 8);
-  setBottom('feedback',      fabTop + 14);
+  setBottom('feedback',      fabTop + 60);  // bien au-dessus de info-bar pour éviter superposition
 }
 
 /* ═══════════════════════════════════════════════════════════════════
