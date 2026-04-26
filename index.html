@@ -1025,11 +1025,98 @@ a:hover { text-decoration: underline; }
 .hist-bar-day { font-size: 9px; color: var(--text-muted); }
 .hist-empty { text-align: center; color: var(--text-soft); font-size: 13px; padding: 24px 0; }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   BOUTON CENTRAGE GPS
+═══════════════════════════════════════════════════════════════ */
+.locate-btn {
+  position: fixed;
+  bottom: calc(var(--safe-b) + 100px);
+  right: 68px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--glass-bg, rgba(255,255,255,0.92));
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  z-index: 1000;
+  transition: background .2s, transform .15s;
+}
+.locate-btn:active { transform: scale(0.92); }
+.locate-btn svg { width: 20px; height: 20px; color: var(--blue); }
+.locate-btn.tracking svg { color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════════════
+   CERCLE PRÉCISION GPS
+═══════════════════════════════════════════════════════════════ */
+.accuracy-ring {
+  border-radius: 50%;
+  background: rgba(37,99,235,0.08);
+  border: 1.5px solid rgba(37,99,235,0.25);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODE CONDUITE
+═══════════════════════════════════════════════════════════════ */
+body.driving-mode .poi-marker:not(.fuel-marker) { display: none; }
+body.driving-mode .info-bar { display: none; }
+body.driving-mode .fab { min-height: 72px; font-size: 18px; }
+body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 16px); }
+.drive-badge {
+  position: fixed;
+  top: calc(var(--safe-t, 0px) + 52px);
+  left: 50%; transform: translateX(-50%);
+  background: rgba(22,163,74,0.92);
+  color: #fff;
+  font-size: 11px; font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  z-index: 2000;
+  display: none;
+  letter-spacing: 0.3px;
+}
+body.driving-mode .drive-badge { display: block; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ALERTE ZONE ACTIVE
+═══════════════════════════════════════════════════════════════ */
+.zone-alert {
+  position: fixed;
+  top: calc(var(--safe-t, 0px) + 72px);
+  left: 50%; transform: translateX(-50%);
+  background: rgba(22,163,74,0.95);
+  color: #fff;
+  font-size: 13px; font-weight: 700;
+  padding: 8px 18px;
+  border-radius: 24px;
+  z-index: 2001;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s;
+  white-space: nowrap;
+}
+.zone-alert.show { opacity: 1; }
+
 </style>
 </head>
 <body>
 
 <div id="map" role="application" aria-label="Carte des places libres"></div>
+
+<!-- Bouton centrage GPS -->
+<button class="locate-btn" id="locate-btn" aria-label="Centrer sur ma position">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+    <circle cx="12" cy="12" r="9" stroke-dasharray="2 4" stroke-width="1.2" opacity=".4"/>
+  </svg>
+</button>
+
+<!-- Badge mode conduite -->
+<div class="drive-badge" id="drive-badge">Mode conduite</div>
+
+<!-- Alerte zone active -->
+<div class="zone-alert" id="zone-alert">Place libre à proximité</div>
 
 <!-- Bouton place prise -->
 <button class="taken-btn" id="taken-btn" aria-label="Signaler place prise">
@@ -2547,12 +2634,20 @@ function startWatch() {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
       if (!isFinite(lat) || !isFinite(lng)) return;
       updateUserMarker(lat, lng);
+      updateAccuracyCircle(lat, lng, pos.coords.accuracy);
+      computeSpeed(lat, lng);
+      updateDrivingMode();
+      if (followMode && state.map) {
+        state.map.panTo([lat, lng], { animate: true, duration: 0.4 });
+      }
+      checkZoneAlert(lat, lng);
       onUserMoved(lat, lng);
       debouncedReverseGeo(lat, lng);
       updateZonePill();
+      showTakenBtn(hasActiveSignalNearby());
     },
     () => {},
-    { enableHighAccuracy: true, maximumAge: 5000 }
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 }
   );
 }
 
@@ -2613,6 +2708,13 @@ function initMap() {
 
   state.map.on('zoomend', () => {
     for (const id of Object.keys(layers)) applyLayerVisibility(id);
+  });
+  state.map.on('dragstart', () => {
+    if (followMode) {
+      followMode = false;
+      const btn = document.getElementById('locate-btn');
+      if (btn) btn.classList.remove('tracking');
+    }
   });
 
   updateUserMarker(state.lat, state.lng);
@@ -2779,10 +2881,96 @@ function loadOfflineCache() {
   } catch { return false; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   GPS — CENTRAGE, PRÉCISION, MODE CONDUITE, ALERTE
+   ═══════════════════════════════════════════════════════════════════ */
+let accuracyCircle = null;
+let followMode = false;
+let lastSpeed = 0;
+let lastSpeedPos = null;
+let drivingMode = false;
+let zoneAlertCooldown = false;
+let zoneAlertTimer = null;
+
+function updateAccuracyCircle(lat, lng, accuracy) {
+  if (!state.map || !L || !accuracy || accuracy > 500) {
+    if (accuracyCircle) { accuracyCircle.remove(); accuracyCircle = null; }
+    return;
+  }
+  if (accuracyCircle) {
+    accuracyCircle.setLatLng([lat, lng]);
+    accuracyCircle.setRadius(accuracy);
+  } else {
+    accuracyCircle = L.circle([lat, lng], {
+      radius: accuracy,
+      className: 'accuracy-ring',
+      interactive: false,
+      weight: 1.5,
+    }).addTo(state.map);
+    accuracyCircle.bringToBack();
+  }
+}
+
+function centerOnUser() {
+  if (!state.map || !isFinite(state.lat) || !isFinite(state.lng)) {
+    toast('Position non disponible', 'warn');
+    return;
+  }
+  followMode = !followMode;
+  const btn = document.getElementById('locate-btn');
+  if (btn) btn.classList.toggle('tracking', followMode);
+  if (followMode) {
+    state.map.flyTo([state.lat, state.lng], Math.max(state.map.getZoom(), 16), {
+      animate: true, duration: 0.6,
+    });
+    toast('Suivi activé', 'ok');
+  }
+}
+
+function computeSpeed(lat, lng) {
+  const now = Date.now();
+  if (lastSpeedPos) {
+    const dt = (now - lastSpeedPos.t) / 1000;
+    if (dt > 1 && dt < 30) {
+      const d = distanceM(lat, lng, lastSpeedPos.lat, lastSpeedPos.lng);
+      lastSpeed = d / dt * 3.6; // km/h
+    }
+  }
+  lastSpeedPos = { lat, lng, t: now };
+}
+
+function updateDrivingMode() {
+  const isDriving = lastSpeed > 15;
+  if (isDriving === drivingMode) return;
+  drivingMode = isDriving;
+  document.body.classList.toggle('driving-mode', drivingMode);
+}
+
+function checkZoneAlert(lat, lng) {
+  if (zoneAlertCooldown) return;
+  const key = gridKey(lat, lng);
+  const now = Date.now();
+  const active = state.signals.some(s => s.key === key && now - s.t < CFG.MAX_AGE_MS);
+  if (!active) return;
+  zoneAlertCooldown = true;
+  const el = document.getElementById('zone-alert');
+  if (el) {
+    el.classList.add('show');
+    if (zoneAlertTimer) clearTimeout(zoneAlertTimer);
+    zoneAlertTimer = setTimeout(() => {
+      el.classList.remove('show');
+    }, 3000);
+  }
+  if ('vibrate' in navigator) navigator.vibrate([120, 60, 120]);
+  setTimeout(() => { zoneAlertCooldown = false; }, 30000);
+}
+
 function bindEvents() {
   // FAB
   document.getElementById('fab').addEventListener('click', reportPlace);
   document.getElementById('taken-btn')?.addEventListener('click', reportTaken);
+  document.getElementById('locate-btn')?.addEventListener('click', centerOnUser);
   document.getElementById('hist-btn')?.addEventListener('click', openHistPanel);
   document.getElementById('hist-close')?.addEventListener('click', closeHistPanel);
   document.getElementById('hist-panel')?.addEventListener('click', e => {
