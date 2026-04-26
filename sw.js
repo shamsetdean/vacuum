@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════
    VACUUM — Service Worker
    Cache statique minimal pour fonctionnement offline
-   Version : 1.0.0
+   Version : 3.0.0
 ═══════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'vacuum-v2';
+const CACHE_NAME = 'vacuum-v3';
 
 const STATIC_ASSETS = [
   '/vacuum/',
@@ -14,62 +14,44 @@ const STATIC_ASSETS = [
   '/vacuum/icons/icon-512.png'
 ];
 
-/* ── Installation : mise en cache des assets statiques ── */
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
 
-/* ── Activation : suppression des anciens caches ── */
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-/* ── Fetch : cache-first pour statique, network-first pour Firebase ── */
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
-  /* Les requêtes Firebase/API passent toujours par le réseau */
   if (
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('googleapis.com') ||
     url.hostname.includes('openstreetmap.org') ||
     url.hostname.includes('tile.openstreetmap') ||
+    url.hostname.includes('basemaps.cartocdn.com') ||
     url.hostname.includes('unpkg.com')
   ) {
-    return; /* laisser passer sans interception */
+    return;
   }
-
-  /* Cache-first pour tous les assets statiques du projet */
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
       return fetch(event.request).then(response => {
-        /* Ne mettre en cache que les réponses valides */
-        if (!response || response.status !== 200 || response.type === 'opaque') {
-          return response;
-        }
+        if (!response || response.status !== 200 || response.type === 'opaque') return response;
         const clone = response.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
       }).catch(() => {
-        /* Offline fallback : retourner la page principale */
-        if (event.request.destination === 'document') {
-          return caches.match('/vacuum/');
-        }
+        if (event.request.destination === 'document') return caches.match('/vacuum/');
       });
     })
   );
