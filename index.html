@@ -2729,6 +2729,11 @@ function toggleFilterPanel(force) {
   const panel = document.getElementById('filter-panel');
   const btn = document.getElementById('filter-btn');
   const open = typeof force === 'boolean' ? force : !panel.classList.contains('open');
+  // Fermer le panneau historique s'il est ouvert (évite la superposition)
+  if (open) {
+    const hp = document.getElementById('hist-panel');
+    if (hp?.classList.contains('open')) hp.classList.remove('open');
+  }
   panel.classList.toggle('open', open);
   btn.setAttribute('aria-expanded', String(open));
 }
