@@ -1099,23 +1099,70 @@ body.driving-mode .drive-badge { display: block; }
 }
 .zone-alert.show { opacity: 1; }
 
-.popup-route-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.popup-compass {
   margin-top: 10px;
-  padding: 7px 14px;
-  background: var(--blue, #2563eb);
-  color: #fff !important;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 8px;
-  text-decoration: none;
+  padding-top: 10px;
+  border-top: 1px solid rgba(15,29,54,0.08);
+}
+.popup-compass-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--blue-soft, rgba(37,99,235,0.08));
+  border: 1px solid rgba(37,99,235,0.2);
+  border-radius: 10px;
+  cursor: pointer;
   transition: background .15s, transform .1s;
 }
-.popup-route-btn:hover { background: #1e4fc2; }
-.popup-route-btn:active { transform: scale(0.97); }
-.popup-route-btn svg { flex-shrink: 0; }
+.popup-compass-btn:active { transform: scale(0.98); }
+.popup-compass-btn.active {
+  background: rgba(37,99,235,0.12);
+  border-color: rgba(37,99,235,0.4);
+}
+.popup-compass-arrow-wrap {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(37,99,235,0.25);
+  transition: transform 0.2s ease-out;
+}
+.popup-compass-arrow {
+  width: 22px; height: 22px;
+  color: var(--blue, #2563eb);
+}
+.popup-compass-info {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+.popup-compass-distance {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue, #2563eb);
+  font-variant-numeric: tabular-nums;
+}
+.popup-compass-label {
+  font-size: 10px;
+  color: var(--text-2, #4a5a78);
+  margin-top: 1px;
+}
+.popup-compass-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 5px 8px;
+  background: var(--warn-soft, rgba(234,138,9,0.10));
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--warn, #ea8a09);
+  font-weight: 600;
+}
+.popup-compass-warning svg { flex-shrink: 0; }
 
 .fuel-marker {
   background: #f97316;
@@ -1856,18 +1903,30 @@ function popup(title, lines = [], lat = null, lng = null) {
     .filter(l => l !== null && l !== undefined && l !== '')
     .map(l => `<div>${esc(l)}</div>`)
     .join('');
-  // Bouton itinéraire si coordonnées fournies — ouvre l'app GPS native
-  let routeBtn = '';
+  // Boussole + distance si coordonnées fournies
+  let compass = '';
   if (lat != null && lng != null) {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-    routeBtn = `<a href="${url}" target="_blank" rel="noopener" class="popup-route-btn">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 11l19-9-9 19-2-8-8-2z"/>
-      </svg>
-      Itinéraire
-    </a>`;
+    compass = `<div class="popup-compass" data-lat="${lat}" data-lng="${lng}">
+      <button class="popup-compass-btn" type="button">
+        <div class="popup-compass-arrow-wrap">
+          <svg class="popup-compass-arrow" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2 L18 20 L12 16 L6 20 Z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="popup-compass-info">
+          <div class="popup-compass-distance">— m</div>
+          <div class="popup-compass-label">Tapez pour activer</div>
+        </div>
+      </button>
+      <div class="popup-compass-warning">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        </svg>
+        <span>Ne pas utiliser en conduisant</span>
+      </div>
+    </div>`;
   }
-  return `<b>${safeTitle}</b>${safeLines}${routeBtn}`;
+  return `<b>${safeTitle}</b>${safeLines}${compass}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2410,6 +2469,8 @@ function updateUserMarker(lat, lng) {
 }
 
 function onUserMoved(lat, lng) {
+  // MAJ de la boussole si active
+  if (compassState.active) updateCompassUI();
   if (state.lastFetchLat === null) {
     state.lastFetchLat = lat; state.lastFetchLng = lng;
     loadAllPois(lat, lng);
@@ -2794,6 +2855,7 @@ function initMap() {
   });
 
   updateUserMarker(state.lat, state.lng);
+  bindCompassToMap();
   return true;
 }
 
@@ -3040,6 +3102,152 @@ function checkZoneAlert(lat, lng) {
   }
   if ('vibrate' in navigator) navigator.vibrate([120, 60, 120]);
   setTimeout(() => { zoneAlertCooldown = false; }, 30000);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   BOUSSOLE 2D — pointe vers un POI depuis la position utilisateur
+   ═══════════════════════════════════════════════════════════════════ */
+const compassState = {
+  active: false,         // true si l'utilisateur a activé la boussole sur un popup
+  heading: 0,            // cap actuel du téléphone (degrés, 0 = nord)
+  permGranted: null,     // null = pas demandé, true/false sinon
+  currentEl: null,       // élément .popup-compass actuellement actif
+  targetLat: null,
+  targetLng: null,
+  listenerAttached: false,
+};
+
+function calcBearing(lat1, lng1, lat2, lng2) {
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+  const φ1 = toRad(lat1), φ2 = toRad(lat2);
+  const Δλ = toRad(lng2 - lng1);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+}
+
+function formatDistance(m) {
+  if (!isFinite(m)) return '— m';
+  if (m < 50) return Math.round(m) + ' m';
+  if (m < 1000) return Math.round(m / 10) * 10 + ' m';
+  return (m / 1000).toFixed(1).replace('.', ',') + ' km';
+}
+
+function onCompassOrientation(e) {
+  // iOS expose webkitCompassHeading (déjà corrigé pour le nord magnétique)
+  // Android expose alpha (qu'il faut retourner)
+  let h;
+  if (typeof e.webkitCompassHeading === 'number') {
+    h = e.webkitCompassHeading;
+  } else if (typeof e.alpha === 'number') {
+    h = 360 - e.alpha;
+  } else {
+    return;
+  }
+  compassState.heading = h;
+  updateCompassUI();
+}
+
+function updateCompassUI() {
+  if (!compassState.active || !compassState.currentEl) return;
+  const { targetLat, targetLng, heading, currentEl } = compassState;
+  if (targetLat == null || !isFinite(state.lat)) return;
+
+  const bearing = calcBearing(state.lat, state.lng, targetLat, targetLng);
+  // Angle relatif : où pointer la flèche par rapport à l'écran
+  const rotation = (bearing - heading + 360) % 360;
+  const arrowWrap = currentEl.querySelector('.popup-compass-arrow-wrap');
+  if (arrowWrap) {
+    arrowWrap.style.transform = `rotate(${rotation}deg)`;
+  }
+  const dist = distanceM(state.lat, state.lng, targetLat, targetLng);
+  const distEl = currentEl.querySelector('.popup-compass-distance');
+  if (distEl) distEl.textContent = formatDistance(dist);
+}
+
+async function activateCompass(el) {
+  // Demande de permission iOS si nécessaire
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function' &&
+      compassState.permGranted !== true) {
+    try {
+      const result = await DeviceOrientationEvent.requestPermission();
+      compassState.permGranted = (result === 'granted');
+      if (!compassState.permGranted) {
+        toast('Boussole non autorisée', 'warn');
+        return false;
+      }
+    } catch {
+      toast('Boussole indisponible', 'warn');
+      return false;
+    }
+  } else {
+    compassState.permGranted = true;
+  }
+
+  // Attacher le listener une seule fois pour toute la session
+  if (!compassState.listenerAttached) {
+    // iOS utilise deviceorientation, Android l'événement absolu
+    if ('ondeviceorientationabsolute' in window) {
+      window.addEventListener('deviceorientationabsolute', onCompassOrientation, true);
+    } else {
+      window.addEventListener('deviceorientation', onCompassOrientation, true);
+    }
+    compassState.listenerAttached = true;
+  }
+
+  compassState.active = true;
+  compassState.currentEl = el;
+  compassState.targetLat = parseFloat(el.dataset.lat);
+  compassState.targetLng = parseFloat(el.dataset.lng);
+  el.querySelector('.popup-compass-btn')?.classList.add('active');
+  el.querySelector('.popup-compass-label').textContent = 'Boussole active';
+  updateCompassUI();
+  if (navigator.vibrate) navigator.vibrate(10);
+  return true;
+}
+
+function deactivateCompass() {
+  if (compassState.currentEl) {
+    compassState.currentEl.querySelector('.popup-compass-btn')?.classList.remove('active');
+    const lbl = compassState.currentEl.querySelector('.popup-compass-label');
+    if (lbl) lbl.textContent = 'Tapez pour activer';
+  }
+  compassState.active = false;
+  compassState.currentEl = null;
+  compassState.targetLat = null;
+  compassState.targetLng = null;
+}
+
+// Délégation : tap sur n'importe quel bouton boussole dans un popup
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.popup-compass-btn');
+  if (!btn) return;
+  const wrapper = btn.closest('.popup-compass');
+  if (!wrapper) return;
+  if (compassState.active && compassState.currentEl === wrapper) {
+    deactivateCompass();
+  } else {
+    if (compassState.currentEl && compassState.currentEl !== wrapper) {
+      deactivateCompass();
+    }
+    activateCompass(wrapper);
+  }
+});
+
+// Quand un popup se ferme, désactiver la boussole
+// (sera attaché à state.map quand celle-ci existe)
+function bindCompassToMap() {
+  if (!state.map) return;
+  state.map.on('popupclose', (ev) => {
+    if (compassState.currentEl &&
+        ev.popup._contentNode &&
+        ev.popup._contentNode.contains(compassState.currentEl)) {
+      deactivateCompass();
+    }
+  });
 }
 
 function bindEvents() {
