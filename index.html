@@ -960,8 +960,8 @@ a:hover { text-decoration: underline; }
 ═══════════════════════════════════════════════════════════════ */
 .taken-btn {
   position: fixed;
-  bottom: var(--fab-top-2);
-  right: 16px;
+  /* bottom géré dynamiquement par updateLayout() */
+  right: calc(var(--safe-r) + 14px);
   background: rgba(234, 67, 53, 0.92);
   color: #fff;
   border: none;
@@ -1050,26 +1050,6 @@ a:hover { text-decoration: underline; }
 .hist-empty { text-align: center; color: var(--text-soft); font-size: 13px; padding: 24px 0; }
 
 
-/* ═══════════════════════════════════════════════════════════════
-   BOUTON CENTRAGE GPS
-═══════════════════════════════════════════════════════════════ */
-.locate-btn {
-  position: fixed;
-  bottom: var(--fab-top);
-  right: 16px;
-  width: 42px; height: 42px;
-  border-radius: 50%;
-  background: var(--glass-bg, rgba(255,255,255,0.92));
-  border: 1px solid var(--border);
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.12);
-  z-index: 1000;
-  transition: background .2s, transform .15s;
-}
-.locate-btn:active { transform: scale(0.92); }
-.locate-btn svg { width: 20px; height: 20px; color: var(--blue); }
-.locate-btn.tracking svg { color: var(--accent); }
 
 /* ═══════════════════════════════════════════════════════════════
    CERCLE PRÉCISION GPS
@@ -1159,19 +1139,13 @@ textarea:focus-visible {
 }
 
 /* — Boutons ronds : 44px de hit area garantis — */
-.hist-btn,
-.locate-btn {
-  position: fixed;
+.hist-btn {
   min-width: 44px; min-height: 44px;
-  width: 44px; height: 44px;
   -webkit-tap-highlight-color: transparent;
 }
-.hist-btn:active,
-.locate-btn:active { transform: scale(0.92); }
-.hist-btn,
-.locate-btn { transition: transform var(--t-fast) var(--ease), background var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
-.hist-btn:hover,
-.locate-btn:hover { box-shadow: 0 4px 12px rgba(15,29,54,.16); }
+.hist-btn:active { transform: scale(0.93); }
+.hist-btn { transition: transform var(--t-fast) var(--ease), background var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
+.hist-btn:hover { box-shadow: 0 4px 12px rgba(15,29,54,.16); }
 
 /* — FAB : feedback plus expressif — */
 .fab {
@@ -1302,19 +1276,44 @@ body.driving-mode .drive-badge {
   body.driving-mode .drive-badge { animation: none; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════════
+   ORIENTATION PAYSAGE — viewport bas, on compacte l'UI
+═══════════════════════════════════════════════════════════════ */
+@media (max-height: 480px) and (orientation: landscape) {
+  /* FAB centré, plus compact */
+  .fab-wrap {
+    bottom: calc(var(--safe-b) + 12px);
+    left: 50%; right: auto;
+    transform: translateX(-50%);
+    width: auto;
+  }
+  .fab {
+    max-width: 280px;
+    min-height: 48px;
+    font-size: 14px;
+    padding: 0 16px;
+  }
+  /* Boutons latéraux plus compacts pour ne pas gêner */
+  .side-btn,
+  .hist-btn {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+  }
+  /* Panneaux sortent par les côtés au lieu du bas */
+  .info-bar { max-width: 360px; font-size: 11px; }
+  /* Safe area latérale renforcée pour les coches/encoche iPhone */
+  .filter-btn,
+  .hist-btn { left: calc(var(--safe-l) + 8px); }
+  .btn-locate,
+  .taken-btn { right: calc(var(--safe-r) + 8px); }
+}
+
 </style>
 </head>
 <body>
 
 <div id="map" role="application" aria-label="Carte des places libres"></div>
-
-<!-- Bouton centrage GPS -->
-<button class="locate-btn" id="locate-btn" aria-label="Centrer sur ma position">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-    <circle cx="12" cy="12" r="9" stroke-dasharray="2 4" stroke-width="1.2" opacity=".4"/>
-  </svg>
-</button>
 
 <!-- Badge mode conduite -->
 <div class="drive-badge" id="drive-badge">Mode conduite</div>
@@ -2669,6 +2668,7 @@ async function locateMe() {
     openOnboarding();
     return;
   }
+  if (navigator.vibrate) navigator.vibrate(10);
   try {
     const pos = await new Promise((res, rej) =>
       navigator.geolocation.getCurrentPosition(res, rej,
@@ -2680,6 +2680,9 @@ async function locateMe() {
     onUserMoved(lat, lng);
     debouncedReverseGeo(lat, lng);
     updateZonePill();
+    // Activer le mode suivi
+    followMode = true;
+    document.getElementById('btn-locate')?.classList.add('active');
   } catch {
     toast('Position introuvable', 'error');
   }
@@ -2868,16 +2871,55 @@ function stopWatch() {
 function updateLayout() {
   const cs = getComputedStyle(document.documentElement);
   const safeB = parseFloat(cs.getPropertyValue('--safe-b')) || 0;
+  const safeL = parseFloat(cs.getPropertyValue('--safe-l')) || 0;
+  const safeR = parseFloat(cs.getPropertyValue('--safe-r')) || 0;
+
+  // Hauteur du FAB selon le mode
+  const fabHeight = document.body.classList.contains('driving-mode') ? 72 : 60;
   const fabBottom = 24 + safeB;
-  const fabHeight = 60;
   const fabTop = fabBottom + fabHeight;
   const sideBtnBottom = fabTop + 12;
 
-  document.getElementById('btn-locate').style.bottom = sideBtnBottom + 'px';
-  document.getElementById('filter-btn').style.bottom = sideBtnBottom + 'px';
-  document.getElementById('filter-panel').style.bottom = (sideBtnBottom + 56) + 'px';
-  document.getElementById('info-bar').style.bottom = (fabTop + 8) + 'px';
-  document.getElementById('feedback').style.bottom = (fabTop + 14) + 'px';
+  // Détection des contraintes de viewport
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const isLandscapeShort = vh <= 500 && vw > vh; // paysage écran bas
+  const enoughHeight = vh >= 600;
+
+  const set = (id, props) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    Object.entries(props).forEach(([k, v]) => {
+      el.style[k] = v != null ? (typeof v === 'number' ? v + 'px' : v) : '';
+    });
+  };
+
+  // 1ère rangée : boutons primaires côté FAB
+  set('btn-locate', { bottom: sideBtnBottom, right: (safeR + 14), left: '' });
+  set('filter-btn', { bottom: sideBtnBottom, left: (safeL + 14), right: '' });
+
+  // Disposition adaptative pour les boutons secondaires (hist-btn, taken-btn)
+  if (isLandscapeShort) {
+    // Paysage compact : décalage HORIZONTAL au lieu de vertical
+    // hist-btn à côté du filter-btn (à droite de lui), taken-btn à côté du btn-locate (à gauche)
+    set('hist-btn',  { bottom: sideBtnBottom, left: (safeL + 14 + 60), right: '' });
+    set('taken-btn', { bottom: sideBtnBottom, right: (safeR + 14 + 60), left: '' });
+  } else if (enoughHeight) {
+    // Hauteur normale : 2e rangée empilée verticalement
+    const sideBtn2ndBottom = sideBtnBottom + 60;
+    set('hist-btn',  { bottom: sideBtn2ndBottom, left: (safeL + 14), right: '' });
+    set('taken-btn', { bottom: sideBtn2ndBottom, right: (safeR + 14), left: '' });
+  } else {
+    // Hauteur intermédiaire : empilage avec gap réduit
+    const sideBtn2ndBottom = sideBtnBottom + 56;
+    set('hist-btn',  { bottom: sideBtn2ndBottom, left: (safeL + 14), right: '' });
+    set('taken-btn', { bottom: sideBtn2ndBottom, right: (safeR + 14), left: '' });
+  }
+
+  // Panneaux et info-bar
+  set('filter-panel', { bottom: sideBtnBottom + 56 });
+  set('info-bar',     { bottom: fabTop + 8 });
+  set('feedback',     { bottom: fabTop + 14 });
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2916,8 +2958,8 @@ function initMap() {
   state.map.on('dragstart', () => {
     if (followMode) {
       followMode = false;
-      const btn = document.getElementById('locate-btn');
-      if (btn) btn.classList.remove('tracking');
+      const btn = document.getElementById('btn-locate');
+      if (btn) btn.classList.remove('active');
     }
   });
 
@@ -3116,11 +3158,6 @@ function updateAccuracyCircle(lat, lng, accuracy) {
   }
 }
 
-function centerOnUser() {
-  if (!state.map || !isFinite(state.lat) || !isFinite(state.lng)) {
-    toast('Position non disponible', 'warn');
-    return;
-  }
   followMode = !followMode;
   const btn = document.getElementById('locate-btn');
   if (btn) btn.classList.toggle('tracking', followMode);
@@ -3149,6 +3186,8 @@ function updateDrivingMode() {
   if (isDriving === drivingMode) return;
   drivingMode = isDriving;
   document.body.classList.toggle('driving-mode', drivingMode);
+  // Recalculer la position des boutons (FAB change de hauteur)
+  if (typeof updateLayout === 'function') updateLayout();
 }
 
 function checkZoneAlert(lat, lng) {
@@ -3174,10 +3213,6 @@ function bindEvents() {
   // FAB
   document.getElementById('fab').addEventListener('click', reportPlace);
   document.getElementById('taken-btn')?.addEventListener('click', reportTaken);
-  document.getElementById('locate-btn')?.addEventListener('click', () => {
-    if (navigator.vibrate) navigator.vibrate(10);
-    centerOnUser();
-  });
   document.getElementById('hist-btn')?.addEventListener('click', () => {
     if (navigator.vibrate) navigator.vibrate(10);
     openHistPanel();
@@ -3394,6 +3429,9 @@ function init() {
 
   state.ready = true;
   updateHistoryUI();
+  // Recalcul layout sur changement de viewport (rotation, resize)
+  window.addEventListener('resize', updateLayout, { passive: true });
+  window.addEventListener('orientationchange', () => setTimeout(updateLayout, 100));
 }
 
 /* Firebase ready — un seul listener */
