@@ -1099,6 +1099,16 @@ body.driving-mode .drive-badge { display: block; }
 }
 .zone-alert.show { opacity: 1; }
 
+.fuel-marker {
+  background: #f97316;
+  color: #fff;
+  border: 1px solid #ea6c09;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
 </style>
 </head>
 <body>
@@ -1309,6 +1319,24 @@ body.driving-mode .drive-badge { display: block; }
       </div>
     </div>
     <div class="toggle on" id="toggle-transit" role="switch" aria-checked="true"></div>
+  </div>
+
+  <div class="fp-item" data-layer="fuel">
+    <div class="fp-left">
+      <div class="fp-icon" style="background:rgba(249,115,22,0.1);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/>
+          <path d="M3 11h12"/>
+          <path d="M15 6.5l2 2L19 7a2 2 0 0 1 2 2v6.5a1.5 1.5 0 0 1-3 0V13"/>
+          <path d="M3 22h12"/>
+        </svg>
+      </div>
+      <div class="fp-text">
+        <div class="fp-label">Stations essence</div>
+        <div class="fp-sub">Carburant à proximité</div>
+      </div>
+    </div>
+    <div class="toggle on" id="toggle-fuel" role="switch" aria-checked="true"></div>
   </div>
 </div>
 
@@ -1666,6 +1694,7 @@ const layers = {
   bench:   { on: true, markers: [] },
   ev:      { on: true, markers: [] },
   transit: { on: true, markers: [] },
+  fuel:    { on: true, markers: [] },
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1987,6 +2016,7 @@ function buildPoisQuery(lat, lng) {
   node[railway=station](around:${r1},${lat},${lng});
   node[railway=tram_stop](around:${r1},${lat},${lng});
   node[railway=subway_entrance](around:${r1},${lat},${lng});
+  node[amenity=fuel](around:${r1},${lat},${lng});
 );
 out center 80;`;
 }
@@ -2036,7 +2066,23 @@ function dispatchPois(elements) {
     else if (t.amenity === 'charging_station')                addEvMarker(t, lat, lng);
     else if (t.highway === 'bus_stop' || t.railway ||
              t.amenity === 'bus_station')                     addTransitMarker(t, lat, lng);
+    else if (t.amenity === 'fuel')                            addFuelMarker(t, lat, lng);
   }
+}
+
+function addFuelMarker(t, lat, lng) {
+  const name = String(t.name || t.brand || 'Carburant').slice(0, 20);
+  const brand = t.brand ? String(t.brand).slice(0, 12) : '';
+  const label = brand || 'Carburant';
+  addLayerMarker('fuel', lat, lng,
+    `<div class="poi-marker fuel-marker">${esc(label)}</div>`,
+    popup(name, [
+      brand ? `Marque : ${brand}` : '',
+      t['fuel:diesel'] === 'yes' ? 'Diesel disponible' : '',
+      t['fuel:octane_95'] === 'yes' ? 'SP95 disponible' : '',
+      t.opening_hours ? `Horaires : ${String(t.opening_hours).slice(0, 30)}` : '',
+    ].filter(Boolean))
+  );
 }
 
 function clearLayerMarkers(id) {
