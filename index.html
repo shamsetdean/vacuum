@@ -199,6 +199,30 @@ window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { ok: firebaseO
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
+
+  /* Système de timing cohérent */
+  --t-fast:   120ms;
+  --t-base:   200ms;
+  --t-slow:   320ms;
+  --ease:     cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Anneau de focus pour accessibilité clavier */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --focus-ring-blue: 0 0 0 2px var(--bg), 0 0 0 4px var(--blue);
+
+  /* ─── Positionnement des éléments flottants ───
+     Hauteur du FAB + marge bas + gap pour les boutons au-dessus.
+     Modifier ici met tout à jour automatiquement. */
+  --fab-h:        60px;
+  --fab-bottom:   calc(var(--safe-b) + 24px);
+  --fab-top:      calc(var(--fab-bottom) + var(--fab-h) + 16px);
+  --fab-top-2:    calc(var(--fab-top) + 56px);
+}
+
+body.driving-mode {
+  --fab-h: 72px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -514,12 +538,12 @@ a:hover { text-decoration: underline; }
    ═══════════════════════════════════════════════════════════════════ */
 .fab-wrap {
   position: fixed;
-  bottom: calc(var(--safe-b) + 24px);
+  bottom: var(--fab-bottom);
   left: calc(var(--safe-l) + 24px);
   right: calc(var(--safe-r) + 24px);
   display: flex;
   justify-content: center;
-  z-index: 25;
+  z-index: 1100;
   pointer-events: none;
 }
 
@@ -550,7 +574,7 @@ a:hover { text-decoration: underline; }
    ═══════════════════════════════════════════════════════════════════ */
 .info-bar {
   position: fixed;
-  bottom: calc(var(--safe-b) + 96px);
+  bottom: calc(var(--fab-top) + 56px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -579,7 +603,7 @@ a:hover { text-decoration: underline; }
    ═══════════════════════════════════════════════════════════════════ */
 .feedback {
   position: fixed;
-  bottom: calc(var(--safe-b) + 100px);
+  bottom: calc(var(--fab-top) + 56px);
   left: 50%;
   transform: translateX(-50%) translateY(8px);
   border: 1px solid rgba(22,163,74,0.3);
@@ -936,7 +960,7 @@ a:hover { text-decoration: underline; }
 ═══════════════════════════════════════════════════════════════ */
 .taken-btn {
   position: fixed;
-  bottom: calc(var(--safe-b) + 152px);
+  bottom: var(--fab-top-2);
   right: 16px;
   background: rgba(234, 67, 53, 0.92);
   color: #fff;
@@ -964,7 +988,7 @@ a:hover { text-decoration: underline; }
 ═══════════════════════════════════════════════════════════════ */
 .hist-btn {
   position: fixed;
-  bottom: calc(var(--safe-b) + 100px);
+  bottom: var(--fab-top);
   left: 16px;
   width: 42px;
   height: 42px;
@@ -1031,7 +1055,7 @@ a:hover { text-decoration: underline; }
 ═══════════════════════════════════════════════════════════════ */
 .locate-btn {
   position: fixed;
-  bottom: calc(var(--safe-b) + 100px);
+  bottom: var(--fab-top);
   right: 16px;
   width: 42px; height: 42px;
   border-radius: 50%;
@@ -1097,6 +1121,186 @@ body.driving-mode .drive-badge { display: block; }
   white-space: nowrap;
 }
 .zone-alert.show { opacity: 1; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   AMÉLIORATIONS UX — chirurgicales, additives uniquement
+═══════════════════════════════════════════════════════════════ */
+
+/* — Accessibilité clavier : focus visible cohérent — */
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="switch"]:focus-visible,
+.fp-item:focus-visible,
+.consent-row:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.btn:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/* — Tap targets : extension de la zone tactile sans changer le visuel — */
+.toggle {
+  position: relative;
+  cursor: pointer;
+}
+.toggle::before {
+  content: '';
+  position: absolute;
+  top: -11px; right: -8px; bottom: -11px; left: -8px;
+}
+
+/* — Boutons ronds : 44px de hit area garantis — */
+.hist-btn,
+.locate-btn {
+  position: fixed;
+  min-width: 44px; min-height: 44px;
+  width: 44px; height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+.hist-btn:active,
+.locate-btn:active { transform: scale(0.92); }
+.hist-btn,
+.locate-btn { transition: transform var(--t-fast) var(--ease), background var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
+.hist-btn:hover,
+.locate-btn:hover { box-shadow: 0 4px 12px rgba(15,29,54,.16); }
+
+/* — FAB : feedback plus expressif — */
+.fab {
+  transition:
+    transform var(--t-fast) var(--ease),
+    opacity var(--t-base) var(--ease),
+    box-shadow var(--t-base) var(--ease);
+}
+.fab:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(22,163,74,0.36), 0 3px 8px rgba(22,163,74,0.20), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.fab:active:not(:disabled) { transform: scale(0.96); }
+
+/* — Toggles de filtre : feedback hover desktop + transitions cohérentes — */
+.fp-item { transition: background var(--t-fast) var(--ease); }
+@media (hover: hover) {
+  .fp-item:hover { background: rgba(0,0,0,0.04); }
+}
+
+/* — Modal handle : indicateur de glissement plus net — */
+.modal-handle {
+  cursor: grab;
+}
+.modal-handle:active { cursor: grabbing; }
+
+/* — Scroll lisse sur les listes scrollables — */
+.modal,
+.hist-panel,
+.filter-panel {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* — Scrollbar discrète sur desktop — */
+.modal::-webkit-scrollbar,
+.hist-panel::-webkit-scrollbar,
+.filter-panel::-webkit-scrollbar {
+  width: 6px;
+}
+.modal::-webkit-scrollbar-thumb,
+.hist-panel::-webkit-scrollbar-thumb,
+.filter-panel::-webkit-scrollbar-thumb {
+  background: rgba(15,29,54,0.18);
+  border-radius: 3px;
+}
+.modal::-webkit-scrollbar-track,
+.hist-panel::-webkit-scrollbar-track,
+.filter-panel::-webkit-scrollbar-track { background: transparent; }
+
+/* — Transitions cohérentes sur les éléments existants — */
+.toggle { transition: background var(--t-base) var(--ease); }
+.toggle::after { transition: transform var(--t-slow) var(--ease-spring); }
+
+.taken-btn {
+  transition:
+    opacity var(--t-base) var(--ease),
+    transform var(--t-base) var(--ease-spring);
+}
+.taken-btn:active { transform: translateY(0) scale(0.94); }
+@media (hover: hover) {
+  .taken-btn:hover { background: rgba(220, 38, 38, 0.96); }
+}
+
+/* — Boutons d'action panneau filtre : transition fluide — */
+.fp-action { transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.fp-action:active { transform: scale(0.98); }
+
+/* — Btn primary/secondary : hover plus marqué — */
+.btn { transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), box-shadow var(--t-base) var(--ease); }
+.btn:active { transform: scale(0.98); }
+
+/* — Onboarding : transitions entre écrans plus fluides — */
+.ob-screen { transition: opacity var(--t-base) var(--ease); }
+
+/* — Hist panel : courbe d'animation plus naturelle — */
+.hist-panel { transition: transform var(--t-slow) var(--ease-out); }
+
+/* — Alerte zone : entrée plus marquée — */
+.zone-alert {
+  transition: opacity var(--t-base) var(--ease), transform var(--t-base) var(--ease-spring);
+  transform: translateX(-50%) translateY(-8px);
+}
+.zone-alert.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* — Drive badge : pulse subtil pour attirer l'œil sans agresser — */
+@keyframes drive-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.85; }
+}
+body.driving-mode .drive-badge {
+  animation: drive-pulse 2.4s var(--ease) infinite;
+}
+
+/* — Touch feedback désactivé sur élements non interactifs — */
+.fp-icon, .fp-text, .fp-label, .fp-sub { -webkit-user-select: none; user-select: none; }
+
+/* — Petits écrans : ajuster espacement modal — */
+@media (max-width: 360px) {
+  .modal { padding: 22px 16px 18px; }
+  .ob-title { font-size: 19px; }
+  .ob-desc { font-size: 13px; }
+}
+
+/* — Tablette et plus : panneaux centrés et largeurs limitées — */
+@media (min-width: 768px) {
+  .hist-panel {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(100%);
+    max-width: 440px;
+    width: 100%;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+  }
+  .hist-panel.open {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* — Reduced motion : respecter strictement la préférence utilisateur — */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  body.driving-mode .drive-badge { animation: none; }
+}
 
 </style>
 </head>
@@ -2970,8 +3174,14 @@ function bindEvents() {
   // FAB
   document.getElementById('fab').addEventListener('click', reportPlace);
   document.getElementById('taken-btn')?.addEventListener('click', reportTaken);
-  document.getElementById('locate-btn')?.addEventListener('click', centerOnUser);
-  document.getElementById('hist-btn')?.addEventListener('click', openHistPanel);
+  document.getElementById('locate-btn')?.addEventListener('click', () => {
+    if (navigator.vibrate) navigator.vibrate(10);
+    centerOnUser();
+  });
+  document.getElementById('hist-btn')?.addEventListener('click', () => {
+    if (navigator.vibrate) navigator.vibrate(10);
+    openHistPanel();
+  });
   document.getElementById('hist-close')?.addEventListener('click', closeHistPanel);
   document.getElementById('hist-panel')?.addEventListener('click', e => {
     if (e.target === document.getElementById('hist-panel')) closeHistPanel();
@@ -3020,14 +3230,45 @@ function bindEvents() {
     });
   });
 
-  // Navigation onboarding multi-écrans
+  // Navigation onboarding multi-écrans avec retour haptique léger
   document.querySelectorAll('.ob-next').forEach(btn => {
     btn.addEventListener('click', () => {
       const next = parseInt(btn.dataset.next);
-      document.querySelectorAll('.ob-screen').forEach(s => s.classList.remove('active'));
+      const current = document.querySelector('.ob-screen.active');
       const nextScreen = document.getElementById('ob-screen-' + next);
-      if (nextScreen) nextScreen.classList.add('active');
+      if (!nextScreen) return;
+      if (navigator.vibrate) navigator.vibrate(8);
+      if (current) {
+        current.style.opacity = '0';
+        setTimeout(() => {
+          current.classList.remove('active');
+          current.style.opacity = '';
+          nextScreen.classList.add('active');
+          // Scroll modal au top
+          const modal = nextScreen.closest('.modal');
+          if (modal) modal.scrollTop = 0;
+        }, 180);
+      } else {
+        nextScreen.classList.add('active');
+      }
     });
+  });
+
+  // Retour arrière onboarding par swipe-down sur le handle (déjà géré ailleurs)
+  // et fermeture par Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const histPanel = document.getElementById('hist-panel');
+    if (histPanel?.classList.contains('open')) {
+      closeHistPanel();
+      return;
+    }
+    const filterPanel = document.getElementById('filter-panel');
+    if (filterPanel?.classList.contains('open')) {
+      filterPanel.classList.remove('open');
+      const trigger = document.querySelector('[aria-controls="filter-panel"]');
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    }
   });
 
   document.getElementById('onboarding-accept').addEventListener('click', () => {
