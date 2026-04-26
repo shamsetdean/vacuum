@@ -2871,55 +2871,25 @@ function stopWatch() {
 function updateLayout() {
   const cs = getComputedStyle(document.documentElement);
   const safeB = parseFloat(cs.getPropertyValue('--safe-b')) || 0;
-  const safeL = parseFloat(cs.getPropertyValue('--safe-l')) || 0;
-  const safeR = parseFloat(cs.getPropertyValue('--safe-r')) || 0;
-
-  // Hauteur du FAB selon le mode
   const fabHeight = document.body.classList.contains('driving-mode') ? 72 : 60;
   const fabBottom = 24 + safeB;
   const fabTop = fabBottom + fabHeight;
   const sideBtnBottom = fabTop + 12;
+  const sideBtn2ndBottom = sideBtnBottom + 60;
 
-  // Détection des contraintes de viewport
-  const vh = window.innerHeight;
-  const vw = window.innerWidth;
-  const isLandscapeShort = vh <= 500 && vw > vh; // paysage écran bas
-  const enoughHeight = vh >= 600;
-
-  const set = (id, props) => {
+  // Helper safe : ne plante pas si l'élément n'existe pas
+  const setBottom = (id, val) => {
     const el = document.getElementById(id);
-    if (!el) return;
-    Object.entries(props).forEach(([k, v]) => {
-      el.style[k] = v != null ? (typeof v === 'number' ? v + 'px' : v) : '';
-    });
+    if (el) el.style.bottom = val + 'px';
   };
 
-  // 1ère rangée : boutons primaires côté FAB
-  set('btn-locate', { bottom: sideBtnBottom, right: (safeR + 14), left: '' });
-  set('filter-btn', { bottom: sideBtnBottom, left: (safeL + 14), right: '' });
-
-  // Disposition adaptative pour les boutons secondaires (hist-btn, taken-btn)
-  if (isLandscapeShort) {
-    // Paysage compact : décalage HORIZONTAL au lieu de vertical
-    // hist-btn à côté du filter-btn (à droite de lui), taken-btn à côté du btn-locate (à gauche)
-    set('hist-btn',  { bottom: sideBtnBottom, left: (safeL + 14 + 60), right: '' });
-    set('taken-btn', { bottom: sideBtnBottom, right: (safeR + 14 + 60), left: '' });
-  } else if (enoughHeight) {
-    // Hauteur normale : 2e rangée empilée verticalement
-    const sideBtn2ndBottom = sideBtnBottom + 60;
-    set('hist-btn',  { bottom: sideBtn2ndBottom, left: (safeL + 14), right: '' });
-    set('taken-btn', { bottom: sideBtn2ndBottom, right: (safeR + 14), left: '' });
-  } else {
-    // Hauteur intermédiaire : empilage avec gap réduit
-    const sideBtn2ndBottom = sideBtnBottom + 56;
-    set('hist-btn',  { bottom: sideBtn2ndBottom, left: (safeL + 14), right: '' });
-    set('taken-btn', { bottom: sideBtn2ndBottom, right: (safeR + 14), left: '' });
-  }
-
-  // Panneaux et info-bar
-  set('filter-panel', { bottom: sideBtnBottom + 56 });
-  set('info-bar',     { bottom: fabTop + 8 });
-  set('feedback',     { bottom: fabTop + 14 });
+  setBottom('btn-locate',    sideBtnBottom);
+  setBottom('filter-btn',    sideBtnBottom);
+  setBottom('hist-btn',      sideBtn2ndBottom);
+  setBottom('taken-btn',     sideBtn2ndBottom);
+  setBottom('filter-panel',  sideBtnBottom + 56);
+  setBottom('info-bar',      fabTop + 8);
+  setBottom('feedback',      fabTop + 14);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -3429,9 +3399,6 @@ function init() {
 
   state.ready = true;
   updateHistoryUI();
-  // Recalcul layout sur changement de viewport (rotation, resize)
-  window.addEventListener('resize', updateLayout, { passive: true });
-  window.addEventListener('orientationchange', () => setTimeout(updateLayout, 100));
 }
 
 /* Firebase ready — un seul listener */
