@@ -1099,6 +1099,24 @@ body.driving-mode .drive-badge { display: block; }
 }
 .zone-alert.show { opacity: 1; }
 
+.popup-route-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 14px;
+  background: var(--blue, #2563eb);
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background .15s, transform .1s;
+}
+.popup-route-btn:hover { background: #1e4fc2; }
+.popup-route-btn:active { transform: scale(0.97); }
+.popup-route-btn svg { flex-shrink: 0; }
+
 .fuel-marker {
   background: #f97316;
   color: #fff;
@@ -1832,13 +1850,24 @@ function esc(s) {
 }
 
 /* Builder de popups : chaque ligne est texte plain + escape, jamais d'HTML brut */
-function popup(title, lines = []) {
+function popup(title, lines = [], lat = null, lng = null) {
   const safeTitle = esc(title);
   const safeLines = lines
     .filter(l => l !== null && l !== undefined && l !== '')
     .map(l => `<div>${esc(l)}</div>`)
     .join('');
-  return `<b>${safeTitle}</b>${safeLines}`;
+  // Bouton itinéraire si coordonnées fournies — ouvre l'app GPS native
+  let routeBtn = '';
+  if (lat != null && lng != null) {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+    routeBtn = `<a href="${url}" target="_blank" rel="noopener" class="popup-route-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+      </svg>
+      Itinéraire
+    </a>`;
+  }
+  return `<b>${safeTitle}</b>${safeLines}${routeBtn}`;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2081,7 +2110,7 @@ function addFuelMarker(t, lat, lng) {
       t['fuel:diesel'] === 'yes' ? 'Diesel disponible' : '',
       t['fuel:octane_95'] === 'yes' ? 'SP95 disponible' : '',
       t.opening_hours ? `Horaires : ${String(t.opening_hours).slice(0, 30)}` : '',
-    ].filter(Boolean))
+    ].filter(Boolean), lat, lng)
   );
 }
 
@@ -2128,7 +2157,7 @@ function addParkingMarker(t, lat, lng) {
       cap ? `Capacité : ${cap} places` : null,
       fee || 'Accès public',
       t.opening_hours ? String(t.opening_hours).slice(0, 60) : null,
-    ]));
+    ], lat, lng));
 }
 
 function addWcMarker(t, lat, lng) {
@@ -2140,13 +2169,13 @@ function addWcMarker(t, lat, lng) {
     popup('Toilettes publiques', [
       free ? 'Gratuit' : paid ? 'Payant' : 'Accès inconnu',
       t.wheelchair === 'yes' ? 'Accessible PMR' : null,
-    ]));
+    ], lat, lng));
 }
 
 function addWaterMarker(_t, lat, lng) {
   addLayerMarker('water', lat, lng,
     `<div class="poi-marker water">Eau potable</div>`,
-    popup('Fontaine d\'eau potable'));
+    popup('Fontaine d\'eau potable', [], lat, lng));
 }
 
 function addBenchMarker(t, lat, lng) {
@@ -2156,7 +2185,7 @@ function addBenchMarker(t, lat, lng) {
     `<div class="poi-marker bench">${esc(label)}</div>`,
     popup(label, [
       isPark ? null : (t.backrest === 'yes' ? 'Avec dossier' : null),
-    ]));
+    ], lat, lng));
 }
 
 function addEvMarker(t, lat, lng) {
@@ -2168,7 +2197,7 @@ function addEvMarker(t, lat, lng) {
       t.operator ? String(t.operator).slice(0, 40) : null,
       pw > 0 ? `${pw} kW` : null,
       t.fee === 'no' ? 'Gratuit' : null,
-    ]));
+    ], lat, lng));
 }
 
 function addTransitMarker(t, lat, lng) {
@@ -2182,7 +2211,7 @@ function addTransitMarker(t, lat, lng) {
     popup(t.name ? String(t.name).slice(0, 40) : kind, [
       kind,
       t.ref ? `Ligne ${String(t.ref).slice(0, 10)}` : null,
-    ]));
+    ], lat, lng));
 }
 
 /* ═══════════════════════════════════════════════════════════════════
