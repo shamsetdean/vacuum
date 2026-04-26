@@ -4,7 +4,7 @@
    Version : 1.0.0
 ═══════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'vacuum-v1';
+const CACHE_NAME = 'vacuum-v2';
 
 const STATIC_ASSETS = [
   '/vacuum/',
