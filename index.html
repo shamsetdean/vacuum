@@ -935,8 +935,8 @@ a:hover { text-decoration: underline; }
    BOUTON PLACE PRISE
 ═══════════════════════════════════════════════════════════════ */
 .taken-btn {
-  position: absolute;
-  bottom: 110px;
+  position: fixed;
+  bottom: calc(var(--safe-b) + 152px);
   right: 16px;
   background: rgba(234, 67, 53, 0.92);
   color: #fff;
@@ -963,8 +963,8 @@ a:hover { text-decoration: underline; }
    PANNEAU HISTORIQUE
 ═══════════════════════════════════════════════════════════════ */
 .hist-btn {
-  position: absolute;
-  bottom: 110px;
+  position: fixed;
+  bottom: calc(var(--safe-b) + 100px);
   left: 16px;
   width: 42px;
   height: 42px;
@@ -1032,7 +1032,7 @@ a:hover { text-decoration: underline; }
 .locate-btn {
   position: fixed;
   bottom: calc(var(--safe-b) + 100px);
-  right: 68px;
+  right: 16px;
   width: 42px; height: 42px;
   border-radius: 50%;
   background: var(--glass-bg, rgba(255,255,255,0.92));
