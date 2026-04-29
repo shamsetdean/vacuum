@@ -1025,6 +1025,22 @@ a:hover { text-decoration: underline; }
 .hist-bar { width: 100%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 3px; opacity: .75; transition: height .4s; }
 .hist-bar-day { font-size: 9px; color: var(--text-muted); }
 .hist-empty { text-align: center; color: var(--text-soft); font-size: 13px; padding: 24px 0; }
+.hist-impact {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(22,163,74,0.08), rgba(22,163,74,0.03));
+  border: 1px solid rgba(22,163,74,0.18);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  text-align: center;
+}
+.hist-impact strong {
+  color: var(--accent, #16a34a);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1233,6 +1249,7 @@ body.driving-mode .drive-badge { display: block; }
       <div class="hist-bars" id="hist-bars"></div>
     </div>
     <div class="hist-empty" id="hist-empty">Aucun signalement cette semaine.<br>Appuyez sur le bouton pour commencer.</div>
+    <div class="hist-impact" id="hist-impact"></div>
   </div>
 </div>
 
@@ -2904,10 +2921,30 @@ function updateHistoryUI() {
 
   el.textContent = total;
   // Estimation : ~65% des signalements aident au moins 1 automobiliste
-  helped.textContent = '~' + Math.round(total * 0.65);
+  const helpedCount = Math.round(total * 0.65);
+  helped.textContent = '~' + helpedCount;
   badge.textContent = total > 0 ? (total > 99 ? '99+' : total) : '';
   badge.classList.toggle('visible', total > 0);
   empty.style.display = total === 0 ? 'block' : 'none';
+
+  // Message d'impact concret
+  const impactEl = document.getElementById('hist-impact');
+  if (impactEl) {
+    if (total === 0) {
+      impactEl.innerHTML = 'Chaque place signalée évite environ <strong>5 minutes</strong> de recherche à un autre conducteur.';
+    } else {
+      const minutesSaved = helpedCount * 5;
+      const formatTime = (m) => {
+        if (m < 60) return m + ' min';
+        const h = Math.floor(m / 60);
+        const r = m % 60;
+        return r > 0 ? h + 'h' + String(r).padStart(2, '0') : h + 'h';
+      };
+      impactEl.innerHTML = 'Sans toi, <strong>' + helpedCount + '</strong> automobiliste' + (helpedCount > 1 ? 's' : '') +
+        ' aurai' + (helpedCount > 1 ? 'ent' : 't') +
+        ' tourné <strong>' + formatTime(minutesSaved) + '</strong> de plus cette semaine.';
+    }
+  }
 
   // Barres hebdo
   const maxVal = Math.max(...days, 1);
