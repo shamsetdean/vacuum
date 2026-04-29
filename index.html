@@ -395,7 +395,13 @@ a:hover { text-decoration: underline; }
   color: var(--blue);
 }
 
-.btn-locate { right: calc(var(--safe-r) + 14px); color: var(--blue); }
+.btn-locate {
+  right: calc(var(--safe-r) + 14px);
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%);
+  color: var(--blue);
+}
 .filter-btn { left:  calc(var(--safe-l) + 14px); }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -550,7 +556,7 @@ a:hover { text-decoration: underline; }
    ═══════════════════════════════════════════════════════════════════ */
 .info-bar {
   position: fixed;
-  bottom: calc(var(--safe-b) + 96px);
+  top: calc(var(--safe-t) + 72px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -579,9 +585,9 @@ a:hover { text-decoration: underline; }
    ═══════════════════════════════════════════════════════════════════ */
 .feedback {
   position: fixed;
-  bottom: calc(var(--safe-b) + 100px);
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%) translateY(8px);
+  transform: translate(-50%, calc(-50% + 8px));
   border: 1px solid rgba(22,163,74,0.3);
   background: var(--glass-solid);
   backdrop-filter: var(--blur);
@@ -601,7 +607,7 @@ a:hover { text-decoration: underline; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.feedback.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.feedback.show { opacity: 1; transform: translate(-50%, -50%); }
 .feedback.error { color: var(--danger); border-color: rgba(220,38,38,0.3); }
 .feedback.warn { color: var(--warn); border-color: rgba(234,138,9,0.3); }
 
@@ -2823,11 +2829,11 @@ function updateLayout() {
   const fabTop = fabBottom + fabHeight;
   const sideBtnBottom = fabTop + 12;
 
-  document.getElementById('btn-locate').style.bottom = sideBtnBottom + 'px';
+  // btn-locate : positionné par CSS en milieu droit (top: 50%) — ne pas écraser
   document.getElementById('filter-btn').style.bottom = sideBtnBottom + 'px';
   document.getElementById('filter-panel').style.bottom = (sideBtnBottom + 56) + 'px';
-  document.getElementById('info-bar').style.bottom = (fabTop + 8) + 'px';
-  document.getElementById('feedback').style.bottom = (fabTop + 14) + 'px';
+  // info-bar : positionnée par CSS en haut — ne pas écraser
+  // feedback : positionné par CSS au centre — ne pas écraser
 }
 
 /* ═══════════════════════════════════════════════════════════════════
