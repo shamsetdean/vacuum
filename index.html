@@ -1020,6 +1020,21 @@ a:hover { text-decoration: underline; }
 .hist-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .hist-header h3 { font-size: 16px; font-weight: 700; }
 .hist-close { background: none; border: none; cursor: pointer; color: var(--text-soft); font-size: 20px; line-height: 1; padding: 4px; }
+.hist-level {
+  background: linear-gradient(135deg, rgba(124,58,237,0.06), rgba(37,99,235,0.04));
+  border: 1px solid rgba(124,58,237,0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.hist-level-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.hist-level-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.hist-level-score { font-size: 11px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+.hist-level-bar { height: 6px; background: rgba(0,0,0,0.06); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.hist-level-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); width: 0%; }
+.hist-level-detail { font-size: 10px; color: var(--text-soft); }
+.hist-level-detail strong { color: var(--text); font-weight: 600; }
+
 .hist-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
 .hist-stat { background: var(--surface-alt, var(--bg-alt, #f5f5f5)); border-radius: 10px; padding: 12px; text-align: center; }
 .hist-stat-val { font-size: 22px; font-weight: 700; color: var(--accent); line-height: 1; }
@@ -1232,6 +1247,17 @@ body.driving-mode .drive-badge { display: block; }
       <h3>Mes signalements</h3>
       <button class="hist-close" id="hist-close" aria-label="Fermer">&#x2715;</button>
     </div>
+    <div class="hist-level" id="hist-level">
+      <div class="hist-level-header">
+        <span class="hist-level-name" id="hist-level-name">Découverte</span>
+        <span class="hist-level-score" id="hist-level-score">0 pts</span>
+      </div>
+      <div class="hist-level-bar">
+        <div class="hist-level-bar-fill" id="hist-level-bar-fill"></div>
+      </div>
+      <div class="hist-level-detail" id="hist-level-detail">Premier signalement pour débloquer</div>
+    </div>
+
     <div class="hist-stats">
       <div class="hist-stat">
         <div class="hist-stat-val" id="hist-total">0</div>
@@ -1740,6 +1766,7 @@ const STORAGE_KEYS = Object.freeze({
   LOCAL_SIGS: 'vac_local_signals',
   HISTORY:    'vac_history',
   OFFLINE_CACHE: 'vac_offline_cache',
+  CONFIRMED:  'vac_confirmed',
 });
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2428,6 +2455,49 @@ function renderHexes() {
   for (const key of active) renderHex(key);
 }
 
+// Halos dorés sur les zones où l'utilisateur a déjà signalé
+const contribHalos = new Map();
+function renderContributionHalos() {
+  if (!state.map || !L) return;
+  const history = getHistory();
+  // Regrouper par grille pour ne pas dessiner 50 halos superposés
+  const cells = new Map();
+  for (const h of history) {
+    const key = gridKey(h.lat, h.lng);
+    if (!cells.has(key)) {
+      cells.set(key, { lat: h.lat, lng: h.lng, count: 0 });
+    }
+    cells.get(key).count++;
+  }
+  // Supprimer les halos qui ne correspondent plus à l'historique
+  for (const [key, halo] of contribHalos) {
+    if (!cells.has(key)) {
+      state.map.removeLayer(halo);
+      contribHalos.delete(key);
+    }
+  }
+  // Ajouter ou mettre à jour
+  for (const [key, cell] of cells) {
+    const radius = 30 + Math.min(cell.count, 8) * 6; // 30-78m selon count
+    if (contribHalos.has(key)) {
+      contribHalos.get(key).setRadius(radius);
+    } else {
+      const halo = L.circle([cell.lat, cell.lng], {
+        radius,
+        color: '#d4a017',
+        weight: 1.2,
+        opacity: 0.45,
+        fillColor: '#d4a017',
+        fillOpacity: 0.08,
+        interactive: false,
+      }).addTo(state.map);
+      halo.bringToBack();
+      contribHalos.set(key, halo);
+    }
+  }
+}
+
+
 /* ═══════════════════════════════════════════════════════════════════
    UI HELPERS
    ═══════════════════════════════════════════════════════════════════ */
@@ -2871,6 +2941,7 @@ function initMap() {
 
   updateUserMarker(state.lat, state.lng);
   bindCompassToMap();
+  renderContributionHalos();
   return true;
 }
 
@@ -2885,6 +2956,37 @@ function getHistory() {
   } catch { return []; }
 }
 
+// Confirmations reçues (signalements validés par "place prise" d'autres utilisateurs)
+function getConfirmedCount() {
+  try {
+    const raw = lsGet(STORAGE_KEYS.CONFIRMED);
+    return raw ? parseInt(raw, 10) || 0 : 0;
+  } catch { return 0; }
+}
+
+function incrementConfirmed() {
+  const current = getConfirmedCount();
+  try { lsSet(STORAGE_KEYS.CONFIRMED, String(current + 1)); } catch {}
+  updateHistoryUI();
+}
+
+// Score de contribution = signalements + (confirmations × 2)
+function getContributionScore() {
+  return getHistory().length + getConfirmedCount() * 2;
+}
+
+// Niveau basé sur le score
+function getContributionLevel() {
+  const score = getContributionScore();
+  if (score >= 50) return { name: 'Pilier',         min: 50,  next: null, color: '#a16207' };
+  if (score >= 20) return { name: 'Régulier',       min: 20,  next: 50,   color: '#16a34a' };
+  if (score >= 5)  return { name: 'Contributeur',   min: 5,   next: 20,   color: '#2563eb' };
+  if (score >= 1)  return { name: 'Premier pas',    min: 1,   next: 5,    color: '#7c3aed' };
+  return                  { name: 'Découverte',     min: 0,   next: 1,    color: '#64748b' };
+}
+
+
+
 function addToHistory(lat, lng) {
   const history = getHistory();
   history.push({ t: Date.now(), lat, lng });
@@ -2893,6 +2995,7 @@ function addToHistory(lat, lng) {
   const trimmed = history.filter(h => h.t > cutoff).slice(-500);
   try { lsSet(STORAGE_KEYS.HISTORY, JSON.stringify(trimmed)); } catch {}
   updateHistoryUI();
+  renderContributionHalos();
 }
 
 function getWeekStats() {
@@ -2910,6 +3013,29 @@ function getWeekStats() {
 
 function updateHistoryUI() {
   const { days, total } = getWeekStats();
+
+  // Bloc niveau
+  const score = getContributionScore();
+  const level = getContributionLevel();
+  const levelName = document.getElementById('hist-level-name');
+  const levelScore = document.getElementById('hist-level-score');
+  const levelBar = document.getElementById('hist-level-bar-fill');
+  const levelDetail = document.getElementById('hist-level-detail');
+  if (levelName && levelScore && levelBar && levelDetail) {
+    levelName.textContent = level.name;
+    levelName.style.color = level.color;
+    levelScore.textContent = score + ' pt' + (score > 1 ? 's' : '');
+    if (level.next) {
+      const progress = ((score - level.min) / (level.next - level.min)) * 100;
+      levelBar.style.width = Math.max(4, Math.min(100, progress)) + '%';
+      const remaining = level.next - score;
+      levelDetail.innerHTML = '<strong>' + remaining + ' pt' + (remaining > 1 ? 's' : '') + '</strong> avant le niveau suivant';
+    } else {
+      levelBar.style.width = '100%';
+      levelDetail.innerHTML = 'Niveau maximum atteint — merci pour ta contribution';
+    }
+  }
+
   const el = document.getElementById('hist-total');
   const helped = document.getElementById('hist-helped');
   const badge = document.getElementById('hist-badge');
@@ -2996,6 +3122,23 @@ async function reportTaken() {
   if (takenCooldown) return;
   const key = gridKey(state.lat, state.lng);
   const now = Date.now();
+
+  // Vérifier si on a soi-même signalé dans cette zone (pour récompense propriétaire)
+  // → désactivé : on récompense seulement quand UN AUTRE confirme TON signalement
+  // Ici on marque juste qu'un signalement a été confirmé (pour le compteur global)
+  // En localStorage seul, on ne peut pas savoir si c'est NOTRE signalement qui est validé
+  // Approximation : si la zone contient un signalement récent et qu'on en a un dans
+  // notre historique à proximité, on considère que c'est probablement le nôtre
+  const myHistory = getHistory();
+  const recentMine = myHistory.some(h =>
+    h.t > now - CFG.MAX_AGE_MS &&
+    Math.abs(h.lat - state.lat) < 0.001 &&
+    Math.abs(h.lng - state.lng) < 0.001
+  );
+  if (recentMine) {
+    incrementConfirmed();
+  }
+
   // Supprimer localement les signaux de cette zone
   state.signals = state.signals.filter(s => !(s.key === key && now - s.t < CFG.MAX_AGE_MS));
   renderHexes(); updateZonePill(); updateCounter();
