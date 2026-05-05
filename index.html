@@ -414,6 +414,114 @@ body.driving-mode .drive-badge { display: block; }
 .fatal h1 { font-size: 22px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.4px; }
 .fatal p { color: var(--text-2); font-size: 14px; margin-bottom: 16px; max-width: 320px; }
 
+/* ═══ PANNEAU POI ═══ */
+.poi-panel-backdrop {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(15,29,54,0.4);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+.poi-panel-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.poi-panel {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 301;
+  background: var(--glass-solid);
+  border-top-left-radius: 28px; border-top-right-radius: 28px;
+  border-top: 1px solid var(--border);
+  backdrop-filter: var(--blur-lg); -webkit-backdrop-filter: var(--blur-lg);
+  box-shadow: var(--shadow-3);
+  max-height: 82vh; display: flex; flex-direction: column;
+  padding-bottom: var(--safe-b);
+  transform: translateY(100%);
+  transition: transform 0.36s cubic-bezier(0.32,0.72,0,1);
+}
+.poi-panel-backdrop.open .poi-panel { transform: translateY(0); }
+
+.poi-panel-handle { width: 36px; height: 4px; background: rgba(15,29,54,0.18); border-radius: 999px; margin: 12px auto 0; flex-shrink: 0; }
+.poi-panel-header { padding: 14px 18px 10px; flex-shrink: 0; }
+.poi-panel-title { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
+.poi-panel-subtitle { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* Filtres catégories */
+.poi-cat-scroll { display: flex; gap: 8px; padding: 4px 18px 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; flex-shrink: 0; scrollbar-width: none; }
+.poi-cat-scroll::-webkit-scrollbar { display: none; }
+.poi-cat-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 999px; white-space: nowrap;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--border-soft);
+  background: var(--glass); color: var(--text-2);
+  transition: all 0.15s; flex-shrink: 0; min-height: 36px;
+}
+.poi-cat-chip.active { color: #fff; border-color: transparent; }
+.poi-cat-chip svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* Liste POI */
+.poi-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 14px 16px; }
+.poi-list-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 14px; border-radius: 16px;
+  cursor: pointer; transition: background 0.15s;
+  border: 1px solid transparent; margin-bottom: 6px;
+}
+.poi-list-item:active { background: rgba(0,0,0,0.04); }
+.poi-list-item.selected {
+  background: var(--accent-soft);
+  border-color: rgba(22,163,74,0.3);
+}
+.poi-list-icon {
+  width: 42px; height: 42px; border-radius: 13px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.poi-list-icon svg { width: 20px; height: 20px; }
+.poi-list-info { flex: 1; min-width: 0; }
+.poi-list-name { font-size: 14px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.poi-list-meta { font-size: 11px; color: var(--muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+.poi-list-dist { font-size: 13px; font-weight: 700; color: var(--accent); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.poi-list-check { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); display: none; align-items: center; justify-content: center; flex-shrink: 0; }
+.poi-list-check svg { width: 12px; height: 12px; stroke: #fff; stroke-width: 3; }
+.poi-list-item.selected .poi-list-check { display: flex; }
+
+.poi-list-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+.poi-list-loader { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text-2); font-size: 13px; }
+.poi-spin { width: 18px; height: 18px; border: 2px solid var(--border-soft); border-top-color: var(--accent); border-radius: 50%; animation: poiSpin 0.7s linear infinite; }
+@keyframes poiSpin { to { transform: rotate(360deg); } }
+
+/* Bouton naviguer en AR */
+.poi-ar-btn {
+  margin: 8px 14px 10px;
+  background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%);
+  color: #fff; border: none; border-radius: 18px;
+  padding: 16px; font-size: 15px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  cursor: pointer; box-shadow: var(--shadow-accent);
+  transition: transform 0.12s, opacity 0.2s; flex-shrink: 0;
+}
+.poi-ar-btn:active { transform: scale(0.97); }
+.poi-ar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.poi-ar-btn svg { width: 18px; height: 18px; }
+
+/* Badge destination active (topbar) */
+.dest-badge {
+  display: none; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  background: linear-gradient(135deg, rgba(22,163,74,0.15), rgba(37,99,235,0.1));
+  border: 1px solid rgba(22,163,74,0.4); color: var(--accent);
+  white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis;
+  transition: all 0.2s;
+}
+.dest-badge.active { display: flex; }
+.dest-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+/* ═══ FLÈCHE AR DESTINATION ═══ */
+/* Style canvas-only — pas de CSS dédié, tout est dessiné sur le canvas */
+
+@media (prefers-color-scheme: dark) {
+  .poi-list-item:active { background: rgba(255,255,255,0.05); }
+  .poi-panel { background: rgba(14,19,32,0.97); }
+}
+
 /* ═══ RESPONSIVE ═══ */
 @media (min-width: 768px) { .fab-wrap { left: 0; right: 0; } .info-bar { max-width: 520px; } .filter-panel { max-width: 280px; } }
 @media (max-width: 360px) { .filter-panel { min-width: 200px; padding: 12px; } .fab { font-size: 15px; } .modal { padding: 20px 18px calc(20px + var(--safe-b)); } .modal h2 { font-size: 18px; } .btn { min-width: 100px; } }
@@ -533,6 +641,15 @@ body.driving-mode .drive-badge { display: block; }
       <span class="counter-dot" aria-hidden="true"></span>
       <b id="ctr">0</b>&nbsp;live
     </div>
+    <!-- Badge destination active -->
+    <div class="dest-badge" id="dest-badge" onclick="openPoiPanel()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+      <span id="dest-badge-label">Destination</span>
+    </div>
+    <!-- Bouton panneau POI -->
+    <button class="icon-btn glass" id="poi-btn" onclick="openPoiPanel()" aria-label="Choisir un lieu" title="Lieux">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    </button>
     <!-- Bouton AR -->
     <button class="icon-btn glass" id="ar-btn" onclick="openAR()" aria-label="Mode réalité augmentée" title="AR">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12L12 2l10 10-10 10z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -768,6 +885,66 @@ body.driving-mode .drive-badge { display: block; }
     <button class="fp-action danger" id="erase-data" type="button">Effacer toutes mes données</button>
     <p style="margin-top:10px"><small>Supprime votre identifiant et vos signalements locaux.</small></p>
     <div class="modal-actions"><button class="btn btn-secondary" id="settings-close">Fermer</button></div>
+  </div>
+</div>
+
+
+<!-- PANNEAU POI -->
+<div class="poi-panel-backdrop" id="poi-panel-backdrop">
+  <div class="poi-panel" id="poi-panel">
+    <div class="poi-panel-handle" aria-hidden="true"></div>
+    <div class="poi-panel-header">
+      <div class="poi-panel-title">Choisir un lieu</div>
+      <div class="poi-panel-subtitle" id="poi-panel-subtitle">Sélectionnez une destination pour la navigation AR</div>
+    </div>
+    <!-- Filtres catégories -->
+    <div class="poi-cat-scroll" id="poi-cat-scroll">
+      <button class="poi-cat-chip active" data-cat="all" onclick="filterPoiCat('all')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        Tous
+      </button>
+      <button class="poi-cat-chip" data-cat="pharmacy" onclick="filterPoiCat('pharmacy')" style="--cat-color:#00b87a">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00b87a" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
+        Pharmacies
+      </button>
+      <button class="poi-cat-chip" data-cat="police" onclick="filterPoiCat('police')" style="--cat-color:#2255cc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2255cc" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Commissariats
+      </button>
+      <button class="poi-cat-chip" data-cat="atm" onclick="filterPoiCat('atm')" style="--cat-color:#d97000">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#d97000" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
+        ATM
+      </button>
+      <button class="poi-cat-chip" data-cat="hospital" onclick="filterPoiCat('hospital')" style="--cat-color:#dc2626">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+        Hôpitaux
+      </button>
+      <button class="poi-cat-chip" data-cat="supermarket" onclick="filterPoiCat('supermarket')" style="--cat-color:#7c3aed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        Supermarchés
+      </button>
+      <button class="poi-cat-chip" data-cat="restaurant" onclick="filterPoiCat('restaurant')" style="--cat-color:#ea580c">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-linecap="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
+        Restaurants
+      </button>
+      <button class="poi-cat-chip" data-cat="cafe" onclick="filterPoiCat('cafe')" style="--cat-color:#92400e">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2.5" stroke-linecap="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>
+        Cafés
+      </button>
+      <button class="poi-cat-chip" data-cat="museum" onclick="filterPoiCat('museum')" style="--cat-color:#1d4ed8">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="3" y1="22" x2="21" y2="22"/><path d="M9 22V12h6v10"/></svg>
+        Musées
+      </button>
+    </div>
+    <!-- Liste -->
+    <div class="poi-list" id="poi-list">
+      <div class="poi-list-loader"><div class="poi-spin"></div>Chargement des lieux…</div>
+    </div>
+    <!-- Bouton naviguer -->
+    <button class="poi-ar-btn" id="poi-ar-btn" onclick="startArNavigation()" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M2 12L12 2l10 10-10 10z"/><circle cx="12" cy="12" r="3"/></svg>
+      Naviguer en AR vers ce lieu
+    </button>
   </div>
 </div>
 
@@ -1546,6 +1723,204 @@ function checkZoneAlert(lat, lng) {
 /* ═══════════════════════════════════════
    MODULE AR
 ═══════════════════════════════════════ */
+/* ═══════════════════════════════════════
+   CONFIGURATION POI
+═══════════════════════════════════════ */
+const POI_CATEGORIES = {
+  pharmacy:    { label:'Pharmacie',     color:'#00b87a', overpass:'amenity=pharmacy' },
+  police:      { label:'Commissariat',  color:'#2255cc', overpass:'amenity=police' },
+  atm:         { label:'Distributeur',  color:'#d97000', overpass:'amenity=atm' },
+  hospital:    { label:'Hôpital',       color:'#dc2626', overpass:'amenity=hospital' },
+  supermarket: { label:'Supermarché',   color:'#7c3aed', overpass:'shop=supermarket' },
+  restaurant:  { label:'Restaurant',    color:'#ea580c', overpass:'amenity=restaurant' },
+  cafe:        { label:'Café',          color:'#92400e', overpass:'amenity=cafe' },
+  museum:      { label:'Musée',         color:'#1d4ed8', overpass:'tourism=museum' },
+};
+
+const POI_ICONS_SVG = {
+  pharmacy:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>',
+  police:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  atm:         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg>',
+  hospital:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>',
+  supermarket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  restaurant:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>',
+  cafe:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>',
+  museum:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="3" y1="22" x2="21" y2="22"/><path d="M9 22V12h6v10"/></svg>',
+};
+
+/* ═══ STATE POI ═══ */
+let allPoiData = [];           // tous les POI chargés
+let filteredPoiData = [];      // filtrés par catégorie active
+let selectedPoi = null;        // POI destination choisie
+let currentPoiCat = 'all';
+let poiDataLoaded = false;
+let poiLoadInFlight = false;
+let poiMapMarkers = [];        // marqueurs Leaflet POI sur la carte
+
+/* ═══ PANNEAU POI ═══ */
+function openPoiPanel() {
+  document.getElementById('poi-panel-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  if (!poiDataLoaded && !poiLoadInFlight) loadAllPoiCategories();
+  else renderPoiList();
+}
+
+function closePoiPanel() {
+  document.getElementById('poi-panel-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function loadAllPoiCategories() {
+  if (poiLoadInFlight) return;
+  poiLoadInFlight = true;
+  const list = document.getElementById('poi-list');
+  list.innerHTML = '<div class="poi-list-loader"><div class="poi-spin"></div>Chargement des lieux proches…</div>';
+
+  const lat = state.lat, lng = state.lng;
+  const radius = 1200;
+
+  // Construire une seule requête Overpass pour tous les types
+  const nodes = Object.entries(POI_CATEGORIES).map(([cat, cfg]) => {
+    const [key, val] = cfg.overpass.split('=');
+    return `node["${key}"="${val}"](around:${radius},${lat},${lng});`;
+  }).join('');
+  const q = `[out:json][timeout:20];(${nodes});out;`;
+
+  try {
+    const data = await overpassQuery(q, null);
+    const elements = data.elements || [];
+    allPoiData = elements
+      .filter(e => e.tags?.name)
+      .map(e => {
+        const t = e.tags;
+        let cat = 'other';
+        for (const [c, cfg] of Object.entries(POI_CATEGORIES)) {
+          const [key, val] = cfg.overpass.split('=');
+          if (t[key] === val) { cat = c; break; }
+        }
+        const dist = distanceM(lat, lng, e.lat, e.lon);
+        return { id: e.id, lat: e.lat, lon: e.lon, name: t.name, cat, dist, tags: t };
+      })
+      .filter(p => p.cat !== 'other')
+      .sort((a, b) => a.dist - b.dist);
+    poiDataLoaded = true;
+    filteredPoiData = [...allPoiData];
+    renderPoiList();
+    placePoiMarkersOnMap();
+  } catch(e) {
+    list.innerHTML = '<div class="poi-list-empty">Impossible de charger les lieux. Vérifiez votre connexion.</div>';
+  }
+  poiLoadInFlight = false;
+}
+
+function filterPoiCat(cat) {
+  currentPoiCat = cat;
+  document.querySelectorAll('.poi-cat-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.cat === cat);
+  });
+  filteredPoiData = cat === 'all' ? [...allPoiData] : allPoiData.filter(p => p.cat === cat);
+  renderPoiList();
+}
+
+function renderPoiList() {
+  const list = document.getElementById('poi-list');
+  if (!filteredPoiData.length) {
+    list.innerHTML = '<div class="poi-list-empty">Aucun lieu trouvé dans cette catégorie à proximité.</div>';
+    return;
+  }
+  list.innerHTML = filteredPoiData.slice(0, 40).map(poi => {
+    const cfg = POI_CATEGORIES[poi.cat];
+    const isSelected = selectedPoi && selectedPoi.id === poi.id;
+    const distLabel = poi.dist < 1000 ? Math.round(poi.dist) + 'm' : (poi.dist/1000).toFixed(1) + 'km';
+    const walkMin = Math.max(1, Math.round(poi.dist / 80));
+    const icon = POI_ICONS_SVG[poi.cat] || '';
+    return `<div class="poi-list-item${isSelected ? ' selected' : ''}" onclick="selectPoi(${poi.id})" data-poi-id="${poi.id}">
+      <div class="poi-list-icon" style="background:${cfg.color}18">${icon.replace('stroke="currentColor"', `stroke="${cfg.color}"`)}</div>
+      <div class="poi-list-info">
+        <div class="poi-list-name">${esc(poi.name)}</div>
+        <div class="poi-list-meta">
+          <span style="background:${cfg.color}18;color:${cfg.color};padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700">${cfg.label}</span>
+          <span>· ~${walkMin} min à pied</span>
+        </div>
+      </div>
+      <span class="poi-list-dist">${distLabel}</span>
+      <div class="poi-list-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+    </div>`;
+  }).join('');
+
+  const subtitle = document.getElementById('poi-panel-subtitle');
+  if (subtitle) subtitle.textContent = `${filteredPoiData.length} lieu${filteredPoiData.length > 1 ? 'x' : ''} trouvé${filteredPoiData.length > 1 ? 's' : ''} à proximité`;
+}
+
+function selectPoi(poiId) {
+  const poi = allPoiData.find(p => p.id === poiId);
+  if (!poi) return;
+  selectedPoi = poi;
+  // Re-render pour mettre à jour la sélection
+  renderPoiList();
+  // Activer le bouton AR
+  const btn = document.getElementById('poi-ar-btn');
+  if (btn) { btn.disabled = false; }
+  // Afficher badge destination
+  updateDestBadge();
+  // Centrer la carte sur le POI sélectionné
+  if (state.map) {
+    state.map.setView([poi.lat, poi.lon], Math.max(state.map.getZoom(), 16), { animate: true });
+  }
+  // Vibration légère
+  if (navigator.vibrate) navigator.vibrate(12);
+}
+
+function updateDestBadge() {
+  const badge = document.getElementById('dest-badge');
+  const label = document.getElementById('dest-badge-label');
+  if (!badge || !label) return;
+  if (selectedPoi) {
+    label.textContent = selectedPoi.name.slice(0, 18);
+    badge.classList.add('active');
+  } else {
+    badge.classList.remove('active');
+  }
+}
+
+function startArNavigation() {
+  if (!selectedPoi) return;
+  closePoiPanel();
+  setTimeout(() => openAR(), 200);
+}
+
+/* ═══ MARQUEURS POI SUR LA CARTE ═══ */
+function placePoiMarkersOnMap() {
+  if (!state.map || !L) return;
+  // Nettoyer les anciens marqueurs POI
+  poiMapMarkers.forEach(m => state.map.removeLayer(m));
+  poiMapMarkers = [];
+  allPoiData.slice(0, 60).forEach(poi => {
+    const cfg = POI_CATEGORIES[poi.cat];
+    const iconHtml = `<div style="width:32px;height:32px;background:${cfg.color};border-radius:9px;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer">${(POI_ICONS_SVG[poi.cat]||'').replace('stroke="currentColor"','stroke="#fff"').replace('viewBox','width="16" height="16" viewBox')}</div>`;
+    const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [32, 32], iconAnchor: [16, 16] });
+    const marker = L.marker([poi.lat, poi.lon], { icon });
+    marker.bindPopup(`<b>${esc(poi.name)}</b><br><span style="color:${cfg.color};font-size:11px;font-weight:700">${cfg.label}</span><br><small>${Math.round(poi.dist) < 1000 ? Math.round(poi.dist)+'m' : (poi.dist/1000).toFixed(1)+'km'}</small>`);
+    marker.on('click', () => {
+      selectPoi(poi.id);
+      toast(`${poi.name} sélectionné`, 'ok');
+    });
+    if (state.map.getZoom() >= 14) marker.addTo(state.map);
+    poiMapMarkers.push(marker);
+  });
+  // Afficher/masquer selon zoom
+  state.map.on('zoomend', () => {
+    const zoom = state.map.getZoom();
+    poiMapMarkers.forEach(m => {
+      if (zoom >= 14) { if (!state.map.hasLayer(m)) state.map.addLayer(m); }
+      else { if (state.map.hasLayer(m)) state.map.removeLayer(m); }
+    });
+  });
+}
+
+/* ═══════════════════════════════════════
+   MODULE AR
+═══════════════════════════════════════ */
 let arActive = false, arStream = null, arRAF = null;
 let arOrientation = { alpha: 0 };
 let arOrientationListener = null;
@@ -1650,6 +2025,8 @@ function startARRender() {
     drawARSignalZones(ctx, W, H);
     drawARTransitStops(ctx, W, H);
     drawARScanOverlay(ctx, W, H);
+    // Flèche destination POI — toujours au premier plan
+    if (selectedPoi) drawARDestinationArrow(ctx, W, H);
     updateARInstruction();
     arRAF = requestAnimationFrame(frame);
   }
@@ -1673,6 +2050,174 @@ function bearingToScreen(poiBearing, heading, W, H, FOV = 70) {
   if (Math.abs(rel) > FOV) return null;
   const screenX = W/2 + (rel / FOV) * (W * 0.42);
   return screenX;
+}
+
+/* ═══════════════════════════════════════
+   FLÈCHE 2D DESTINATION POI EN AR
+═══════════════════════════════════════ */
+function drawARDestinationArrow(ctx, W, H) {
+  if (!selectedPoi || !state.lat) return;
+  const heading = arOrientation.alpha;
+  const dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const bearing = calcBearing(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const cfg = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
+  const col = cfg.color;
+  const t = Date.now() / 1000;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
+  const isClose = dist < 50;
+  const isVeryClose = dist < 15;
+
+  // Calculer l'angle relatif
+  let relAngle = ((bearing - heading) + 360) % 360;
+  if (relAngle > 180) relAngle -= 360; // -180..180
+
+  const cx = W / 2, cy = H / 2;
+
+  // ─── Si la destination est dans le champ de vision (±50°) ───
+  if (Math.abs(relAngle) <= 50 && !isVeryClose) {
+    const screenX = cx + (relAngle / 50) * (W * 0.35);
+    const screenY = H * 0.28 + (dist > 200 ? 0 : (200 - dist) / 200 * H * 0.1);
+
+    ctx.save();
+
+    // Halo pulsant autour de la cible
+    const haloR = 48 + pulse * 16;
+    const haloGrad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, haloR);
+    haloGrad.addColorStop(0, col + '44');
+    haloGrad.addColorStop(1, col + '00');
+    ctx.beginPath(); ctx.arc(screenX, screenY, haloR, 0, Math.PI * 2);
+    ctx.fillStyle = haloGrad; ctx.fill();
+
+    // Cercle cible
+    const circleR = 32 + pulse * 6;
+    ctx.beginPath(); ctx.arc(screenX, screenY, circleR, 0, Math.PI * 2);
+    ctx.fillStyle = col + '28'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = isClose ? 3 : 2;
+    ctx.shadowColor = col; ctx.shadowBlur = isClose ? 20 : 10;
+    ctx.stroke(); ctx.shadowBlur = 0;
+
+    // Croix de visée intérieure
+    const cross = 12;
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(screenX - cross, screenY); ctx.lineTo(screenX + cross, screenY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(screenX, screenY - cross); ctx.lineTo(screenX, screenY + cross); ctx.stroke();
+    ctx.beginPath(); ctx.arc(screenX, screenY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+
+    // Ligne pointillée du bas vers la cible
+    const lineGrad = ctx.createLinearGradient(screenX, H * 0.75, screenX, screenY + circleR);
+    lineGrad.addColorStop(0, col + '00'); lineGrad.addColorStop(1, col + '88');
+    ctx.beginPath(); ctx.moveTo(screenX, H * 0.75); ctx.lineTo(screenX, screenY + circleR);
+    ctx.strokeStyle = lineGrad; ctx.lineWidth = 1.5; ctx.setLineDash([5, 7]);
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Étiquette nom + distance
+    const name = selectedPoi.name.slice(0, 20);
+    ctx.font = '700 13px -apple-system, system-ui';
+    const tw = ctx.measureText(name).width;
+    const bW = Math.max(tw + 24, 100), bH = 40, bX = screenX - bW/2, bY = screenY + circleR + 10;
+    ctx.beginPath(); ctx.roundRect(bX, bY, bW, bH, 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.82)'; ctx.fill();
+    ctx.strokeStyle = col + 'cc'; ctx.lineWidth = 1.5;
+    ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(name, screenX, bY + 13);
+    ctx.font = '700 12px -apple-system'; ctx.fillStyle = col;
+    ctx.fillText(formatDist(dist), screenX, bY + 28);
+
+    // Badge "VOUS APPROCHEZ" si proche
+    if (isClose) {
+      ctx.font = '800 11px -apple-system';
+      const msg = 'VOUS APPROCHEZ';
+      const mw = ctx.measureText(msg).width;
+      ctx.beginPath(); ctx.roundRect(cx - mw/2 - 12, H * 0.14, mw + 24, 26, 6);
+      ctx.fillStyle = col; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(msg, cx, H * 0.14 + 13);
+    }
+
+    ctx.restore();
+    return;
+  }
+
+  // ─── Destination hors champ de vision : grande flèche directionnelle ───
+  ctx.save();
+
+  // Rayon du cercle de guidage
+  const R = Math.min(W, H) * 0.28;
+  const arrowAngle = (relAngle * Math.PI / 180) - Math.PI / 2;
+
+  // Point sur le cercle
+  const ax = cx + Math.cos(arrowAngle) * R;
+  const ay = cy + Math.sin(arrowAngle) * R + 30;
+
+  // Cercle de guidage (anneau)
+  ctx.beginPath(); ctx.arc(cx, cy + 30, R, 0, Math.PI * 2);
+  ctx.strokeStyle = col + '22'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Arc coloré dans la direction
+  const arcSpan = 0.5;
+  ctx.beginPath(); ctx.arc(cx, cy + 30, R, arrowAngle - arcSpan, arrowAngle + arcSpan);
+  ctx.strokeStyle = col; ctx.lineWidth = 4;
+  ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
+
+  // Grande flèche pointant vers la destination
+  ctx.save();
+  ctx.translate(ax, ay);
+  ctx.rotate(arrowAngle + Math.PI / 2);
+
+  // Traînée animée
+  for (let i = 1; i <= 3; i++) {
+    ctx.save();
+    ctx.translate(0, i * 8);
+    ctx.beginPath();
+    ctx.moveTo(0, -20); ctx.lineTo(14 - i*2, 10); ctx.lineTo(-14 + i*2, 10);
+    ctx.closePath();
+    ctx.fillStyle = col + Math.round((0.12 - i * 0.03) * 255).toString(16).padStart(2,'0');
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Corps de la flèche
+  ctx.beginPath();
+  ctx.moveTo(0, -28 - pulse * 4);
+  ctx.lineTo(16, 14); ctx.lineTo(0, 7); ctx.lineTo(-16, 14);
+  ctx.closePath();
+  ctx.fillStyle = col;
+  ctx.shadowColor = col; ctx.shadowBlur = 20; ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  ctx.restore(); // fin translate+rotate
+
+  // Étiquette flottante près de la flèche
+  const labelX = ax + (ax > cx ? 14 : -14);
+  const labelAlign = ax > cx ? 'left' : 'right';
+  const name = selectedPoi.name.slice(0, 16);
+  ctx.font = '700 13px -apple-system';
+  const tw2 = ctx.measureText(name).width;
+  const lw = tw2 + 20, lh = 38;
+  const lx = ax > cx ? ax + 18 : ax - lw - 18;
+  const ly = ay - lh / 2;
+  ctx.beginPath(); ctx.roundRect(lx, ly, lw, lh, 9);
+  ctx.fillStyle = 'rgba(0,0,0,0.80)'; ctx.fill();
+  ctx.strokeStyle = col + 'bb'; ctx.lineWidth = 1.2;
+  ctx.shadowColor = col; ctx.shadowBlur = 6; ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(name, lx + lw/2, ly + 12);
+  ctx.font = '600 11px -apple-system'; ctx.fillStyle = col;
+  ctx.fillText(formatDist(dist), lx + lw/2, ly + 26);
+
+  // Texte directionnel en bas
+  const dirText = relAngle > 0 ? '→ Tournez à droite' : '← Tournez à gauche';
+  ctx.font = '600 12px -apple-system';
+  const dtw = ctx.measureText(dirText).width;
+  ctx.beginPath(); ctx.roundRect(cx - dtw/2 - 14, H * 0.78, dtw + 28, 28, 7);
+  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fill();
+  ctx.strokeStyle = col + '66'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(dirText, cx, H * 0.78 + 14);
+
+  ctx.restore();
 }
 
 /* Dessiner les zones de signalement en AR */
@@ -1803,7 +2348,23 @@ function drawARScanOverlay(ctx, W, H) {
 
 function updateARInstruction() {
   const main = document.getElementById('arInstructionMain'), sub = document.getElementById('arInstructionSub');
+  const icon = document.getElementById('arInstructionIcon');
   if (!main || !sub) return;
+
+  // Priorité 1 : destination POI sélectionnée
+  if (selectedPoi) {
+    const dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+    const cfg = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
+    const distLabel = formatDist(dist);
+    const walkMin = Math.max(1, Math.round(dist / 80));
+    if (icon) { icon.style.background = cfg.color + '28'; icon.innerHTML = (POI_ICONS_SVG[selectedPoi.cat]||'').replace('stroke="currentColor"', `stroke="${cfg.color}"`).replace('viewBox', 'width="22" height="22" viewBox'); }
+    main.textContent = selectedPoi.name.slice(0, 24);
+    sub.textContent = dist < 20 ? 'Vous êtes arrivé !' : `${cfg.label} · ${distLabel} · ~${walkMin} min à pied`;
+    return;
+  }
+
+  // Priorité 2 : signaux proches
+  if (icon) { icon.style.background = 'rgba(22,163,74,0.25)'; icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>'; }
   const signalCount = state.signals.filter(s => Date.now() - s.t < CFG.MAX_AGE_MS && distanceM(state.lat, state.lng, s.lat, s.lng) <= CFG.AR_SIGNAL_RADIUS).length;
   if (signalCount > 0) {
     main.textContent = `${signalCount} place${signalCount > 1 ? 's' : ''} signalée${signalCount > 1 ? 's' : ''} à proximité`;
@@ -1813,7 +2374,7 @@ function updateARInstruction() {
     sub.textContent = 'Transports en commun proches';
   } else {
     main.textContent = 'Scan en cours…';
-    sub.textContent = 'Orientez vers les rues';
+    sub.textContent = 'Orientez vers les rues — ou choisissez un lieu';
   }
 }
 
@@ -1870,6 +2431,8 @@ function bindEvents() {
   document.getElementById('settings-privacy').addEventListener('click', () => { closeModal('settings-modal'); setTimeout(openPrivacy, 250); });
   document.getElementById('erase-data').addEventListener('click', eraseAllData);
   document.querySelectorAll('.modal-backdrop').forEach(bd => bd.addEventListener('click', (e) => { if (e.target === bd && bd.id !== 'onboarding') closeModal(bd.id); }));
+  // Fermer panneau POI en cliquant sur le backdrop
+  document.getElementById('poi-panel-backdrop')?.addEventListener('click', (e) => { if (e.target === document.getElementById('poi-panel-backdrop')) closePoiPanel(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const open = document.querySelector('.modal-backdrop.open'); if (open && open.id !== 'onboarding') closeModal(open.id); } });
   window.addEventListener('online', () => { state.online = true; updateCounter(); toast('De retour en ligne', 'ok'); });
   window.addEventListener('offline', () => { state.online = false; updateCounter(); toast('Hors ligne', 'warn'); });
