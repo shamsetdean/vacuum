@@ -1936,6 +1936,104 @@ function onAROrientation(e) {
   if (needle) needle.style.transform = `rotate(${-h}deg)`;
 }
 
+/* ═══════════════════════════════════════
+   SYSTÈME SONORE DE PROXIMITÉ
+   Web Audio API — aucun fichier externe
+═══════════════════════════════════════ */
+let _audioCtx = null;
+let _soundTimer = null;
+let _lastBeepAt = 0;
+let _soundEnabled = true;
+let _arrivedSoundPlaying = false;
+
+function getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { _soundEnabled = false; }
+  }
+  return _audioCtx;
+}
+
+/* Un bip sinusoïdal court — fréq et durée paramétrables */
+function playBeep(freq = 880, durMs = 80, vol = 0.35, wave = 'sine') {
+  if (!_soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type            = wave;
+  osc.frequency.value = freq;
+
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + durMs / 1000);
+
+  osc.start(now);
+  osc.stop(now + durMs / 1000 + 0.01);
+}
+
+/* Séquence d'arrivée — accord montant */
+function playArrivalSound() {
+  if (!_soundEnabled || _arrivedSoundPlaying) return;
+  _arrivedSoundPlaying = true;
+  [523, 659, 784, 1047].forEach((f, i) => {
+    setTimeout(() => playBeep(f, 140, 0.4, 'sine'), i * 110);
+  });
+  setTimeout(() => { _arrivedSoundPlaying = false; }, 700);
+}
+
+/* Fonction principale appelée à chaque frame AR */
+function tickProximitySound(dist) {
+  if (!_soundEnabled || !selectedPoi) return;
+
+  const now = Date.now();
+
+  // Arrivée < 12m — séquence unique
+  if (dist < 12) {
+    if (now - _lastBeepAt > 2000) {
+      _lastBeepAt = now;
+      playArrivalSound();
+    }
+    return;
+  }
+
+  // Calcul de l'intervalle et de la fréquence selon la distance
+  // dist 800m → intervalle 4000ms, fréq 320Hz
+  // dist  50m → intervalle  300ms, fréq 980Hz
+  const clampedDist = Math.min(Math.max(dist, 12), 800);
+  const ratio        = (clampedDist - 12) / (800 - 12); // 0 = proche, 1 = loin
+
+  const intervalMs = 300 + ratio * 3700;   // 300ms → 4000ms
+  const freq       = 980 - ratio * 660;    // 980Hz → 320Hz
+  const vol        = 0.20 + (1 - ratio) * 0.18; // plus fort en approchant
+
+  if (now - _lastBeepAt >= intervalMs) {
+    _lastBeepAt = now;
+    // Proche < 80m : double bip
+    if (dist < 80) {
+      playBeep(freq, 55, vol, 'sine');
+      setTimeout(() => playBeep(freq * 1.25, 45, vol * 0.7, 'sine'), 80);
+    } else {
+      playBeep(freq, 70, vol, 'sine');
+    }
+  }
+}
+
+/* Stopper le son à la fermeture AR */
+function stopProximitySound() {
+  _lastBeepAt = 0;
+  _arrivedSoundPlaying = false;
+  if (_audioCtx) {
+    _audioCtx.suspend().catch(() => {});
+  }
+}
+
 function openAR() {
   const overlay = document.getElementById('arOverlay');
   overlay.classList.add('active');
@@ -1973,6 +2071,7 @@ function closeAR() {
     window.removeEventListener('deviceorientation', arOrientationListener, true);
     arOrientationListener = null;
   }
+  stopProximitySound();
 }
 
 async function fetchARStops(lat, lng) {
@@ -2020,13 +2119,16 @@ function startARRender() {
   function frame() {
     const W = window.innerWidth, H = window.innerHeight;
     ctx.clearRect(0, 0, W, H);
-    // Mise à jour périodique des arrêts
     if (arActive && state.lat && Date.now() - arLastStopFetch > 30000) fetchARStops(state.lat, state.lng);
-    drawARSignalZones(ctx, W, H);
-    drawARTransitStops(ctx, W, H);
-    drawARScanOverlay(ctx, W, H);
-    // Flèche destination POI — toujours au premier plan
-    if (selectedPoi) drawARDestinationArrow(ctx, W, H);
+    if (selectedPoi) {
+      // Mode navigation : UNIQUEMENT la flèche 3D vers le POI choisi
+      drawARDestinationArrow(ctx, W, H);
+    } else {
+      // Mode scan : arrêts TC + signaux + bouton choisir
+      drawARSignalZones(ctx, W, H);
+      drawARTransitStops(ctx, W, H);
+      drawARScanOverlay(ctx, W, H);
+    }
     updateARInstruction();
     arRAF = requestAnimationFrame(frame);
   }
@@ -2055,167 +2157,235 @@ function bearingToScreen(poiBearing, heading, W, H, FOV = 70) {
 /* ═══════════════════════════════════════
    FLÈCHE 2D DESTINATION POI EN AR
 ═══════════════════════════════════════ */
+/* ═══ FLÈCHE 2D HUD — redesign stylisé ═══ */
 function drawARDestinationArrow(ctx, W, H) {
   if (!selectedPoi || !state.lat) return;
   const heading = arOrientation.alpha;
-  const dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const dist    = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
   const bearing = calcBearing(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
-  const cfg = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
-  const col = cfg.color;
-  const t = Date.now() / 1000;
-  const pulse = 0.5 + 0.5 * Math.sin(t * 2.2);
-  const isClose = dist < 50;
-  const isVeryClose = dist < 15;
+  const cfg     = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
+  const col     = cfg.color;
+  const now     = Date.now() / 1000;
+  const isClose = dist < 60;
+  const isArrived = dist < 12;
 
-  // Calculer l'angle relatif
+  // Son de proximité
+  tickProximitySound(dist);
+
   let relAngle = ((bearing - heading) + 360) % 360;
-  if (relAngle > 180) relAngle -= 360; // -180..180
+  if (relAngle > 180) relAngle -= 360;
 
   const cx = W / 2, cy = H / 2;
+  const inFOV = Math.abs(relAngle) <= 55 && !isArrived;
 
-  // ─── Si la destination est dans le champ de vision (±50°) ───
-  if (Math.abs(relAngle) <= 50 && !isVeryClose) {
-    const screenX = cx + (relAngle / 50) * (W * 0.35);
-    const screenY = H * 0.28 + (dist > 200 ? 0 : (200 - dist) / 200 * H * 0.1);
+  // ─────────────────────────────────────────────────
+  // CAS 1 : DESTINATION DANS LE CHAMP DE VISION
+  // ─────────────────────────────────────────────────
+  if (inFOV) {
+    const screenX = cx + (relAngle / 55) * (W * 0.38);
+    const screenY = H * 0.24;
+    const pulse   = 0.5 + 0.5 * Math.sin(now * 3);
 
     ctx.save();
 
-    // Halo pulsant autour de la cible
-    const haloR = 48 + pulse * 16;
-    const haloGrad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, haloR);
-    haloGrad.addColorStop(0, col + '44');
-    haloGrad.addColorStop(1, col + '00');
-    ctx.beginPath(); ctx.arc(screenX, screenY, haloR, 0, Math.PI * 2);
-    ctx.fillStyle = haloGrad; ctx.fill();
+    // ── Anneaux concentriques rotatifs ──
+    for (let i = 0; i < 3; i++) {
+      const r   = 52 + i * 22 + pulse * 6;
+      const rot = now * (i % 2 === 0 ? 0.6 : -0.4);
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      ctx.rotate(rot);
+      // arc haut
+      ctx.beginPath();
+      ctx.arc(0, 0, r, -0.3, 0.3);
+      ctx.strokeStyle = col + Math.round((0.55 - i * 0.12) * 255).toString(16).padStart(2,'0');
+      ctx.lineWidth = i === 0 ? 2.5 : 1.5;
+      ctx.stroke();
+      // arc bas
+      ctx.beginPath();
+      ctx.arc(0, 0, r, Math.PI - 0.3, Math.PI + 0.3);
+      ctx.stroke();
+      ctx.restore();
+    }
 
-    // Cercle cible
-    const circleR = 32 + pulse * 6;
-    ctx.beginPath(); ctx.arc(screenX, screenY, circleR, 0, Math.PI * 2);
-    ctx.fillStyle = col + '28'; ctx.fill();
-    ctx.strokeStyle = col; ctx.lineWidth = isClose ? 3 : 2;
-    ctx.shadowColor = col; ctx.shadowBlur = isClose ? 20 : 10;
+    // ── Cercle central translucide ──
+    const rC = 38 + pulse * 5;
+    const grd = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, rC);
+    grd.addColorStop(0, col + '40');
+    grd.addColorStop(1, col + '08');
+    ctx.beginPath(); ctx.arc(screenX, screenY, rC, 0, Math.PI * 2);
+    ctx.fillStyle = grd; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.shadowColor = col; ctx.shadowBlur = isClose ? 30 : 14;
     ctx.stroke(); ctx.shadowBlur = 0;
 
-    // Croix de visée intérieure
-    const cross = 12;
-    ctx.strokeStyle = col; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(screenX - cross, screenY); ctx.lineTo(screenX + cross, screenY); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(screenX, screenY - cross); ctx.lineTo(screenX, screenY + cross); ctx.stroke();
+    // ── Réticule HUD ──
+    const seg = 14, gap = 8;
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(screenX + dx*gap, screenY + dy*gap);
+      ctx.lineTo(screenX + dx*(gap+seg), screenY + dy*(gap+seg));
+      ctx.stroke();
+    });
+    // Point central
     ctx.beginPath(); ctx.arc(screenX, screenY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = col; ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = col; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0;
 
-    // Ligne pointillée du bas vers la cible
-    const lineGrad = ctx.createLinearGradient(screenX, H * 0.75, screenX, screenY + circleR);
-    lineGrad.addColorStop(0, col + '00'); lineGrad.addColorStop(1, col + '88');
-    ctx.beginPath(); ctx.moveTo(screenX, H * 0.75); ctx.lineTo(screenX, screenY + circleR);
-    ctx.strokeStyle = lineGrad; ctx.lineWidth = 1.5; ctx.setLineDash([5, 7]);
-    ctx.stroke(); ctx.setLineDash([]);
+    // ── Chevrons animés descendant vers la cible ──
+    for (let i = 0; i < 4; i++) {
+      const phase = (now * 2.4 + i * 0.5) % 2;
+      const yOff  = (screenY + rC + 12) + phase * 28;
+      const alpha = 1 - phase / 2;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(screenX - 8, yOff - 6);
+      ctx.lineTo(screenX, yOff + 2);
+      ctx.lineTo(screenX + 8, yOff - 6);
+      ctx.stroke();
+      ctx.restore();
+    }
 
-    // Étiquette nom + distance
-    const name = selectedPoi.name.slice(0, 20);
-    ctx.font = '700 13px -apple-system, system-ui';
-    const tw = ctx.measureText(name).width;
-    const bW = Math.max(tw + 24, 100), bH = 40, bX = screenX - bW/2, bY = screenY + circleR + 10;
-    ctx.beginPath(); ctx.roundRect(bX, bY, bW, bH, 10);
-    ctx.fillStyle = 'rgba(0,0,0,0.82)'; ctx.fill();
-    ctx.strokeStyle = col + 'cc'; ctx.lineWidth = 1.5;
-    ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(name, screenX, bY + 13);
-    ctx.font = '700 12px -apple-system'; ctx.fillStyle = col;
-    ctx.fillText(formatDist(dist), screenX, bY + 28);
+    // ── Étiquette distancielle ──
+    const distTxt = isClose ? '⬤ ' + formatDist(dist) : formatDist(dist);
+    ctx.font = '700 14px -apple-system, system-ui';
+    const dtw = ctx.measureText(distTxt).width;
+    const dx = screenX - dtw/2 - 12, dy = screenY + rC + 48;
+    ctx.beginPath(); ctx.roundRect(dx, dy, dtw + 24, 32, 10);
+    const bgGrd = ctx.createLinearGradient(dx, dy, dx, dy + 32);
+    bgGrd.addColorStop(0, 'rgba(0,0,0,0.88)');
+    bgGrd.addColorStop(1, 'rgba(0,0,0,0.70)');
+    ctx.fillStyle = bgGrd; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(distTxt, screenX, dy + 16);
 
-    // Badge "VOUS APPROCHEZ" si proche
+    // ── Nom du POI ──
+    const name = selectedPoi.name.slice(0, 22);
+    ctx.font = '600 12px -apple-system, system-ui';
+    const nw = ctx.measureText(name).width;
+    ctx.beginPath(); ctx.roundRect(screenX - nw/2 - 10, dy + 36, nw + 20, 24, 7);
+    ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+    ctx.fillText(name, screenX, dy + 48);
+
+    // ── Badge ARRIVÉE si très proche ──
     if (isClose) {
-      ctx.font = '800 11px -apple-system';
-      const msg = 'VOUS APPROCHEZ';
-      const mw = ctx.measureText(msg).width;
-      ctx.beginPath(); ctx.roundRect(cx - mw/2 - 12, H * 0.14, mw + 24, 26, 6);
-      ctx.fillStyle = col; ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(msg, cx, H * 0.14 + 13);
+      const flash = Math.sin(now * 6) > 0;
+      ctx.beginPath(); ctx.roundRect(cx - 80, H * 0.13, 160, 34, 10);
+      ctx.fillStyle = flash ? col : 'rgba(0,0,0,0.85)'; ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      ctx.font = '800 13px -apple-system, system-ui';
+      ctx.fillStyle = flash ? '#fff' : col;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('▶ VOUS APPROCHEZ ◀', cx, H * 0.13 + 17);
     }
 
     ctx.restore();
     return;
   }
 
-  // ─── Destination hors champ de vision : grande flèche directionnelle ───
+  // ─────────────────────────────────────────────────
+  // CAS 2 : HORS CHAMP — GRANDE FLÈCHE HUD
+  // ─────────────────────────────────────────────────
   ctx.save();
 
-  // Rayon du cercle de guidage
-  const R = Math.min(W, H) * 0.28;
-  const arrowAngle = (relAngle * Math.PI / 180) - Math.PI / 2;
+  const pulse2 = 0.5 + 0.5 * Math.sin(now * 2.8);
+  const R      = Math.min(W, H) * 0.3;
+  const angle  = (relAngle * Math.PI / 180) - Math.PI / 2;
+  const ax     = cx + Math.cos(angle) * R;
+  const ay     = cy + Math.sin(angle) * R + 20;
 
-  // Point sur le cercle
-  const ax = cx + Math.cos(arrowAngle) * R;
-  const ay = cy + Math.sin(arrowAngle) * R + 30;
+  // ── Anneaux de guidage ──
+  [R + 28, R, R - 20].forEach((r, i) => {
+    ctx.beginPath(); ctx.arc(cx, cy + 20, r, 0, Math.PI * 2);
+    ctx.strokeStyle = col + ['18','0e','06'][i];
+    ctx.lineWidth = 1; ctx.stroke();
+  });
 
-  // Cercle de guidage (anneau)
-  ctx.beginPath(); ctx.arc(cx, cy + 30, R, 0, Math.PI * 2);
-  ctx.strokeStyle = col + '22'; ctx.lineWidth = 2; ctx.stroke();
+  // ── Arc directionnel large ──
+  const span = 0.65;
+  ctx.beginPath(); ctx.arc(cx, cy + 20, R, angle - span, angle + span);
+  const arcGrd = ctx.createLinearGradient(
+    cx + Math.cos(angle - span) * R, cy + 20 + Math.sin(angle - span) * R,
+    cx + Math.cos(angle + span) * R, cy + 20 + Math.sin(angle + span) * R
+  );
+  arcGrd.addColorStop(0, col + '22');
+  arcGrd.addColorStop(0.5, col + 'ee');
+  arcGrd.addColorStop(1, col + '22');
+  ctx.strokeStyle = arcGrd; ctx.lineWidth = 5;
+  ctx.shadowColor = col; ctx.shadowBlur = 22; ctx.stroke(); ctx.shadowBlur = 0;
 
-  // Arc coloré dans la direction
-  const arcSpan = 0.5;
-  ctx.beginPath(); ctx.arc(cx, cy + 30, R, arrowAngle - arcSpan, arrowAngle + arcSpan);
-  ctx.strokeStyle = col; ctx.lineWidth = 4;
-  ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
-
-  // Grande flèche pointant vers la destination
+  // ── Flèche principale ──
   ctx.save();
   ctx.translate(ax, ay);
-  ctx.rotate(arrowAngle + Math.PI / 2);
+  ctx.rotate(angle + Math.PI / 2);
 
-  // Traînée animée
-  for (let i = 1; i <= 3; i++) {
+  // Traînées
+  for (let i = 1; i <= 5; i++) {
     ctx.save();
-    ctx.translate(0, i * 8);
+    ctx.translate(0, i * 9);
+    ctx.globalAlpha = (0.22 - i * 0.04);
     ctx.beginPath();
-    ctx.moveTo(0, -20); ctx.lineTo(14 - i*2, 10); ctx.lineTo(-14 + i*2, 10);
+    ctx.moveTo(0, -22); ctx.lineTo(18 - i*2, 12); ctx.lineTo(0, 6); ctx.lineTo(-(18 - i*2), 12);
     ctx.closePath();
-    ctx.fillStyle = col + Math.round((0.12 - i * 0.03) * 255).toString(16).padStart(2,'0');
-    ctx.fill();
+    ctx.fillStyle = col; ctx.fill();
     ctx.restore();
   }
 
-  // Corps de la flèche
+  // Corps
+  const sz = 28 + pulse2 * 6;
   ctx.beginPath();
-  ctx.moveTo(0, -28 - pulse * 4);
-  ctx.lineTo(16, 14); ctx.lineTo(0, 7); ctx.lineTo(-16, 14);
+  ctx.moveTo(0, -sz);
+  ctx.lineTo(18, 14); ctx.lineTo(0, 7); ctx.lineTo(-18, 14);
   ctx.closePath();
   ctx.fillStyle = col;
-  ctx.shadowColor = col; ctx.shadowBlur = 20; ctx.fill(); ctx.shadowBlur = 0;
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.shadowColor = col; ctx.shadowBlur = 28; ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Point brillant sur la pointe
+  ctx.beginPath(); ctx.arc(0, -sz, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff'; ctx.fill();
 
   ctx.restore(); // fin translate+rotate
 
-  // Étiquette flottante près de la flèche
-  const labelX = ax + (ax > cx ? 14 : -14);
-  const labelAlign = ax > cx ? 'left' : 'right';
-  const name = selectedPoi.name.slice(0, 16);
-  ctx.font = '700 13px -apple-system';
-  const tw2 = ctx.measureText(name).width;
-  const lw = tw2 + 20, lh = 38;
-  const lx = ax > cx ? ax + 18 : ax - lw - 18;
-  const ly = ay - lh / 2;
-  ctx.beginPath(); ctx.roundRect(lx, ly, lw, lh, 9);
-  ctx.fillStyle = 'rgba(0,0,0,0.80)'; ctx.fill();
-  ctx.strokeStyle = col + 'bb'; ctx.lineWidth = 1.2;
-  ctx.shadowColor = col; ctx.shadowBlur = 6; ctx.stroke(); ctx.shadowBlur = 0;
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(name, lx + lw/2, ly + 12);
-  ctx.font = '600 11px -apple-system'; ctx.fillStyle = col;
-  ctx.fillText(formatDist(dist), lx + lw/2, ly + 26);
+  // ── Étiquette latérale ──
+  const name2  = selectedPoi.name.slice(0, 18);
+  const lIsRight = ax >= cx;
+  ctx.font = '700 13px -apple-system, system-ui';
+  const lw2 = Math.max(ctx.measureText(name2).width, ctx.measureText(formatDist(dist)).width) + 24;
+  const lh2 = 46, lx2 = lIsRight ? ax + 20 : ax - lw2 - 20, ly2 = ay - lh2 / 2;
 
-  // Texte directionnel en bas
-  const dirText = relAngle > 0 ? '→ Tournez à droite' : '← Tournez à gauche';
-  ctx.font = '600 12px -apple-system';
-  const dtw = ctx.measureText(dirText).width;
-  ctx.beginPath(); ctx.roundRect(cx - dtw/2 - 14, H * 0.78, dtw + 28, 28, 7);
-  ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fill();
-  ctx.strokeStyle = col + '66'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(dirText, cx, H * 0.78 + 14);
+  ctx.beginPath(); ctx.roundRect(lx2, ly2, lw2, lh2, 12);
+  const lblGrd = ctx.createLinearGradient(lx2, ly2, lx2, ly2 + lh2);
+  lblGrd.addColorStop(0, 'rgba(0,0,0,0.90)');
+  lblGrd.addColorStop(1, 'rgba(0,0,0,0.75)');
+  ctx.fillStyle = lblGrd; ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '600 12px -apple-system, system-ui'; ctx.fillStyle = '#fff';
+  ctx.fillText(name2, lx2 + lw2/2, ly2 + 14);
+  ctx.font = '800 14px -apple-system, system-ui'; ctx.fillStyle = col;
+  ctx.fillText(formatDist(dist), lx2 + lw2/2, ly2 + 32);
+
+  // ── Bandeau directionnel bas écran ──
+  const dir   = relAngle > 0 ? '▶ Tournez à droite' : '◀ Tournez à gauche';
+  const flash2 = Math.sin(now * 2.5) > 0;
+  ctx.font = '700 14px -apple-system, system-ui';
+  const dw = ctx.measureText(dir).width + 32;
+  ctx.beginPath(); ctx.roundRect(cx - dw/2, H * 0.76, dw, 38, 12);
+  ctx.fillStyle = flash2 ? col + 'cc' : 'rgba(0,0,0,0.82)'; ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.fillStyle = flash2 ? '#fff' : col;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(dir, cx, H * 0.76 + 19);
 
   ctx.restore();
 }
@@ -2286,96 +2456,66 @@ function drawARSignalZones(ctx, W, H) {
 /* Dessiner les arrêts de transport en AR */
 function drawARTransitStops(ctx, W, H) {
   if (!arNearbyStops.length) return;
-  const heading = arOrientation.alpha;
   const t = Date.now() / 1000;
 
-  // 1 — Projeter chaque arrêt
-  const projected = [];
-  arNearbyStops.forEach((stop, idx) => {
+  // Dédoublonner par nom (garder le plus proche), limiter à 6
+  const seen = new Map();
+  arNearbyStops.forEach(stop => {
     const dist = distanceM(state.lat, state.lng, stop.lat, stop.lon);
-    const bearing = calcBearing(state.lat, state.lng, stop.lat, stop.lon);
-    const screenX = bearingToScreen(bearing, heading, W, H);
-    if (screenX === null) return;
-    projected.push({ stop, dist, screenX, idx });
+    const key = stop.name.toLowerCase().slice(0, 12);
+    if (!seen.has(key) || seen.get(key).dist > dist) seen.set(key, { stop, dist });
   });
-  if (!projected.length) return;
+  const items = Array.from(seen.values())
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 6);
 
-  // 2 — Trier par distance croissante
-  projected.sort((a, b) => a.dist - b.dist);
+  // Grille fixe : 2 colonnes × 3 rangées, position absolue stable
+  const PILL_W = 150, PILL_H = 42, GAP_X = 10, GAP_Y = 10;
+  const COLS = 2;
+  const totalW = COLS * PILL_W + (COLS - 1) * GAP_X;
+  const startX = (W - totalW) / 2;
+  const startY = H * 0.30;
 
-  // 3 — Anti-superposition : résolution itérative des collisions
-  const PILL_W = 100, PILL_H = 38, MIN_GAP = 10;
-  const positions = projected.map(p => ({ ...p, adjX: p.screenX }));
-  for (let iter = 0; iter < 8; iter++) {
-    for (let i = 0; i < positions.length; i++) {
-      for (let j = i + 1; j < positions.length; j++) {
-        const a = positions[i], b = positions[j];
-        const overlap = (PILL_W + MIN_GAP) - Math.abs(a.adjX - b.adjX);
-        if (overlap > 0) {
-          const push = overlap / 2 + 1;
-          if (a.adjX <= b.adjX) { a.adjX -= push; b.adjX += push; }
-          else { a.adjX += push; b.adjX -= push; }
-          a.adjX = Math.max(PILL_W / 2 + 8, Math.min(W - PILL_W / 2 - 8, a.adjX));
-          b.adjX = Math.max(PILL_W / 2 + 8, Math.min(W - PILL_W / 2 - 8, b.adjX));
-        }
-      }
-    }
-  }
-
-  // 4 — Disposition en rangées : plus proche = rangée basse
-  const maxDist = Math.max(...projected.map(p => p.dist), 1);
-  const ROWS = 3, ROW_H = PILL_H + 12;
-  const BASE_Y = H * 0.36;
-
-  positions.forEach(p => {
-    const { stop, dist, adjX } = p;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + p.idx * 0.9);
-    const row = Math.min(Math.floor((dist / maxDist) * ROWS), ROWS - 1);
-    const screenY = BASE_Y + row * ROW_H;
-
-    // Ligne pointillée si pilule déplacée
-    if (Math.abs(adjX - p.screenX) > 12) {
-      const g = ctx.createLinearGradient(p.screenX, screenY, adjX, screenY);
-      g.addColorStop(0, stop.color + "55"); g.addColorStop(1, stop.color + "00");
-      ctx.save();
-      ctx.beginPath(); ctx.moveTo(p.screenX, screenY); ctx.lineTo(adjX, screenY);
-      ctx.strokeStyle = g; ctx.lineWidth = 1; ctx.setLineDash([3, 6]); ctx.stroke();
-      ctx.setLineDash([]); ctx.restore();
-    }
+  items.forEach((item, i) => {
+    const { stop, dist } = item;
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const bX = startX + col * (PILL_W + GAP_X);
+    const bY = startY + row * (PILL_H + GAP_Y);
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.4 + i * 0.7);
 
     ctx.save();
-    const bX = adjX - PILL_W / 2, bY = screenY - PILL_H / 2;
 
     // Fond pilule
-    ctx.shadowColor = stop.color; ctx.shadowBlur = 6 + pulse * 6;
-    ctx.beginPath(); ctx.roundRect(bX, bY, PILL_W, PILL_H, 10);
-    ctx.fillStyle = "rgba(0,0,0,0.88)"; ctx.fill();
-    ctx.strokeStyle = stop.color; ctx.lineWidth = 1.5 + pulse * 0.4; ctx.stroke();
+    ctx.shadowColor = stop.color; ctx.shadowBlur = 5 + pulse * 5;
+    ctx.beginPath(); ctx.roundRect(bX, bY, PILL_W, PILL_H, 11);
+    ctx.fillStyle = "rgba(0,0,0,0.86)"; ctx.fill();
+    ctx.strokeStyle = stop.color; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Badge mode coloré à gauche
-    ctx.beginPath(); ctx.roundRect(bX + 4, bY + 4, 28, PILL_H - 8, 7);
-    ctx.fillStyle = stop.color + "28"; ctx.fill();
-    ctx.font = "800 8px -apple-system, system-ui";
+    // Badge mode — fond coloré
+    ctx.beginPath(); ctx.roundRect(bX + 5, bY + 5, 32, PILL_H - 10, 7);
+    ctx.fillStyle = stop.color + "30"; ctx.fill();
+    ctx.font = "800 9px -apple-system, system-ui";
     ctx.fillStyle = stop.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(stop.kind.slice(0, 4).toUpperCase(), bX + 18, bY + PILL_H / 2);
+    ctx.fillText(stop.kind.slice(0, 4).toUpperCase(), bX + 21, bY + PILL_H / 2);
 
     // Séparateur
-    ctx.beginPath(); ctx.moveTo(bX + 36, bY + 6); ctx.lineTo(bX + 36, bY + PILL_H - 6);
-    ctx.strokeStyle = stop.color + "33"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bX + 41, bY + 7); ctx.lineTo(bX + 41, bY + PILL_H - 7);
+    ctx.strokeStyle = stop.color + "40"; ctx.lineWidth = 1; ctx.stroke();
 
-    // Nom arrêt
-    const nameMaxW = PILL_W - 44;
-    ctx.font = "600 11px -apple-system, system-ui"; ctx.fillStyle = "#fff";
+    // Nom arrêt — max 14 chars
+    ctx.font = "600 12px -apple-system, system-ui"; ctx.fillStyle = "#fff";
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const maxW = PILL_W - 52;
     let name = stop.name;
-    while (name.length > 1 && ctx.measureText(name).width > nameMaxW) name = name.slice(0, -1);
+    while (name.length > 1 && ctx.measureText(name).width > maxW) name = name.slice(0, -1);
     if (name.length < stop.name.length) name = name.slice(0, -1) + "…";
-    ctx.fillText(name, bX + 40, bY + PILL_H / 2 - 6);
+    ctx.fillText(name, bX + 46, bY + PILL_H / 2 - 7);
 
-    // Distance en couleur
-    ctx.font = "700 10px -apple-system, system-ui"; ctx.fillStyle = stop.color;
-    ctx.fillText(formatDist(dist), bX + 40, bY + PILL_H / 2 + 8);
+    // Distance
+    ctx.font = "700 11px -apple-system, system-ui"; ctx.fillStyle = stop.color;
+    ctx.fillText(formatDist(dist), bX + 46, bY + PILL_H / 2 + 8);
 
     ctx.restore();
   });
@@ -2384,21 +2524,773 @@ function drawARTransitStops(ctx, W, H) {
 /* Scan overlay minimaliste */
 function drawARScanOverlay(ctx, W, H) {
   const t = Date.now() / 1000;
-  // Crosshair centre
-  const cx = W/2, cy = H/2 - 30;
-  const chLen = 14, chGap = 5;
-  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx, dy]) => {
-    ctx.beginPath(); ctx.moveTo(cx + dx*chGap, cy + dy*chGap); ctx.lineTo(cx + dx*(chGap+chLen), cy + dy*(chGap+chLen));
-    ctx.strokeStyle = `rgba(22,163,74,${0.4 + 0.3*Math.sin(t*2)})`; ctx.lineWidth = 1.5; ctx.stroke();
-  });
-  // Badge comptage
+  const cx = W / 2, cy = H / 2 - 30;
+
+  // Crosshair centre (uniquement sans destination)
+  if (!selectedPoi) {
+    const chLen = 16, chGap = 6;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx + dx*chGap, cy + dy*chGap);
+      ctx.lineTo(cx + dx*(chGap+chLen), cy + dy*(chGap+chLen));
+      ctx.strokeStyle = `rgba(22,163,74,${0.5 + 0.3*Math.sin(t*2)})`;
+      ctx.lineWidth = 2; ctx.stroke();
+    });
+  }
+
+  // Badge comptage haut d'écran
   const total = (state.signals.filter(s => Date.now() - s.t < CFG.MAX_AGE_MS && distanceM(state.lat, state.lng, s.lat, s.lng) <= CFG.AR_SIGNAL_RADIUS).length) + arNearbyStops.length;
   const badge = total > 0 ? `${total} objets détectés` : 'Scan en cours';
-  ctx.font = '600 11px -apple-system'; ctx.textAlign = 'center';
+  ctx.font = '600 11px -apple-system, system-ui'; ctx.textAlign = 'center';
   const bw = ctx.measureText(badge).width + 22;
   ctx.beginPath(); ctx.roundRect(W/2 - bw/2, H * 0.08, bw, 24, 5);
-  ctx.fillStyle = total > 0 ? 'rgba(22,163,74,0.7)' : 'rgba(37,99,235,0.5)'; ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(badge, W/2, H * 0.08 + 12);
+  ctx.fillStyle = total > 0 ? 'rgba(22,163,74,0.80)' : 'rgba(37,99,235,0.55)'; ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+  ctx.fillText(badge, W/2, H * 0.08 + 12);
+
+  // ── BOUTON POI — visible, large, animé ──
+  if (!selectedPoi) {
+    const btnW = 240, btnH = 56, btnX = cx - btnW/2, btnY = H * 0.68;
+    const pls  = 0.5 + 0.5 * Math.sin(t * 2.2);
+
+    // Halo pulsant autour du bouton
+    ctx.beginPath(); ctx.roundRect(btnX - 6, btnY - 6, btnW + 12, btnH + 12, 26);
+    ctx.fillStyle = `rgba(22,163,74,${0.12 + pls * 0.10})`; ctx.fill();
+
+    // Corps du bouton
+    const btnGrd = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
+    btnGrd.addColorStop(0, `rgba(30,194,92,${0.92 + pls * 0.07})`);
+    btnGrd.addColorStop(1, `rgba(22,163,74,${0.88 + pls * 0.07})`);
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 20);
+    ctx.fillStyle = btnGrd; ctx.fill();
+
+    // Bordure lumineuse
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + pls * 0.25})`;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#16a34a'; ctx.shadowBlur = 18 + pls * 10;
+    ctx.stroke(); ctx.shadowBlur = 0;
+
+    // Reflet interne haut
+    ctx.beginPath(); ctx.roundRect(btnX + 4, btnY + 3, btnW - 8, btnH/2 - 3, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
+
+    // Icône grille + texte
+    ctx.font = '700 15px -apple-system, system-ui';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
+    ctx.fillText('⊞  Choisir un lieu', cx, btnY + btnH / 2 - 5);
+    ctx.shadowBlur = 0;
+    ctx.font = '500 11px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.fillText('Naviguer en AR vers un POI', cx, btnY + btnH / 2 + 13);
+
+    // Listener tap (enregistrement unique)
+    if (!ctx._poiBtnRegistered) {
+      ctx._poiBtnRegistered = true;
+      const canvas = document.getElementById('arCanvas');
+      canvas.addEventListener('click', function(e) {
+        if (selectedPoi) return;
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width / devicePixelRatio;
+        const scaleY = canvas.height / rect.height / devicePixelRatio;
+        const cX = (e.clientX - rect.left) * scaleX;
+        const cY = (e.clientY - rect.top)  * scaleY;
+        const W2 = window.innerWidth, H2 = window.innerHeight;
+        const bX2 = W2/2 - 120, bY2 = H2 * 0.68;
+        if (cX >= bX2 && cX <= bX2 + 240 && cY >= bY2 && cY <= bY2 + 56) {
+          closeAR();
+          setTimeout(() => openPoiPanel(), 280);
+        }
+      });
+    }
+  }
+}
+
+function updateARInstruction() {
+  const main = document.getElementById('arInstructionMain'), sub = document.getElementById('arInstructionSub');
+  const icon = document.getElementById('arInstructionIcon');
+  if (!main || !sub) return;
+
+  // Priorité 1 : destination POI sélectionnée
+  if (selectedPoi) {
+    const dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+    const cfg = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
+    const distLabel = formatDist(dist);
+    const walkMin = Math.max(1, Math.round(dist / 80));
+    if (icon) { icon.style.background = cfg.color + '28'; icon.innerHTML = (POI_ICONS_SVG[selectedPoi.cat]||'').replace('stroke="currentColor"', `stroke="${cfg.color}"`).replace('viewBox', 'width="22" height="22" viewBox'); }
+    main.textContent = selectedPoi.name.slice(0, 24);
+    sub.textContent = dist < 20 ? 'Vous êtes arrivé !' : `${cfg.label} · ${distLabel} · ~${walkMin} min à pied`;
+    return;
+  }
+
+  // Priorité 2 : signaux proches
+  if (icon) { icon.style.background = 'rgba(22,163,74,0.25)'; icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>'; }
+  const signalCount = state.signals.filter(s => Date.now() - s.t < CFG.MAX_AGE_MS && distanceM(state.lat, state.lng, s.lat, s.lng) <= CFG.AR_SIGNAL_RADIUS).length;
+  if (signalCount > 0) {
+    main.textContent = `${signalCount} place${signalCount > 1 ? 's' : ''} signalée${signalCount > 1 ? 's' : ''} à proximité`;
+    sub.textContent = 'Orientez-vous vers les repères verts';
+  } else if (arNearbyStops.length > 0) {
+    main.textContent = `${arNearbyStops.length} arrêt${arNearbyStops.length > 1 ? 's' : ''} à proximité`;
+    sub.textContent = 'Transports en commun proches';
+  } else {
+    main.textContent = 'Scan en cours…';
+    sub.textContent = 'Orientez vers les rues — ou choisissez un lieu';
+  }
+}
+
+/* ═══ POLYFILL roundRect ═══ */
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    this.moveTo(x + r, y); this.arcTo(x+w, y, x+w, y+h, r); this.arcTo(x+w, y+h, x, y+h, r); this.arcTo(x, y+h, x, y, r); this.arcTo(x, y, x+w, y, r); this.closePath();
+  };
+}
+
+/* ═══ BIND EVENTS ═══ */
+function bindEvents() {
+  document.getElementById('fab').addEventListener('click', reportPlace);
+  document.getElementById('fab-search').addEventListener('click', toggleSearchMode);
+  document.getElementById('taken-btn')?.addEventListener('click', reportTaken);
+  document.getElementById('locate-btn')?.addEventListener('click', centerOnUser);
+  document.getElementById('hist-btn')?.addEventListener('click', openHistPanel);
+  document.getElementById('hist-close')?.addEventListener('click', closeHistPanel);
+  document.getElementById('btn-locate').addEventListener('click', locateMe);
+  document.getElementById('filter-btn').addEventListener('click', () => toggleFilterPanel());
+  document.getElementById('menu-btn').addEventListener('click', openSettings);
+  document.querySelectorAll('.fp-item[data-layer]').forEach(el => el.addEventListener('click', () => toggleLayer(el.dataset.layer)));
+  document.addEventListener('click', (e) => { const panel = document.getElementById('filter-panel'), btn = document.getElementById('filter-btn'); if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) toggleFilterPanel(false); });
+  // Consentements
+  [{ id:'consent-geo', key:'geo' }, { id:'consent-share', key:'share' }, { id:'consent-watch', key:'watch' }].forEach(({ id, key }) => {
+    const row = document.querySelector(`label[for="${id}"]`), tog = document.getElementById(id + '-toggle'), chk = document.getElementById(id);
+    row?.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (key === 'geo') { chk.checked = true; tog.classList.add('on'); tog.setAttribute('aria-checked', 'true'); return; }
+      const next = !chk.checked; chk.checked = next; tog.classList.toggle('on', next); tog.setAttribute('aria-checked', String(next));
+    });
+  });
+  document.querySelectorAll('.ob-next').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = parseInt(btn.dataset.next);
+      document.querySelectorAll('.ob-screen').forEach(s => s.classList.remove('active'));
+      const nextScreen = document.getElementById('ob-screen-' + next);
+      if (nextScreen) nextScreen.classList.add('active');
+    });
+  });
+  document.getElementById('onboarding-accept').addEventListener('click', () => {
+    applyConsent({ geo: document.getElementById('consent-geo').checked, share: document.getElementById('consent-share').checked, watch: document.getElementById('consent-watch').checked });
+    closeModal('onboarding');
+  });
+  document.getElementById('onboarding-decline').addEventListener('click', () => {
+    applyConsent({ geo: document.getElementById('consent-geo').checked, share: false, watch: false });
+    closeModal('onboarding');
+  });
+  document.getElementById('open-privacy').addEventListener('click', (e) => { e.preventDefault(); openPrivacy(); });
+  document.getElementById('privacy-close').addEventListener('click', () => closeModal('privacy-modal'));
+  document.getElementById('settings-close').addEventListener('click', () => closeModal('settings-modal'));
+  document.getElementById('settings-share').addEventListener('click', () => applyConsent({ ...state.consent, share: !state.consent.share }));
+  document.getElementById('settings-watch').addEventListener('click', () => applyConsent({ ...state.consent, watch: !state.consent.watch }));
+  document.getElementById('settings-privacy').addEventListener('click', () => { closeModal('settings-modal'); setTimeout(openPrivacy, 250); });
+  document.getElementById('erase-data').addEventListener('click', eraseAllData);
+  document.querySelectorAll('.modal-backdrop').forEach(bd => bd.addEventListener('click', (e) => { if (e.target === bd && bd.id !== 'onboarding') closeModal(bd.id); }));
+  // Fermer panneau POI en cliquant sur le backdrop
+  document.getElementById('poi-panel-backdrop')?.addEventListener('click', (e) => { if (e.target === document.getElementById('poi-panel-backdrop')) closePoiPanel(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const open = document.querySelector('.modal-backdrop.open'); if (open && open.id !== 'onboarding') closeModal(open.id); } });
+  window.addEventListener('online', () => { state.online = true; updateCounter(); toast('De retour en ligne', 'ok'); });
+  window.addEventListener('offline', () => { state.online = false; updateCounter(); toast('Hors ligne', 'warn'); });
+  window.addEventListener('resize', updateLayout);
+  window.addEventListener('orientationchange', () => setTimeout(updateLayout, 200));
+  window.addEventListener('pagehide', () => { stopWatch(); unsubscribeFirebase(); if (arActive) closeAR(); });
+}
+
+function applyStoredFilterPrefs() {
+  const prefs = loadFilterPrefs(); if (!prefs) return;
+  for (const id of Object.keys(layers)) {
+    if (typeof prefs[id] === 'boolean') {
+      layers[id].on = prefs[id];
+      const tog = document.getElementById('toggle-' + id);
+      if (tog) { tog.classList.toggle('on', prefs[id]); tog.setAttribute('aria-checked', String(prefs[id])); }
+    }
+  }
+  updateFilterBtnState();
+}
+
+/* ═══ INIT ═══ */
+function init() {
+  state.userId = getOrCreateUserId();
+  if (!initMap()) return;
+  bindEvents(); applyStoredFilterPrefs(); updateLayout(); applyTraffic();
+  const stored = loadConsent();
+  if (!stored || stored.version !== CFG.CONSENT_VERSION) {
+    setTimeout(openOnboarding, 300);
+  } else {
+    state.consent = stored;
+    if (state.consent.geo) firstGeolocation();
+    if (state.consent.geo && state.consent.watch) startWatch();
+  }
+  setInterval(applyTraffic, CFG.TRAFFIC_REFRESH);
+  setInterval(() => {
+    const now = Date.now(), before = state.signals.length;
+    state.signals = state.signals.filter(s => now - s.t < CFG.MAX_AGE_MS);
+    if (state.signals.length !== before) { renderHexes(); updateZonePill(); updateCounter(); }
+  }, 15000);
+  setInterval(purgeOldSignals, CFG.PURGE_INTERVAL_MS);
+  state.ready = true;
+  updateHistoryUI();
+}
+
+window.addEventListener('firebase-ready', (e) => {
+  state.firebaseOk = !!e.detail?.ok;
+  if (state.firebaseOk && state.consent.share) { subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
+  else if (!state.consent.share) loadLocalSignals();
+}, { once: true });
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof L === 'undefined') { let tries = 0; const wait = setInterval(() => { if (typeof L !== 'undefined') { clearInterval(wait); init(); } else if (++tries > 30) { clearInterval(wait); showFatal(); } }, 100); }
+    else init();
+  });
+} else {
+  if (typeof L === 'undefined') { let tries = 0; const wait = setInterval(() => { if (typeof L !== 'undefined') { clearInterval(wait); init(); } else if (++tries > 30) { clearInterval(wait); showFatal(); } }, 100); }
+  else init();
+}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/vacuum/sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>/* ═══ FLÈCHE 3D DESTINATION POI ═══ */
+function drawARDestinationArrow(ctx, W, H) {
+  if (!selectedPoi || !state.lat) return;
+
+  const heading = arOrientation.alpha;
+  const dist    = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const bearing = calcBearing(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const cfg     = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
+  const col     = cfg.color;
+  const now     = Date.now() / 1000;
+  const pulse   = 0.5 + 0.5 * Math.sin(now * 3);
+  const isClose   = dist < 60;
+  const isArrived = dist < 12;
+
+  // Son de proximité
+  tickProximitySound(dist);
+
+  // Angle relatif
+  let relAngle = ((bearing - heading) + 360) % 360;
+  if (relAngle > 180) relAngle -= 360;
+
+  const cx = W / 2, cy = H / 2;
+  const inFOV = Math.abs(relAngle) <= 55 && !isArrived;
+
+  // Grille HUD de fond — toujours visible
+  ctx.save();
+  ctx.strokeStyle = col + '0a';
+  ctx.lineWidth = 0.5;
+  const grid = 32;
+  for (let x = 0; x < W; x += grid) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += grid) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.restore();
+
+  // ──────────────────────────────────────────────────────
+  // CAS ARRIVÉE
+  // ──────────────────────────────────────────────────────
+  if (isArrived) {
+    const flash = Math.sin(now * 5) > 0;
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(cx - 110, cy - 28, 220, 56, 16);
+    ctx.fillStyle = flash ? col : 'rgba(0,0,0,0.88)'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.shadowColor = col; ctx.shadowBlur = 20; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.font = '800 18px -apple-system,system-ui';
+    ctx.fillStyle = flash ? '#fff' : col;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('Vous êtes arrivé !', cx, cy);
+    ctx.restore();
+    return;
+  }
+
+  // ──────────────────────────────────────────────────────
+  // CAS 1 : DANS LE CHAMP DE VISION (±55°)
+  // ──────────────────────────────────────────────────────
+  if (inFOV) {
+    const screenX = cx + (relAngle / 55) * (W * 0.38);
+    const screenY = H * 0.28;
+
+    ctx.save();
+
+    // ── Anneaux concentriques rotatifs ──
+    for (let i = 0; i < 4; i++) {
+      const r   = 56 + i * 22 + pulse * 5;
+      const rot = now * (i % 2 === 0 ? 0.5 : -0.35);
+      ctx.save();
+      ctx.translate(screenX, screenY); ctx.rotate(rot);
+      ctx.beginPath(); ctx.arc(0, 0, r, -0.4, 0.4);
+      const al = [0.85, 0.55, 0.35, 0.18][i];
+      ctx.strokeStyle = col + Math.round(al * 255).toString(16).padStart(2,'0');
+      ctx.lineWidth = [3, 2, 1.5, 1][i];
+      if (i === 0) { ctx.shadowColor = col; ctx.shadowBlur = 12; }
+      ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.arc(0, 0, r, Math.PI - 0.4, Math.PI + 0.4);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── FLÈCHE 3D ──
+    const aH = 78 + pulse * 9;
+    const aW = 30;
+
+    ctx.save();
+    ctx.translate(screenX, screenY);
+
+    // Ombre portée (ellipse aplatie sous la flèche)
+    ctx.save();
+    ctx.scale(1, 0.22);
+    ctx.beginPath(); ctx.arc(0, aH * 3.2, 34 + pulse * 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.fill();
+    ctx.restore();
+
+    // Face gauche — ombre
+    ctx.beginPath();
+    ctx.moveTo(0, -aH);
+    ctx.lineTo(-aW, aH * 0.22);
+    ctx.lineTo(-aW * 0.28, aH * 0.22);
+    ctx.lineTo(-aW * 0.28, aH * 0.58);
+    ctx.lineTo(0, aH * 0.58);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(5,60,22,0.94)';
+    ctx.fill();
+
+    // Face droite — dégradé éclairé
+    ctx.beginPath();
+    ctx.moveTo(0, -aH);
+    ctx.lineTo(aW, aH * 0.22);
+    ctx.lineTo(aW * 0.28, aH * 0.22);
+    ctx.lineTo(aW * 0.28, aH * 0.58);
+    ctx.lineTo(0, aH * 0.58);
+    ctx.closePath();
+    const rg = ctx.createLinearGradient(0, -aH, aW, aH * 0.22);
+    rg.addColorStop(0, '#86efac');
+    rg.addColorStop(0.45, '#22c55e');
+    rg.addColorStop(1, col);
+    ctx.fillStyle = rg;
+    ctx.fill();
+
+    // Face centrale — la plus claire (highlight)
+    ctx.beginPath();
+    ctx.moveTo(0, -aH - 2);
+    ctx.lineTo(-aW * 0.16, aH * 0.20);
+    ctx.lineTo(aW * 0.16, aH * 0.20);
+    ctx.closePath();
+    const fg = ctx.createLinearGradient(0, -aH, 0, aH * 0.20);
+    fg.addColorStop(0, '#bbf7d0');
+    fg.addColorStop(0.5, '#4ade80');
+    fg.addColorStop(1, '#22c55e');
+    ctx.fillStyle = fg;
+    ctx.shadowColor = col; ctx.shadowBlur = 22 + pulse * 8;
+    ctx.fill(); ctx.shadowBlur = 0;
+
+    // Arête centrale brillante
+    ctx.beginPath();
+    ctx.moveTo(0, -aH); ctx.lineTo(0, aH * 0.20);
+    ctx.strokeStyle = 'rgba(255,255,255,0.60)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Reflet sur la pointe
+    ctx.beginPath(); ctx.arc(0, -aH + 2, 4 + pulse * 2, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.shadowColor = '#fff'; ctx.shadowBlur = 14;
+    ctx.fill(); ctx.shadowBlur = 0;
+
+    ctx.restore(); // fin translate flèche
+
+    // ── Chevrons animés ──
+    const chevBase = screenY + aH + 8;
+    for (let i = 0; i < 4; i++) {
+      const phase = (now * 2.6 + i * 0.52) % 2;
+      const yc    = chevBase + phase * 24;
+      const al    = 1 - phase / 2;
+      ctx.save();
+      ctx.globalAlpha = al;
+      ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(screenX - 9, yc - 5); ctx.lineTo(screenX, yc + 4); ctx.lineTo(screenX + 9, yc - 5);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── Badge distance ──
+    const distTxt = isClose ? '● ' + formatDist(dist) : formatDist(dist);
+    ctx.font = '800 16px -apple-system,system-ui';
+    const dtw = ctx.measureText(distTxt).width;
+    const dy  = chevBase + 30;
+    ctx.beginPath(); ctx.roundRect(screenX - dtw/2 - 14, dy, dtw + 28, 34, 11);
+    const bgG = ctx.createLinearGradient(0, dy, 0, dy + 34);
+    bgG.addColorStop(0, 'rgba(0,0,0,0.88)'); bgG.addColorStop(1, 'rgba(0,0,0,0.72)');
+    ctx.fillStyle = bgG; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = isClose ? '#fff' : col;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(distTxt, screenX, dy + 17);
+
+    // ── Réticule HUD ──
+    const seg = 15, gap = 8;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy2]) => {
+      ctx.beginPath();
+      ctx.moveTo(screenX + dx*gap, screenY + dy2*gap);
+      ctx.lineTo(screenX + dx*(gap+seg), screenY + dy2*(gap+seg));
+      ctx.strokeStyle = `rgba(255,255,255,${0.30 + 0.18*pulse})`;
+      ctx.lineWidth = 1.6; ctx.stroke();
+    });
+
+    // ── Flash "VOUS APPROCHEZ" ──
+    if (isClose) {
+      const flash2 = Math.sin(now * 6) > 0;
+      ctx.beginPath(); ctx.roundRect(cx - 90, H * 0.13, 180, 34, 10);
+      ctx.fillStyle = flash2 ? col : 'rgba(0,0,0,0.85)'; ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.shadowColor = col; ctx.shadowBlur = 12; ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.font = '800 13px -apple-system,system-ui';
+      ctx.fillStyle = flash2 ? '#fff' : col;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('▶ VOUS APPROCHEZ ◀', cx, H * 0.13 + 17);
+    }
+
+    ctx.restore();
+    return;
+  }
+
+  // ──────────────────────────────────────────────────────
+  // CAS 2 : HORS CHAMP — GRANDE FLÈCHE 3D + ANNEAU
+  // ──────────────────────────────────────────────────────
+  ctx.save();
+
+  const pulse2 = 0.5 + 0.5 * Math.sin(now * 2.8);
+  const R      = Math.min(W, H) * 0.30;
+  const angle  = (relAngle * Math.PI / 180) - Math.PI / 2;
+  const ax     = cx + Math.cos(angle) * R;
+  const ay     = cy + Math.sin(angle) * R + 10;
+
+  // Anneaux de guidage
+  [R + 24, R, R - 20].forEach((r, i) => {
+    ctx.beginPath(); ctx.arc(cx, cy + 10, r, 0, Math.PI * 2);
+    ctx.strokeStyle = col + ['18', '0c', '06'][i];
+    ctx.lineWidth = 1; ctx.stroke();
+  });
+
+  // Arc directionnel avec dégradé
+  const span = 0.7;
+  ctx.beginPath(); ctx.arc(cx, cy + 10, R, angle - span, angle + span);
+  const ag = ctx.createLinearGradient(
+    cx + Math.cos(angle - span) * R, cy + 10 + Math.sin(angle - span) * R,
+    cx + Math.cos(angle + span) * R, cy + 10 + Math.sin(angle + span) * R
+  );
+  ag.addColorStop(0, col + '22'); ag.addColorStop(0.5, col + 'ee'); ag.addColorStop(1, col + '22');
+  ctx.strokeStyle = ag; ctx.lineWidth = 5;
+  ctx.shadowColor = col; ctx.shadowBlur = 20; ctx.stroke(); ctx.shadowBlur = 0;
+
+  // ── Flèche 3D sur le cercle ──
+  ctx.save();
+  ctx.translate(ax, ay);
+  ctx.rotate(angle + Math.PI / 2);
+
+  const sz = 30 + pulse2 * 7;
+
+  // Ombre
+  ctx.save(); ctx.scale(1, 0.28);
+  ctx.beginPath(); ctx.arc(0, sz * 3.8, 20, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fill();
+  ctx.restore();
+
+  // Traînées
+  for (let i = 1; i <= 5; i++) {
+    ctx.save(); ctx.translate(0, i * 10); ctx.globalAlpha = 0.18 - i * 0.03;
+    ctx.beginPath();
+    ctx.moveTo(0, -sz); ctx.lineTo(20 - i*2, sz*0.48); ctx.lineTo(0, sz*0.28); ctx.lineTo(-(20-i*2), sz*0.48);
+    ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+    ctx.restore();
+  }
+
+  // Face gauche sombre
+  ctx.beginPath();
+  ctx.moveTo(0, -sz); ctx.lineTo(-20, sz*0.48); ctx.lineTo(0, sz*0.28);
+  ctx.closePath(); ctx.fillStyle = 'rgba(5,60,22,0.92)'; ctx.fill();
+
+  // Face droite éclairée
+  ctx.beginPath();
+  ctx.moveTo(0, -sz); ctx.lineTo(20, sz*0.48); ctx.lineTo(0, sz*0.28);
+  ctx.closePath();
+  const rg2 = ctx.createLinearGradient(0, -sz, 20, sz*0.48);
+  rg2.addColorStop(0, '#86efac'); rg2.addColorStop(0.5, '#22c55e'); rg2.addColorStop(1, col);
+  ctx.fillStyle = rg2;
+  ctx.shadowColor = col; ctx.shadowBlur = 26 + pulse2 * 8;
+  ctx.fill(); ctx.shadowBlur = 0;
+
+  // Arête + pointe
+  ctx.beginPath(); ctx.moveTo(0, -sz); ctx.lineTo(0, sz*0.28);
+  ctx.strokeStyle = 'rgba(255,255,255,0.52)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -sz, 4 + pulse2*2, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,0.90)';
+  ctx.shadowColor = '#fff'; ctx.shadowBlur = 12;
+  ctx.fill(); ctx.shadowBlur = 0;
+
+  ctx.restore(); // fin translate flèche
+
+  // ── Étiquette distance à côté de la flèche ──
+  const side  = ax >= cx;
+  ctx.font    = '800 15px -apple-system,system-ui';
+  const dtw2  = ctx.measureText(formatDist(dist)).width;
+  ctx.font    = '600 12px -apple-system,system-ui';
+  const nw2   = ctx.measureText(selectedPoi.name.slice(0,16)).width;
+  const lw2   = Math.max(dtw2, nw2) + 26;
+  const lh2   = 48;
+  const lx2   = side ? ax + 22 : ax - lw2 - 22;
+  const ly2   = ay - lh2 / 2;
+
+  ctx.beginPath(); ctx.roundRect(lx2, ly2, lw2, lh2, 13);
+  const lblG = ctx.createLinearGradient(lx2, ly2, lx2, ly2 + lh2);
+  lblG.addColorStop(0, 'rgba(0,0,0,0.90)'); lblG.addColorStop(1, 'rgba(0,0,0,0.75)');
+  ctx.fillStyle = lblG; ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '600 12px -apple-system,system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillText(selectedPoi.name.slice(0, 16), lx2 + lw2/2, ly2 + 14);
+  ctx.font = '800 15px -apple-system,system-ui'; ctx.fillStyle = col;
+  ctx.fillText(formatDist(dist), lx2 + lw2/2, ly2 + 34);
+
+  // ── Bandeau directionnel clignotant ──
+  const dir    = relAngle > 0 ? '▶  Tournez à droite' : '◀  Tournez à gauche';
+  const flash3 = Math.sin(now * 2.6) > 0;
+  ctx.font = '700 14px -apple-system,system-ui';
+  const dw  = ctx.measureText(dir).width + 32;
+  ctx.beginPath(); ctx.roundRect(cx - dw/2, H * 0.76, dw, 38, 12);
+  ctx.fillStyle = flash3 ? col + 'cc' : 'rgba(0,0,0,0.82)'; ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+  ctx.fillStyle = flash3 ? '#fff' : col;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(dir, cx, H * 0.76 + 19);
+
+  ctx.restore();
+}
+
+/* Dessiner les zones de signalement en AR */
+function drawARSignalZones(ctx, W, H) {
+  if (!state.signals.length) return;
+  const now = Date.now(), heading = arOrientation.alpha;
+  const seen = new Set();
+  for (const s of state.signals) {
+    if (now - s.t >= CFG.MAX_AGE_MS) continue;
+    if (seen.has(s.key)) continue;
+    seen.add(s.key);
+    const center = gridCenter(s.key);
+    const dist = distanceM(state.lat, state.lng, center.lat, center.lng);
+    if (dist > CFG.AR_SIGNAL_RADIUS) continue;
+    const bearing = calcBearing(state.lat, state.lng, center.lat, center.lng);
+    const screenX = bearingToScreen(bearing, heading, W, H);
+    if (screenX === null) continue;
+    const p = probability(s.key), pct = Math.round(p * 100);
+    const proximityFactor = 1 - Math.min(dist / CFG.AR_SIGNAL_RADIUS, 1);
+    const screenY = H * 0.35 + proximityFactor * (H * 0.15);
+    const col = p >= 0.65 ? '#22c55e' : p >= 0.40 ? '#f59e0b' : '#ef4444';
+    const t = Date.now() / 1000;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 2 + screenX);
+    const size = 28 + pulse * 8;
+
+    ctx.save();
+    // Halo pulsant
+    ctx.beginPath(); ctx.arc(screenX, screenY, size + 12, 0, Math.PI * 2);
+    ctx.fillStyle = col.replace('#', 'rgba(').replace(/(..)(..)(..)/, (_, r, g, b) => {
+      return `${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)}`;
+    }) + `,${0.08 + pulse * 0.06})`;
+    // Fallback simplifié
+    ctx.fillStyle = `${col}${Math.round((0.12 + pulse * 0.06) * 255).toString(16).padStart(2,'0')}`;
+    ctx.fill();
+
+    // Cercle principal
+    ctx.beginPath(); ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+    ctx.fillStyle = col + '33'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+
+    // Icône parking P
+    ctx.font = `800 ${Math.round(size * 0.7)}px -apple-system, system-ui`;
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.fillText('P', screenX, screenY);
+    ctx.shadowBlur = 0;
+
+    // Label probabilité + distance
+    ctx.font = '700 12px -apple-system, system-ui';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const labelY = screenY + size + 10;
+    const label = `${pct}% · ${formatDist(dist)}`;
+    const tw = ctx.measureText(label).width;
+    ctx.beginPath(); ctx.roundRect(screenX - tw/2 - 8, labelY - 2, tw + 16, 22, 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fill();
+    ctx.fillStyle = col; ctx.fillText(label, screenX, labelY + 1);
+
+    // Ligne de connexion vers le bas
+    const grad = ctx.createLinearGradient(screenX, screenY + size, screenX, H * 0.85);
+    grad.addColorStop(0, col + '66'); grad.addColorStop(1, col + '00');
+    ctx.beginPath(); ctx.moveTo(screenX, screenY + size); ctx.lineTo(screenX, H * 0.85);
+    ctx.strokeStyle = grad; ctx.lineWidth = 1; ctx.setLineDash([4, 6]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
+
+/* Dessiner les arrêts de transport en AR */
+function drawARTransitStops(ctx, W, H) {
+  if (!arNearbyStops.length) return;
+  const t = Date.now() / 1000;
+
+  // Dédoublonner par nom (garder le plus proche), limiter à 6
+  const seen = new Map();
+  arNearbyStops.forEach(stop => {
+    const dist = distanceM(state.lat, state.lng, stop.lat, stop.lon);
+    const key = stop.name.toLowerCase().slice(0, 12);
+    if (!seen.has(key) || seen.get(key).dist > dist) seen.set(key, { stop, dist });
+  });
+  const items = Array.from(seen.values())
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 6);
+
+  // Grille fixe : 2 colonnes × 3 rangées, position absolue stable
+  const PILL_W = 150, PILL_H = 42, GAP_X = 10, GAP_Y = 10;
+  const COLS = 2;
+  const totalW = COLS * PILL_W + (COLS - 1) * GAP_X;
+  const startX = (W - totalW) / 2;
+  const startY = H * 0.30;
+
+  items.forEach((item, i) => {
+    const { stop, dist } = item;
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const bX = startX + col * (PILL_W + GAP_X);
+    const bY = startY + row * (PILL_H + GAP_Y);
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.4 + i * 0.7);
+
+    ctx.save();
+
+    // Fond pilule
+    ctx.shadowColor = stop.color; ctx.shadowBlur = 5 + pulse * 5;
+    ctx.beginPath(); ctx.roundRect(bX, bY, PILL_W, PILL_H, 11);
+    ctx.fillStyle = "rgba(0,0,0,0.86)"; ctx.fill();
+    ctx.strokeStyle = stop.color; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Badge mode — fond coloré
+    ctx.beginPath(); ctx.roundRect(bX + 5, bY + 5, 32, PILL_H - 10, 7);
+    ctx.fillStyle = stop.color + "30"; ctx.fill();
+    ctx.font = "800 9px -apple-system, system-ui";
+    ctx.fillStyle = stop.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(stop.kind.slice(0, 4).toUpperCase(), bX + 21, bY + PILL_H / 2);
+
+    // Séparateur
+    ctx.beginPath(); ctx.moveTo(bX + 41, bY + 7); ctx.lineTo(bX + 41, bY + PILL_H - 7);
+    ctx.strokeStyle = stop.color + "40"; ctx.lineWidth = 1; ctx.stroke();
+
+    // Nom arrêt — max 14 chars
+    ctx.font = "600 12px -apple-system, system-ui"; ctx.fillStyle = "#fff";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    const maxW = PILL_W - 52;
+    let name = stop.name;
+    while (name.length > 1 && ctx.measureText(name).width > maxW) name = name.slice(0, -1);
+    if (name.length < stop.name.length) name = name.slice(0, -1) + "…";
+    ctx.fillText(name, bX + 46, bY + PILL_H / 2 - 7);
+
+    // Distance
+    ctx.font = "700 11px -apple-system, system-ui"; ctx.fillStyle = stop.color;
+    ctx.fillText(formatDist(dist), bX + 46, bY + PILL_H / 2 + 8);
+
+    ctx.restore();
+  });
+}
+
+/* Scan overlay minimaliste */
+function drawARScanOverlay(ctx, W, H) {
+  const t = Date.now() / 1000;
+  const cx = W / 2, cy = H / 2 - 30;
+
+  // Crosshair centre (uniquement sans destination)
+  if (!selectedPoi) {
+    const chLen = 16, chGap = 6;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx + dx*chGap, cy + dy*chGap);
+      ctx.lineTo(cx + dx*(chGap+chLen), cy + dy*(chGap+chLen));
+      ctx.strokeStyle = `rgba(22,163,74,${0.5 + 0.3*Math.sin(t*2)})`;
+      ctx.lineWidth = 2; ctx.stroke();
+    });
+  }
+
+  // Badge comptage haut d'écran
+  const total = (state.signals.filter(s => Date.now() - s.t < CFG.MAX_AGE_MS && distanceM(state.lat, state.lng, s.lat, s.lng) <= CFG.AR_SIGNAL_RADIUS).length) + arNearbyStops.length;
+  const badge = total > 0 ? `${total} objets détectés` : 'Scan en cours';
+  ctx.font = '600 11px -apple-system, system-ui'; ctx.textAlign = 'center';
+  const bw = ctx.measureText(badge).width + 22;
+  ctx.beginPath(); ctx.roundRect(W/2 - bw/2, H * 0.08, bw, 24, 5);
+  ctx.fillStyle = total > 0 ? 'rgba(22,163,74,0.80)' : 'rgba(37,99,235,0.55)'; ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
+  ctx.fillText(badge, W/2, H * 0.08 + 12);
+
+  // ── BOUTON POI — visible, large, animé ──
+  if (!selectedPoi) {
+    const btnW = 240, btnH = 56, btnX = cx - btnW/2, btnY = H * 0.68;
+    const pls  = 0.5 + 0.5 * Math.sin(t * 2.2);
+
+    // Halo pulsant autour du bouton
+    ctx.beginPath(); ctx.roundRect(btnX - 6, btnY - 6, btnW + 12, btnH + 12, 26);
+    ctx.fillStyle = `rgba(22,163,74,${0.12 + pls * 0.10})`; ctx.fill();
+
+    // Corps du bouton
+    const btnGrd = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
+    btnGrd.addColorStop(0, `rgba(30,194,92,${0.92 + pls * 0.07})`);
+    btnGrd.addColorStop(1, `rgba(22,163,74,${0.88 + pls * 0.07})`);
+    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 20);
+    ctx.fillStyle = btnGrd; ctx.fill();
+
+    // Bordure lumineuse
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + pls * 0.25})`;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = '#16a34a'; ctx.shadowBlur = 18 + pls * 10;
+    ctx.stroke(); ctx.shadowBlur = 0;
+
+    // Reflet interne haut
+    ctx.beginPath(); ctx.roundRect(btnX + 4, btnY + 3, btnW - 8, btnH/2 - 3, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
+
+    // Icône grille + texte
+    ctx.font = '700 15px -apple-system, system-ui';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
+    ctx.fillText('⊞  Choisir un lieu', cx, btnY + btnH / 2 - 5);
+    ctx.shadowBlur = 0;
+    ctx.font = '500 11px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.fillText('Naviguer en AR vers un POI', cx, btnY + btnH / 2 + 13);
+
+    // Listener tap (enregistrement unique)
+    if (!ctx._poiBtnRegistered) {
+      ctx._poiBtnRegistered = true;
+      const canvas = document.getElementById('arCanvas');
+      canvas.addEventListener('click', function(e) {
+        if (selectedPoi) return;
+        const rect   = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width / devicePixelRatio;
+        const scaleY = canvas.height / rect.height / devicePixelRatio;
+        const cX = (e.clientX - rect.left) * scaleX;
+        const cY = (e.clientY - rect.top)  * scaleY;
+        const W2 = window.innerWidth, H2 = window.innerHeight;
+        const bX2 = W2/2 - 120, bY2 = H2 * 0.68;
+        if (cX >= bX2 && cX <= bX2 + 240 && cY >= bY2 && cY <= bY2 + 56) {
+          closeAR();
+          setTimeout(() => openPoiPanel(), 280);
+        }
+      });
+    }
+  }
 }
 
 function updateARInstruction() {
