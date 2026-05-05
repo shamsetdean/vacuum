@@ -1983,10 +1983,10 @@ async function fetchARStops(lat, lng) {
     const data = await overpassQuery(q, null);
     arNearbyStops = (data.elements || []).filter(e => e.tags?.name).slice(0, 12).map(e => {
       const t = e.tags;
-      let kind = 'Bus', color = '#ea580c';
-      if (t.railway === 'subway_entrance') { kind = 'Métro'; color = '#2563eb'; }
-      else if (t.railway === 'tram_stop') { kind = 'Tram'; color = '#7c3aed'; }
-      else if (t.railway === 'station') { kind = 'Gare'; color = '#dc2626'; }
+      let kind = 'Bus', color = '#ff4757';
+      if (t.railway === 'subway_entrance') { kind = 'Métro'; color = '#4488ff'; }
+      else if (t.railway === 'tram_stop') { kind = 'Tram'; color = '#a855f7'; }
+      else if (t.railway === 'station') { kind = 'Gare'; color = '#ff6b35'; }
       return { lat: e.lat, lon: e.lon, name: t.name, kind, color };
     });
     updateARStats();
@@ -2287,41 +2287,96 @@ function drawARSignalZones(ctx, W, H) {
 function drawARTransitStops(ctx, W, H) {
   if (!arNearbyStops.length) return;
   const heading = arOrientation.alpha;
+  const t = Date.now() / 1000;
+
+  // 1 — Projeter chaque arrêt
+  const projected = [];
   arNearbyStops.forEach((stop, idx) => {
     const dist = distanceM(state.lat, state.lng, stop.lat, stop.lon);
     const bearing = calcBearing(state.lat, state.lng, stop.lat, stop.lon);
     const screenX = bearingToScreen(bearing, heading, W, H);
     if (screenX === null) return;
-    const proximity = 1 - Math.min(dist / CFG.AR_STOPS_RADIUS, 1);
-    const screenY = H * 0.55 + (1 - proximity) * H * 0.1;
-    const t = Date.now() / 1000;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + idx);
+    projected.push({ stop, dist, screenX, idx });
+  });
+  if (!projected.length) return;
+
+  // 2 — Trier par distance croissante
+  projected.sort((a, b) => a.dist - b.dist);
+
+  // 3 — Anti-superposition : résolution itérative des collisions
+  const PILL_W = 100, PILL_H = 38, MIN_GAP = 10;
+  const positions = projected.map(p => ({ ...p, adjX: p.screenX }));
+  for (let iter = 0; iter < 8; iter++) {
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const a = positions[i], b = positions[j];
+        const overlap = (PILL_W + MIN_GAP) - Math.abs(a.adjX - b.adjX);
+        if (overlap > 0) {
+          const push = overlap / 2 + 1;
+          if (a.adjX <= b.adjX) { a.adjX -= push; b.adjX += push; }
+          else { a.adjX += push; b.adjX -= push; }
+          a.adjX = Math.max(PILL_W / 2 + 8, Math.min(W - PILL_W / 2 - 8, a.adjX));
+          b.adjX = Math.max(PILL_W / 2 + 8, Math.min(W - PILL_W / 2 - 8, b.adjX));
+        }
+      }
+    }
+  }
+
+  // 4 — Disposition en rangées : plus proche = rangée basse
+  const maxDist = Math.max(...projected.map(p => p.dist), 1);
+  const ROWS = 3, ROW_H = PILL_H + 12;
+  const BASE_Y = H * 0.36;
+
+  positions.forEach(p => {
+    const { stop, dist, adjX } = p;
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.5 + p.idx * 0.9);
+    const row = Math.min(Math.floor((dist / maxDist) * ROWS), ROWS - 1);
+    const screenY = BASE_Y + row * ROW_H;
+
+    // Ligne pointillée si pilule déplacée
+    if (Math.abs(adjX - p.screenX) > 12) {
+      const g = ctx.createLinearGradient(p.screenX, screenY, adjX, screenY);
+      g.addColorStop(0, stop.color + "55"); g.addColorStop(1, stop.color + "00");
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(p.screenX, screenY); ctx.lineTo(adjX, screenY);
+      ctx.strokeStyle = g; ctx.lineWidth = 1; ctx.setLineDash([3, 6]); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+    }
 
     ctx.save();
-    // Pilule de fond
-    const name = stop.name.slice(0, 18), tw = ctx.measureText(name).width;
-    const bW = Math.max(tw + 44, 90), bH = 36, bR = 10;
+    const bX = adjX - PILL_W / 2, bY = screenY - PILL_H / 2;
 
-    ctx.shadowColor = stop.color; ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.roundRect(screenX - bW/2, screenY - bH/2, bW, bH, bR);
-    ctx.fillStyle = 'rgba(0,0,0,0.80)'; ctx.fill();
-    ctx.strokeStyle = stop.color + `${Math.round((0.5 + pulse * 0.3) * 255).toString(16).padStart(2,'0')}`;
-    ctx.lineWidth = 1.5; ctx.stroke();
+    // Fond pilule
+    ctx.shadowColor = stop.color; ctx.shadowBlur = 6 + pulse * 6;
+    ctx.beginPath(); ctx.roundRect(bX, bY, PILL_W, PILL_H, 10);
+    ctx.fillStyle = "rgba(0,0,0,0.88)"; ctx.fill();
+    ctx.strokeStyle = stop.color; ctx.lineWidth = 1.5 + pulse * 0.4; ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Badge mode transport
-    ctx.beginPath(); ctx.roundRect(screenX - bW/2 + 5, screenY - 12, 22, 24, 6);
-    ctx.fillStyle = stop.color + '33'; ctx.fill();
-    ctx.font = '700 9px -apple-system'; ctx.fillStyle = stop.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(stop.kind.slice(0,3).toUpperCase(), screenX - bW/2 + 16, screenY);
+    // Badge mode coloré à gauche
+    ctx.beginPath(); ctx.roundRect(bX + 4, bY + 4, 28, PILL_H - 8, 7);
+    ctx.fillStyle = stop.color + "28"; ctx.fill();
+    ctx.font = "800 8px -apple-system, system-ui";
+    ctx.fillStyle = stop.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(stop.kind.slice(0, 4).toUpperCase(), bX + 18, bY + PILL_H / 2);
 
-    // Nom de l'arrêt
-    ctx.font = '600 11px -apple-system'; ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(name, screenX - bW/2 + 32, screenY - 4);
+    // Séparateur
+    ctx.beginPath(); ctx.moveTo(bX + 36, bY + 6); ctx.lineTo(bX + 36, bY + PILL_H - 6);
+    ctx.strokeStyle = stop.color + "33"; ctx.lineWidth = 1; ctx.stroke();
 
-    // Distance
-    ctx.font = '600 10px -apple-system'; ctx.fillStyle = stop.color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(formatDist(dist), screenX - bW/2 + 32, screenY + 9);
+    // Nom arrêt
+    const nameMaxW = PILL_W - 44;
+    ctx.font = "600 11px -apple-system, system-ui"; ctx.fillStyle = "#fff";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    let name = stop.name;
+    while (name.length > 1 && ctx.measureText(name).width > nameMaxW) name = name.slice(0, -1);
+    if (name.length < stop.name.length) name = name.slice(0, -1) + "…";
+    ctx.fillText(name, bX + 40, bY + PILL_H / 2 - 6);
+
+    // Distance en couleur
+    ctx.font = "700 10px -apple-system, system-ui"; ctx.fillStyle = stop.color;
+    ctx.fillText(formatDist(dist), bX + 40, bY + PILL_H / 2 + 8);
+
     ctx.restore();
   });
 }
