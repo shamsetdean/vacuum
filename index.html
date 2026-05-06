@@ -397,6 +397,22 @@ body.driving-mode .drive-badge { display: block; }
 #arCompass { width: 44px; height: 44px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 0.5px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 #arCompassNeedle { transition: transform .3s ease; }
 
+@keyframes arPoiBtnPulse {
+  0%,100% { box-shadow:0 0 0 4px rgba(22,163,74,0.25),0 8px 24px rgba(22,163,74,0.45); }
+  50%      { box-shadow:0 0 0 8px rgba(22,163,74,0.12),0 8px 28px rgba(22,163,74,0.6); }
+}
+/* Cacher le bouton POI quand un POI est sélectionné */
+#arOverlay.has-poi #arPoiBtn { display:none !important; }
+/* Bouton vocal actif */
+#arVoiceBtn.voice-on {
+  color:#fff !important;
+  border-color:rgba(37,99,235,0.6) !important;
+  background:rgba(37,99,235,0.22) !important;
+}
+/* Bouton signaler — feedback tap */
+#arSignalBtn:active { transform:scale(0.96); }
+#arVoiceBtn:active  { transform:scale(0.96); }
+
 #arInstruction { position: absolute; bottom: calc(32px + var(--safe-b)); left: 16px; right: 16px; z-index: 2; background: rgba(0,0,0,0.80); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 0.5px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; }
 #arInstructionIcon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; flex-shrink: 0; background: rgba(22,163,74,0.25); }
 #arInstructionText { flex: 1; min-width: 0; }
@@ -573,6 +589,93 @@ body.driving-mode .drive-badge { display: block; }
     <div id="arInstructionText">
       <div id="arInstructionMain">Scan en cours…</div>
       <div id="arInstructionSub">Orientez vers les rues</div>
+    </div>
+  </div>
+  <!-- Boutons AR bas d'écran -->
+  <div id="arControls" style="
+    position:absolute;
+    bottom:calc(16px + env(safe-area-inset-bottom,0px));
+    left:14px; right:14px;
+    z-index:10;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  ">
+    <!-- Bouton principal : Choisir un lieu (caché si POI actif) -->
+    <button id="arPoiBtn" onclick="closeAR();setTimeout(openPoiPanel,280)" aria-label="Choisir un lieu de destination" style="
+      width:100%;
+      max-width:340px;
+      height:64px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      background:linear-gradient(180deg,#1ec25c 0%,#16a34a 100%);
+      color:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+      font-size:17px;
+      font-weight:800;
+      border:none;
+      border-radius:22px;
+      cursor:pointer;
+      letter-spacing:-0.2px;
+      box-shadow:0 0 0 5px rgba(22,163,74,0.22),0 10px 28px rgba(22,163,74,0.5);
+      animation:arPoiBtnPulse 2s ease-in-out infinite;
+    ">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Choisir un lieu
+    </button>
+
+    <!-- Ligne basse : Signaler + Vocal (toujours visibles) -->
+    <div style="display:flex;gap:10px;width:100%;max-width:340px;">
+
+      <!-- Bouton Signaler une place (appelle reportPlace directement) -->
+      <button id="arSignalBtn" onclick="reportPlaceFromAR()" aria-label="Signaler une place libre" style="
+        flex:1;
+        height:56px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:9px;
+        background:rgba(0,0,0,0.72);
+        color:#fff;
+        font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+        font-size:13px;
+        font-weight:700;
+        border:1.5px solid rgba(22,163,74,0.5);
+        border-radius:18px;
+        cursor:pointer;
+        backdrop-filter:blur(12px);
+        -webkit-backdrop-filter:blur(12px);
+      ">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+        Place libre
+      </button>
+
+      <!-- Bouton Vocal accessibilité -->
+      <button id="arVoiceBtn" onclick="toggleARVoice()" aria-label="Activer les annonces vocales" style="
+        flex:1;
+        height:56px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:9px;
+        background:rgba(0,0,0,0.72);
+        color:rgba(255,255,255,0.7);
+        font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+        font-size:13px;
+        font-weight:700;
+        border:1.5px solid rgba(255,255,255,0.18);
+        border-radius:18px;
+        cursor:pointer;
+        backdrop-filter:blur(12px);
+        -webkit-backdrop-filter:blur(12px);
+        transition:all 0.2s;
+      ">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        Vocal
+      </button>
     </div>
   </div>
 </div>
@@ -922,6 +1025,10 @@ body.driving-mode .drive-badge { display: block; }
       <button class="poi-cat-chip" data-cat="supermarket" onclick="filterPoiCat('supermarket')" style="--cat-color:#7c3aed">
         <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         Supermarchés
+      </button>
+      <button class="poi-cat-chip" data-cat="intermarche" onclick="filterPoiCat('intermarche')" style="--cat-color:#e11d48">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2.5" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        Intermarché
       </button>
       <button class="poi-cat-chip" data-cat="restaurant" onclick="filterPoiCat('restaurant')" style="--cat-color:#ea580c">
         <svg viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-linecap="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
@@ -1500,6 +1607,14 @@ function applyConsent(newConsent) {
   else { unsubscribeFirebase(); loadLocalSignals(); }
   refreshSettingsUI();
 }
+function clearPoiSelection() {
+  selectedPoi = null;
+  document.getElementById('arOverlay')?.classList.remove('has-poi');
+  updateDestBadge();
+  const btn = document.getElementById('poi-ar-btn');
+  if (btn) btn.disabled = true;
+}
+
 function eraseAllData() {
   if (!window.confirm('Effacer toutes vos données locales ?\n\n• Identifiant anonyme : supprimé\n• Signalements locaux : supprimés\n\nLes données envoyées au serveur sont effacées par la purge collaborative (cible 24h).')) return;
   lsRemove(STORAGE_KEYS.USER_ID); lsRemove(STORAGE_KEYS.LOCAL_SIGS); lsRemove(STORAGE_KEYS.CONSENT);
@@ -1727,14 +1842,15 @@ function checkZoneAlert(lat, lng) {
    CONFIGURATION POI
 ═══════════════════════════════════════ */
 const POI_CATEGORIES = {
-  pharmacy:    { label:'Pharmacie',     color:'#00b87a', overpass:'amenity=pharmacy' },
-  police:      { label:'Commissariat',  color:'#2255cc', overpass:'amenity=police' },
-  atm:         { label:'Distributeur',  color:'#d97000', overpass:'amenity=atm' },
-  hospital:    { label:'Hôpital',       color:'#dc2626', overpass:'amenity=hospital' },
-  supermarket: { label:'Supermarché',   color:'#7c3aed', overpass:'shop=supermarket' },
-  restaurant:  { label:'Restaurant',    color:'#ea580c', overpass:'amenity=restaurant' },
-  cafe:        { label:'Café',          color:'#92400e', overpass:'amenity=cafe' },
-  museum:      { label:'Musée',         color:'#1d4ed8', overpass:'tourism=museum' },
+  pharmacy:    { label:'Pharmacie',              color:'#00b87a', overpass:'amenity=pharmacy' },
+  police:      { label:'Commissariat',           color:'#2255cc', overpass:'amenity=police' },
+  atm:         { label:'Distributeur',           color:'#d97000', overpass:'amenity=atm' },
+  hospital:    { label:'Hôpital',                color:'#dc2626', overpass:'amenity=hospital' },
+  supermarket: { label:'Supermarché',            color:'#7c3aed', overpass:'shop=supermarket' },
+  intermarche: { label:'Intermarché',            color:'#e11d48', overpass:'shop=supermarket', nameFilter:'intermarché' },
+  restaurant:  { label:'Restaurant',              color:'#ea580c', overpass:'amenity=restaurant' },
+  cafe:        { label:'Café',                   color:'#92400e', overpass:'amenity=cafe' },
+  museum:      { label:'Musée',                  color:'#1d4ed8', overpass:'tourism=museum' },
 };
 
 const POI_ICONS_SVG = {
@@ -1746,6 +1862,7 @@ const POI_ICONS_SVG = {
   restaurant:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>',
   cafe:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>',
   museum:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="3" y1="22" x2="21" y2="22"/><path d="M9 22V12h6v10"/></svg>',
+  intermarche: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
 };
 
 /* ═══ STATE POI ═══ */
@@ -1780,6 +1897,7 @@ async function loadAllPoiCategories() {
   const radius = 1200;
 
   // Construire une seule requête Overpass pour tous les types
+  // Les restaurants ont un filtre diététique spécial (végétarien + halal)
   const nodes = Object.entries(POI_CATEGORIES).map(([cat, cfg]) => {
     const [key, val] = cfg.overpass.split('=');
     return `node["${key}"="${val}"](around:${radius},${lat},${lng});`;
@@ -1796,7 +1914,10 @@ async function loadAllPoiCategories() {
         let cat = 'other';
         for (const [c, cfg] of Object.entries(POI_CATEGORIES)) {
           const [key, val] = cfg.overpass.split('=');
-          if (t[key] === val) { cat = c; break; }
+          if (t[key] === val) {
+            if (cfg.nameFilter && !(t.name || '').toLowerCase().includes(cfg.nameFilter)) continue;
+            cat = c; break;
+          }
         }
         const dist = distanceM(lat, lng, e.lat, e.lon);
         return { id: e.id, lat: e.lat, lon: e.lon, name: t.name, cat, dist, tags: t };
@@ -1861,6 +1982,8 @@ function selectPoi(poiId) {
   // Activer le bouton AR
   const btn = document.getElementById('poi-ar-btn');
   if (btn) { btn.disabled = false; }
+  // Masquer bouton "Choisir un lieu" dans l'overlay AR
+  document.getElementById('arOverlay')?.classList.add('has-poi');
   // Afficher badge destination
   updateDestBadge();
   // Centrer la carte sur le POI sélectionné
@@ -1937,14 +2060,61 @@ function onAROrientation(e) {
 }
 
 /* ═══════════════════════════════════════
-   SYSTÈME SONORE DE PROXIMITÉ
-   Web Audio API — aucun fichier externe
+   SYSTÈME SONORE + VOCAL — ACCESSIBILITÉ
+   Web Audio API + SpeechSynthesis
+   Aucun fichier externe
 ═══════════════════════════════════════ */
 let _audioCtx = null;
 let _soundTimer = null;
 let _lastBeepAt = 0;
 let _soundEnabled = true;
 let _arrivedSoundPlaying = false;
+let _voiceEnabled = false;
+let _lastVoiceAt = 0;
+let _lastVoiceDist = -1;
+let _lastVoiceDir = '';
+
+/* ── Voix synthétique ── */
+function speak(text) {
+  if (!_voiceEnabled || !selectedPoi) return;
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'fr-FR';
+  utt.rate = 1.05;
+  utt.pitch = 1;
+  utt.volume = 1;
+  // Préférer une voix française si disponible
+  const voices = window.speechSynthesis.getVoices();
+  const frVoice = voices.find(v => v.lang.startsWith('fr'));
+  if (frVoice) utt.voice = frVoice;
+  window.speechSynthesis.speak(utt);
+}
+
+function toggleARVoice() {
+  _voiceEnabled = !_voiceEnabled;
+  const btn = document.getElementById('arVoiceBtn');
+  if (btn) btn.classList.toggle('voice-on', _voiceEnabled);
+  if (_voiceEnabled) {
+    if (!('speechSynthesis' in window)) { toast('Synthèse vocale non supportée', 'warn'); _voiceEnabled = false; return; }
+    // Initialiser les voix (iOS lazy-load)
+    window.speechSynthesis.getVoices();
+    speak('Navigation vocale activée. Je vous guide vers ' + (selectedPoi ? selectedPoi.name : 'votre destination'));
+    _lastBeepAt = 0;
+  } else {
+    window.speechSynthesis.cancel();
+  }
+}
+
+/* ── Signaler une place depuis AR ── */
+async function reportPlaceFromAR() {
+  const btn = document.getElementById('arSignalBtn');
+  if (btn) { btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none'; }
+  await reportPlace();
+  setTimeout(() => {
+    if (btn) { btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+  }, 1800);
+}
 
 function getAudioCtx() {
   if (!_audioCtx) {
@@ -1988,50 +2158,89 @@ function playArrivalSound() {
   setTimeout(() => { _arrivedSoundPlaying = false; }, 700);
 }
 
+/* Bip stéréo directionnel — pan: -1 gauche, 0 centre, +1 droite */
+function playBeepStereo(freq = 880, durMs = 80, vol = 0.35, pan = 0, wave = 'sine') {
+  if (!_soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  const osc    = ctx.createOscillator();
+  const gain   = ctx.createGain();
+  const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+  osc.type = wave;
+  osc.frequency.value = freq;
+  const now = ctx.currentTime;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(vol, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + durMs / 1000);
+  if (panner) {
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+    osc.connect(gain); gain.connect(panner); panner.connect(ctx.destination);
+  } else {
+    osc.connect(gain); gain.connect(ctx.destination);
+  }
+  osc.start(now); osc.stop(now + durMs / 1000 + 0.01);
+}
+
 /* Fonction principale appelée à chaque frame AR */
 function tickProximitySound(dist) {
   if (!_soundEnabled || !selectedPoi) return;
-
   const now = Date.now();
 
-  // Arrivée < 12m — séquence unique
+  // Calculer le pan stéréo selon la direction
+  let heading = arOrientation.alpha;
+  const bearing = calcBearing(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  let relAngle = ((bearing - heading) + 360) % 360;
+  if (relAngle > 180) relAngle -= 360;
+  const pan = Math.max(-1, Math.min(1, relAngle / 60)); // ±60° → ±1
+
+  // Arrivée < 12m
   if (dist < 12) {
     if (now - _lastBeepAt > 2000) {
       _lastBeepAt = now;
       playArrivalSound();
+      if (_voiceEnabled) speak('Vous êtes arrivé à ' + selectedPoi.name);
     }
     return;
   }
 
-  // Calcul de l'intervalle et de la fréquence selon la distance
-  // dist 800m → intervalle 4000ms, fréq 320Hz
-  // dist  50m → intervalle  300ms, fréq 980Hz
   const clampedDist = Math.min(Math.max(dist, 12), 800);
-  const ratio        = (clampedDist - 12) / (800 - 12); // 0 = proche, 1 = loin
-
-  const intervalMs = 300 + ratio * 3700;   // 300ms → 4000ms
-  const freq       = 980 - ratio * 660;    // 980Hz → 320Hz
-  const vol        = 0.20 + (1 - ratio) * 0.18; // plus fort en approchant
+  const ratio       = (clampedDist - 12) / (800 - 12);
+  const intervalMs  = 300 + ratio * 3700;
+  const freq        = 980 - ratio * 660;
+  const vol         = 0.22 + (1 - ratio) * 0.18;
 
   if (now - _lastBeepAt >= intervalMs) {
     _lastBeepAt = now;
-    // Proche < 80m : double bip
     if (dist < 80) {
-      playBeep(freq, 55, vol, 'sine');
-      setTimeout(() => playBeep(freq * 1.25, 45, vol * 0.7, 'sine'), 80);
+      // Double bip stéréo : 1er bip dans la direction, 2e centré
+      playBeepStereo(freq, 55, vol, pan, 'sine');
+      setTimeout(() => playBeepStereo(freq * 1.25, 45, vol * 0.7, pan * 0.5, 'sine'), 80);
     } else {
-      playBeep(freq, 70, vol, 'sine');
+      playBeepStereo(freq, 70, vol, pan, 'sine');
+    }
+  }
+
+  // Annonce vocale toutes les 15s ou si la direction change significativement
+  if (_voiceEnabled) {
+    const dir = relAngle > 15 ? 'droite' : relAngle < -15 ? 'gauche' : 'tout droit';
+    const distChanged = Math.abs(dist - _lastVoiceDist) > 30;
+    const dirChanged  = dir !== _lastVoiceDir;
+    if (now - _lastVoiceAt > 15000 || (distChanged && now - _lastVoiceAt > 5000) || dirChanged) {
+      _lastVoiceAt  = now;
+      _lastVoiceDist = dist;
+      _lastVoiceDir  = dir;
+      const distTxt = dist < 1000 ? Math.round(dist) + ' mètres' : (dist/1000).toFixed(1) + ' kilomètres';
+      speak(`${distTxt}, continuez ${dir}`);
     }
   }
 }
 
 /* Stopper le son à la fermeture AR */
 function stopProximitySound() {
-  _lastBeepAt = 0;
-  _arrivedSoundPlaying = false;
-  if (_audioCtx) {
-    _audioCtx.suspend().catch(() => {});
-  }
+  _lastBeepAt = 0; _lastVoiceAt = 0; _arrivedSoundPlaying = false;
+  if (_voiceEnabled) { window.speechSynthesis?.cancel(); }
+  if (_audioCtx) { _audioCtx.suspend().catch(() => {}); }
 }
 
 function openAR() {
@@ -2548,62 +2757,7 @@ function drawARScanOverlay(ctx, W, H) {
   ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
   ctx.fillText(badge, W/2, H * 0.08 + 12);
 
-  // ── BOUTON POI — visible, large, animé ──
-  if (!selectedPoi) {
-    const btnW = 240, btnH = 56, btnX = cx - btnW/2, btnY = H * 0.68;
-    const pls  = 0.5 + 0.5 * Math.sin(t * 2.2);
-
-    // Halo pulsant autour du bouton
-    ctx.beginPath(); ctx.roundRect(btnX - 6, btnY - 6, btnW + 12, btnH + 12, 26);
-    ctx.fillStyle = `rgba(22,163,74,${0.12 + pls * 0.10})`; ctx.fill();
-
-    // Corps du bouton
-    const btnGrd = ctx.createLinearGradient(btnX, btnY, btnX, btnY + btnH);
-    btnGrd.addColorStop(0, `rgba(30,194,92,${0.92 + pls * 0.07})`);
-    btnGrd.addColorStop(1, `rgba(22,163,74,${0.88 + pls * 0.07})`);
-    ctx.beginPath(); ctx.roundRect(btnX, btnY, btnW, btnH, 20);
-    ctx.fillStyle = btnGrd; ctx.fill();
-
-    // Bordure lumineuse
-    ctx.strokeStyle = `rgba(255,255,255,${0.35 + pls * 0.25})`;
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = '#16a34a'; ctx.shadowBlur = 18 + pls * 10;
-    ctx.stroke(); ctx.shadowBlur = 0;
-
-    // Reflet interne haut
-    ctx.beginPath(); ctx.roundRect(btnX + 4, btnY + 3, btnW - 8, btnH/2 - 3, 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
-
-    // Icône grille + texte
-    ctx.font = '700 15px -apple-system, system-ui';
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0,0,0,0.3)'; ctx.shadowBlur = 4;
-    ctx.fillText('⊞  Choisir un lieu', cx, btnY + btnH / 2 - 5);
-    ctx.shadowBlur = 0;
-    ctx.font = '500 11px -apple-system, system-ui';
-    ctx.fillStyle = 'rgba(255,255,255,0.72)';
-    ctx.fillText('Naviguer en AR vers un POI', cx, btnY + btnH / 2 + 13);
-
-    // Listener tap (enregistrement unique)
-    if (!ctx._poiBtnRegistered) {
-      ctx._poiBtnRegistered = true;
-      const canvas = document.getElementById('arCanvas');
-      canvas.addEventListener('click', function(e) {
-        if (selectedPoi) return;
-        const rect   = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width / devicePixelRatio;
-        const scaleY = canvas.height / rect.height / devicePixelRatio;
-        const cX = (e.clientX - rect.left) * scaleX;
-        const cY = (e.clientY - rect.top)  * scaleY;
-        const W2 = window.innerWidth, H2 = window.innerHeight;
-        const bX2 = W2/2 - 120, bY2 = H2 * 0.68;
-        if (cX >= bX2 && cX <= bX2 + 240 && cY >= bY2 && cY <= bY2 + 56) {
-          closeAR();
-          setTimeout(() => openPoiPanel(), 280);
-        }
-      });
-    }
-  }
+  // Bouton POI géré en HTML (#arPoiBtn) — pas besoin de le dessiner sur canvas
 }
 
 function updateARInstruction() {
