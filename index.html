@@ -3557,7 +3557,8 @@ async function loadFuelPrices(lat, lng) {
   if (_fuelLoaded) return;
   try {
     // API Prix des Carburants — data.gouv.fr
-    const url = 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=20&where=distance(geom,geom'POINT(' + lng + ' ' + lat + ')',5000m)&select=id,nom,adresse,ville,sp95,gazole,e10,sp98,latitude,longitude&order_by=distance(geom,geom'POINT(' + lng + ' ' + lat + ')',5000m)';
+    const geoParam = "geom'POINT(" + lng + " " + lat + ")',5000m";
+    const url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=20&where=distance(geom," + geoParam + ")&select=id,nom,adresse,ville,sp95,gazole,e10,sp98,latitude,longitude&order_by=distance(geom," + geoParam + ")";
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!r.ok) return;
     const data = await r.json();
