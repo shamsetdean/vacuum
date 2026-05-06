@@ -451,6 +451,37 @@ body.driving-mode .info-bar { display: none; }
 .drive-badge { position: fixed; top: calc(var(--safe-t, 0px) + 52px); left: 50%; transform: translateX(-50%); background: rgba(22,163,74,0.92); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; z-index: 2000; display: none; letter-spacing: 0.3px; }
 body.driving-mode .drive-badge { display: block; }
 
+/* ═══ BADGE VITESSE PASSAGER ═══ */
+.speed-badge {
+  position: fixed;
+  top: calc(var(--safe-t) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 21;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+  pointer-events: none;
+  transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+  white-space: nowrap;
+}
+.speed-badge.visible { display: flex; }
+/* États couleur */
+.speed-badge.ok     { background: rgba(22,163,74,0.92);  color:#fff; box-shadow: 0 4px 16px rgba(22,163,74,0.35); }
+.speed-badge.warn   { background: rgba(234,138,9,0.95);  color:#fff; box-shadow: 0 4px 16px rgba(234,138,9,0.40); }
+.speed-badge.danger { background: rgba(220,38,38,0.97);  color:#fff; box-shadow: 0 4px 20px rgba(220,38,38,0.50); animation: speedDanger 0.6s ease-in-out infinite; }
+@keyframes speedDanger { 0%,100%{opacity:1;} 50%{opacity:0.78;} }
+.speed-badge-kmh { font-size: 20px; font-weight: 800; line-height:1; }
+.speed-badge-unit { font-size: 11px; font-weight: 600; opacity: 0.85; }
+.speed-badge-limit { font-size: 12px; font-weight: 700; opacity: 0.9; padding: 2px 8px; border-radius: 8px; background: rgba(255,255,255,0.22); }
+.speed-badge-legal { font-size: 10px; opacity: 0.7; font-weight: 500; display:block; text-align:center; margin-top: 2px; }
+
 /* ═══ ALERTE ZONE ═══ */
 .zone-alert { position: fixed; top: calc(var(--safe-t, 0px) + 72px); left: 50%; transform: translateX(-50%); background: rgba(22,163,74,0.95); color: #fff; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 24px; z-index: 2001; opacity: 0; pointer-events: none; transition: opacity .3s; white-space: nowrap; }
 .zone-alert.show { opacity: 1; }
@@ -845,6 +876,15 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 <!-- Badge mode conduite -->
 <div class="drive-badge" id="drive-badge">Mode conduite</div>
 
+<!-- Badge vitesse passager (PASSAGER UNIQUEMENT) -->
+<div class="speed-badge glass" id="speed-badge" role="status" aria-live="polite">
+  <div>
+    <span class="speed-badge-kmh" id="speed-val">0</span>
+    <span class="speed-badge-unit"> km/h</span>
+    <span class="speed-badge-limit" id="speed-limit" style="display:none"></span>
+  </div>
+</div>
+
 <!-- Alerte zone active -->
 <div class="zone-alert" id="zone-alert">Place libre à proximité</div>
 
@@ -1226,7 +1266,13 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
     <div class="safety-body">
       N'utilisez pas Vacuum en conduisant.<br>
       Cette application est réservée aux <strong>passagers</strong> et aux personnes à l'arrêt.<br><br>
-      En continuant, vous confirmez que vous <strong>n'êtes pas le conducteur</strong> du véhicule.
+      En continuant, vous confirmez que vous <strong>n'êtes pas le conducteur</strong> du véhicule.<br><br>
+      <small style="color:var(--muted);font-size:11px;line-height:1.5;display:block">
+        L'indicateur de vitesse affiché est <strong>informatif uniquement</strong>.
+        Il ne constitue pas un avertisseur de vitesse homologué et ne remplace
+        pas votre vigilance ni les équipements certifiés.
+        Vacuum décline toute responsabilité en cas d'utilisation non conforme.
+      </small>
     </div>
     <button class="safety-confirm" onclick="acceptSafety()">Je suis passager ou à l'arrêt</button>
     <button class="safety-cancel" onclick="declineSafety()">Je conduis — fermer l'app</button>
@@ -1932,7 +1978,18 @@ function startWatch() {
       if (!isFinite(lat) || !isFinite(lng)) return;
       updateUserMarker(lat, lng);
       updateAccuracyCircle(lat, lng, pos.coords.accuracy);
-      computeSpeed(lat, lng);
+      // Utiliser coords.speed natif si disponible (plus précis que calcul)
+      if (pos.coords.speed !== null && isFinite(pos.coords.speed)) {
+        lastSpeed = pos.coords.speed * 3.6; // m/s → km/h
+        checkDrivingSpeed(lastSpeed);
+        updateSpeedBadge(lastSpeed);
+        fetchSpeedLimit(lat, lng);
+        if (lastSpeedPos) {
+          lastSpeedPos = { lat, lng, t: Date.now() };
+        }
+      } else {
+        computeSpeed(lat, lng);
+      }
       updateDrivingMode();
       if ((drivingMode || followMode) && state.map) {
         state.map.panTo([lat, lng], { animate: true, duration: 0.4 });
@@ -2183,12 +2240,102 @@ function centerOnUser() {
   const btn = document.getElementById('locate-btn'); if (btn) btn.classList.toggle('tracking', followMode);
   if (followMode) { state.map.flyTo([state.lat, state.lng], Math.max(state.map.getZoom(), 16), { animate: true, duration: 0.6 }); toast('Suivi activé', 'ok'); }
 }
+/* ═══════════════════════════════════════
+   SYSTÈME VITESSE — PASSAGER UNIQUEMENT
+   Informatif · Non homologué · Ne remplace
+   pas un avertisseur certifié homologué
+═══════════════════════════════════════ */
+let _currentSpeedLimit = null;  // limite OSM si disponible
+let _lastSpeedLimitFetch = 0;
+let _overSpeedVibrated = false;
+
+async function fetchSpeedLimit(lat, lng) {
+  // Ne chercher que toutes les 60s et si passager confirmé
+  if (!_passengerConfirmed) return;
+  if (Date.now() - _lastSpeedLimitFetch < 60000) return;
+  _lastSpeedLimitFetch = Date.now();
+  const q = `[out:json][timeout:6];way[maxspeed](around:30,${lat},${lng});out 1;`;
+  try {
+    for (const ep of OVERPASS_ENDPOINTS) {
+      const r = await fetch(ep, {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(q),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const way = (d.elements || [])[0];
+      if (way?.tags?.maxspeed) {
+        const raw = way.tags.maxspeed;
+        const parsed = parseInt(raw, 10);
+        if (!isNaN(parsed)) { _currentSpeedLimit = parsed; return; }
+        if (raw === 'walk') { _currentSpeedLimit = 20; return; }
+      }
+      break;
+    }
+  } catch { /* silencieux */ }
+}
+
+function updateSpeedBadge(speed) {
+  // Afficher uniquement si passager confirmé
+  const badge = document.getElementById('speed-badge');
+  const valEl = document.getElementById('speed-val');
+  const limEl = document.getElementById('speed-limit');
+  if (!badge || !valEl) return;
+
+  if (!_passengerConfirmed || _appPaused) {
+    badge.classList.remove('visible');
+    return;
+  }
+
+  const kmh = Math.round(speed);
+  valEl.textContent = kmh;
+  badge.classList.add('visible');
+
+  // Afficher la limite si connue
+  if (_currentSpeedLimit && limEl) {
+    limEl.style.display = 'inline-block';
+    limEl.textContent = 'Limite ' + _currentSpeedLimit + ' km/h';
+  } else if (limEl) {
+    limEl.style.display = 'none';
+  }
+
+  // Couleur selon dépassement
+  badge.classList.remove('ok', 'warn', 'danger');
+  if (_currentSpeedLimit) {
+    if (kmh <= _currentSpeedLimit)             badge.classList.add('ok');
+    else if (kmh <= _currentSpeedLimit + 5)    badge.classList.add('warn');
+    else {
+      badge.classList.add('danger');
+      // Vibration unique par dépassement
+      if (!_overSpeedVibrated && navigator.vibrate) {
+        navigator.vibrate([80, 40, 80]);
+        _overSpeedVibrated = true;
+        setTimeout(() => { _overSpeedVibrated = false; }, 10000);
+      }
+    }
+  } else {
+    // Pas de limite connue — afficher en neutre
+    badge.classList.add('ok');
+  }
+}
+
 function computeSpeed(lat, lng) {
   const now = Date.now();
-  if (lastSpeedPos) { const dt = (now - lastSpeedPos.t) / 1000; if (dt > 1 && dt < 30) { const d = distanceM(lat, lng, lastSpeedPos.lat, lastSpeedPos.lng); lastSpeed = d / dt * 3.6; } }
+  if (lastSpeedPos) {
+    const dt = (now - lastSpeedPos.t) / 1000;
+    if (dt > 1 && dt < 30) {
+      const d = distanceM(lat, lng, lastSpeedPos.lat, lastSpeedPos.lng);
+      lastSpeed = d / dt * 3.6;
+    }
+  }
   lastSpeedPos = { lat, lng, t: now };
   // Vérification sécurité conducteur
   checkDrivingSpeed(lastSpeed);
+  // Badge vitesse passager
+  updateSpeedBadge(lastSpeed);
+  // Fetch limite toutes les 60s
+  fetchSpeedLimit(lat, lng);
 }
 function updateDrivingMode() {
   const isDriving = lastSpeed > CFG.DRIVE_SPEED_KMH;
@@ -3324,6 +3471,7 @@ function openSafetyModal() {
 function acceptSafety() {
   _safetyAccepted = true;
   lsSet('vac_safety_ok', '1');
+  lsSet('vac_safety_ts', String(Date.now())); // horodatage consentement
   document.getElementById('safety-modal').classList.remove('open');
   document.body.style.overflow = '';
   _passengerConfirmed = true;
@@ -3344,6 +3492,8 @@ function pauseForDriving() {
   _appPaused = true;
   document.getElementById('speed-modal').classList.remove('open');
   document.body.style.overflow = '';
+  // Masquer le badge vitesse
+  document.getElementById('speed-badge')?.classList.remove('visible');
   // Désactiver le suivi et les sons
   stopProximitySound();
   toast('Application en pause — conduisez prudemment', 'warn');
