@@ -220,30 +220,106 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .toggle.on::after { transform: translateX(16px); }
 
 /* ═══ FAB SIGNALER ═══ */
-.fab-wrap { position: fixed; bottom: calc(var(--safe-b) + 24px); left: calc(var(--safe-l) + 24px); right: calc(var(--safe-r) + 24px); display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 25; pointer-events: none; }
-.fab { width: 100%; max-width: 340px; min-height: 60px; pointer-events: auto; background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%); color: #fff; font-size: 16px; font-weight: 700; letter-spacing: -0.2px; border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255,255,255,0.25); transition: transform 0.12s ease, opacity 0.2s; -webkit-user-select: none; user-select: none; padding: 0 20px; }
+.fab-wrap {
+  position: fixed;
+  bottom: calc(var(--safe-b) + 16px);
+  left: calc(var(--safe-l) + 14px);
+  right: calc(var(--safe-r) + 14px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 25;
+  pointer-events: none;
+}
+/* Rangée basse : les deux boutons côte à côte */
+.fab-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  pointer-events: auto;
+}
+/* Bouton vert J'ai vu une place */
+.fab {
+  flex: 1;
+  min-height: 56px;
+  pointer-events: auto;
+  background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255,255,255,0.25);
+  transition: transform 0.12s ease, opacity 0.2s;
+  -webkit-user-select: none; user-select: none;
+  padding: 0 14px;
+}
 .fab:active { transform: scale(0.97); }
-.fab:disabled { opacity: 0.6; cursor: not-allowed; transform: scale(0.99); }
-.fab svg { width: 22px; height: 22px; flex-shrink: 0; }
-
-/* ═══ FAB RECHERCHE ═══ */
+.fab:disabled { opacity: 0.6; cursor: not-allowed; }
+.fab svg { width: 18px; height: 18px; flex-shrink: 0; }
+/* Bouton bleu Je cherche une place */
 .fab-search {
-  width: 100%; max-width: 340px; min-height: 52px; pointer-events: auto;
+  flex: 1;
+  min-height: 56px;
+  pointer-events: auto;
   background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-  color: #fff; font-size: 15px; font-weight: 700; letter-spacing: -0.2px;
-  border-radius: 18px; display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   box-shadow: var(--shadow-search), inset 0 1px 0 rgba(255,255,255,0.25);
   transition: transform 0.12s ease, opacity 0.2s;
-  -webkit-user-select: none; user-select: none; padding: 0 20px;
+  -webkit-user-select: none; user-select: none;
+  padding: 0 14px;
 }
 .fab-search:active { transform: scale(0.97); }
-.fab-search svg { width: 20px; height: 20px; flex-shrink: 0; }
+.fab-search svg { width: 18px; height: 18px; flex-shrink: 0; }
 .fab-search.searching {
   background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
-  box-shadow: 0 8px 24px rgba(220,38,38,0.32), 0 2px 6px rgba(220,38,38,0.18), inset 0 1px 0 rgba(255,255,255,0.25);
+  box-shadow: 0 8px 24px rgba(220,38,38,0.32), inset 0 1px 0 rgba(255,255,255,0.25);
   animation: searchPulse 2s ease-in-out infinite;
 }
-@keyframes searchPulse { 0%,100%{ box-shadow:0 8px 24px rgba(220,38,38,0.32),0 2px 6px rgba(220,38,38,0.18); } 50%{ box-shadow:0 12px 32px rgba(220,38,38,0.5),0 4px 12px rgba(220,38,38,0.3); } }
+/* Bouton AR centré au-dessus */
+.fab-ar {
+  width: 100%;
+  max-width: 360px;
+  min-height: 52px;
+  pointer-events: auto;
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 18px;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  transition: transform 0.12s ease, background 0.2s;
+  -webkit-user-select: none; user-select: none;
+  padding: 0 20px;
+}
+.fab-ar:active { transform: scale(0.97); }
+.fab-ar svg { width: 18px; height: 18px; flex-shrink: 0; }
+body.driving-mode .fab { min-height: 66px; font-size: 15px; }
+body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 10px); }
+
+/* ═══ FAB RECHERCHE ═══ */
+/* fab-search défini plus haut */
 
 /* Mode conduite */
 body.driving-mode .fab { min-height: 72px; font-size: 18px; }
@@ -849,16 +925,24 @@ body.driving-mode .drive-badge { display: block; }
 
 <!-- FAB WRAP -->
 <div class="fab-wrap">
-  <!-- Bouton Je cherche une place -->
-  <button class="fab-search" id="fab-search" aria-label="Activer le mode recherche de place">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-    <span id="fab-search-label">Je cherche une place</span>
+  <!-- Bouton AR -->
+  <button class="fab-ar" id="fab-ar-main" onclick="openAR()" aria-label="Ouvrir la réalité augmentée">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M2 12L12 2l10 10-10 10z"/><circle cx="12" cy="12" r="3"/></svg>
+    Mode AR
   </button>
-  <!-- FAB Signaler -->
-  <button class="fab" id="fab" aria-label="Signaler une place libre">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
-    <span id="fab-label">J'ai vu une place libre</span>
-  </button>
+  <!-- Rangée basse : Cherche + Signaler -->
+  <div class="fab-row">
+    <!-- Bouton bleu : Je cherche une place -->
+    <button class="fab-search" id="fab-search" aria-label="Activer le mode recherche de place">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <span id="fab-search-label">Je cherche</span>
+    </button>
+    <!-- Bouton vert : J'ai vu une place libre -->
+    <button class="fab" id="fab" aria-label="Signaler une place libre">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+      <span id="fab-label">Place libre</span>
+    </button>
+  </div>
 </div>
 
 <!-- INFO BAR -->
@@ -2015,28 +2099,65 @@ function startArNavigation() {
 /* ═══ MARQUEURS POI SUR LA CARTE ═══ */
 function placePoiMarkersOnMap() {
   if (!state.map || !L) return;
-  // Nettoyer les anciens marqueurs POI
   poiMapMarkers.forEach(m => state.map.removeLayer(m));
   poiMapMarkers = [];
-  allPoiData.slice(0, 60).forEach(poi => {
+
+  // Limiter à 20 POI max, triés par distance, avec nom obligatoire
+  const limited = allPoiData.filter(p => p.name && p.name.length > 1).slice(0, 20);
+
+  limited.forEach(poi => {
     const cfg = POI_CATEGORIES[poi.cat];
-    const iconHtml = `<div style="width:32px;height:32px;background:${cfg.color};border-radius:9px;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.2);cursor:pointer">${(POI_ICONS_SVG[poi.cat]||'').replace('stroke="currentColor"','stroke="#fff"').replace('viewBox','width="16" height="16" viewBox')}</div>`;
-    const icon = L.divIcon({ html: iconHtml, className: '', iconSize: [32, 32], iconAnchor: [16, 16] });
-    const marker = L.marker([poi.lat, poi.lon], { icon });
-    marker.bindPopup(`<b>${esc(poi.name)}</b><br><span style="color:${cfg.color};font-size:11px;font-weight:700">${cfg.label}</span><br><small>${Math.round(poi.dist) < 1000 ? Math.round(poi.dist)+'m' : (poi.dist/1000).toFixed(1)+'km'}</small>`);
-    marker.on('click', () => {
-      selectPoi(poi.id);
-      toast(`${poi.name} sélectionné`, 'ok');
+    if (!cfg) return;
+
+    // Marqueur PIN distinctif : cercle coloré + icône + pointe
+    const icon_inner = (POI_ICONS_SVG[poi.cat] || '')
+      .replace('stroke="currentColor"', 'stroke="#fff"')
+      .replace('viewBox', 'width="14" height="14" viewBox');
+
+    const pinHtml = `<div style="
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    ">
+      <div style="
+        width:34px;height:34px;
+        background:${cfg.color};
+        border-radius:50% 50% 50% 0;
+        transform:rotate(-45deg);
+        border:2.5px solid #fff;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 2px 8px rgba(0,0,0,0.2);
+      ">
+        <div style="transform:rotate(45deg);display:flex;align-items:center;justify-content:center">
+          ${icon_inner}
+        </div>
+      </div>
+    </div>`;
+
+    const icon = L.divIcon({
+      html: pinHtml,
+      className: '',
+      iconSize: [34, 40],
+      iconAnchor: [17, 40],
     });
-    if (state.map.getZoom() >= 14) marker.addTo(state.map);
+
+    const distLabel = poi.dist < 1000 ? Math.round(poi.dist) + 'm' : (poi.dist/1000).toFixed(1) + 'km';
+    const marker = L.marker([poi.lat, poi.lon], { icon });
+    marker.bindPopup(`<b>${esc(poi.name)}</b><br><span style="color:${cfg.color};font-size:11px;font-weight:700">${cfg.label}</span> · <small>${distLabel}</small>`);
+    marker.on('click', () => { selectPoi(poi.id); toast(`${poi.name} sélectionné — tap AR pour naviguer`, 'ok'); });
+    if (state.map.getZoom() >= 15) marker.addTo(state.map);
     poiMapMarkers.push(marker);
   });
-  // Afficher/masquer selon zoom
-  state.map.on('zoomend', () => {
+
+  // Zoom-gate : n'afficher qu'à partir de 15
+  state.map.off('zoomend.poi');
+  state.map.on('zoomend.poi', () => {
     const zoom = state.map.getZoom();
     poiMapMarkers.forEach(m => {
-      if (zoom >= 14) { if (!state.map.hasLayer(m)) state.map.addLayer(m); }
-      else { if (state.map.hasLayer(m)) state.map.removeLayer(m); }
+      if (zoom >= 15) { if (!state.map.hasLayer(m)) state.map.addLayer(m); }
+      else            { if (state.map.hasLayer(m))  state.map.removeLayer(m); }
     });
   });
 }
