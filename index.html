@@ -902,78 +902,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
 </button>
 
-<!-- FILTER -->
-<button class="side-btn filter-btn glass tap-target" id="filter-btn" aria-label="Filtres" aria-expanded="false" aria-controls="filter-panel">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-</button>
 
-<!-- FILTER PANEL -->
-<div class="filter-panel glass" id="filter-panel" role="dialog" aria-label="Filtres">
-  <div class="fp-title">Afficher sur la carte</div>
-  <div class="fp-item" data-layer="parking">
-    <div class="fp-left">
-      <div class="fp-icon" style="background:var(--blue-soft);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 8h3a2 2 0 0 1 0 4h-3v5"/></svg>
-      </div>
-      <div class="fp-text"><div class="fp-label">Parkings</div><div class="fp-sub">Public, capacité</div></div>
-    </div>
-    <div class="toggle on" id="toggle-parking" role="switch" aria-checked="true"></div>
-  </div>
-  <div class="fp-item" data-layer="wc">
-    <div class="fp-left">
-      <div class="fp-icon" style="background:var(--blue-soft);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="6" r="1.5"/><circle cx="17" cy="6" r="1.5"/><path d="M5 11h4l-1 7h2l1-9M14 9l-1 9h2l1-7h2"/></svg>
-      </div>
-      <div class="fp-text"><div class="fp-label">Toilettes</div><div class="fp-sub">WC publics</div></div>
-    </div>
-    <div class="toggle on" id="toggle-wc" role="switch" aria-checked="true"></div>
-  </div>
-  <div class="fp-item" data-layer="water">
-    <div class="fp-left">
-      <div class="fp-icon" style="background:rgba(14,165,233,0.1);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/></svg>
-      </div>
-      <div class="fp-text"><div class="fp-label">Eau potable</div><div class="fp-sub">Fontaines</div></div>
-    </div>
-    <div class="toggle on" id="toggle-water" role="switch" aria-checked="true"></div>
-  </div>
-  <div class="fp-item" data-layer="bench">
-    <div class="fp-left">
-      <div class="fp-icon" style="background:var(--accent-soft);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="10" width="18" height="3" rx="1"/><path d="M6 10V7M18 10V7M4 13v4M20 13v4"/></svg>
-      </div>
-      <div class="fp-text"><div class="fp-label">Bancs &amp; parcs</div><div class="fp-sub">Repos extérieur</div></div>
-    </div>
-    <div class="toggle on" id="toggle-bench" role="switch" aria-checked="true"></div>
-  </div>
-  <div class="fp-item" data-layer="ev">
-    <div class="fp-left">
-      <div class="fp-icon" style="background:rgba(124,58,237,0.1);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--violet)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke-linejoin="round"/></svg>
-      </div>
-      <div class="fp-text"><div class="fp-label">Bornes élec.</div><div class="fp-sub">Recharge VE</div></div>
-    </div>
-    <div class="toggle on" id="toggle-ev" role="switch" aria-checked="true"></div>
-  </div>
-  <div class="fp-item" data-layer="transit">
-    <div class="fp-left">
-      <div class="fp-icon" style="background:rgba(234,88,12,0.1);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16M8 17l-2 4M16 17l2 4M8 7h.01M16 7h.01"/></svg>
-      </div>
-      <div class="fp-text"><div class="fp-label">Transports</div><div class="fp-sub">Bus, métro, tram</div></div>
-    </div>
-    <div class="toggle on" id="toggle-transit" role="switch" aria-checked="true"></div>
-  </div>
-  <div class="fp-item" data-layer="fuel">
-    <div class="fp-left">
-      <div class="fp-icon" style="background:rgba(249,115,22,0.1);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 11h12"/><path d="M15 6.5l2 2L19 7a2 2 0 0 1 2 2v6.5a1.5 1.5 0 0 1-3 0V13"/><path d="M3 22h12"/></svg>
-      </div>
-      <div class="fp-text"><div class="fp-label">Stations essence</div><div class="fp-sub">Carburant à proximité</div></div>
-    </div>
-    <div class="toggle on" id="toggle-fuel" role="switch" aria-checked="true"></div>
-  </div>
-</div>
 
 <!-- FAB WRAP -->
 <div class="fab-wrap">
@@ -1178,6 +1107,49 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
         <svg viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="3" y1="22" x2="21" y2="22"/><path d="M9 22V12h6v10"/></svg>
         Musées
       </button>
+      <button class="poi-cat-chip" data-cat="parking" onclick="filterPoiCat('parking')" style="--cat-color:#2563eb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 8h3a2 2 0 0 1 0 4h-3v5"/></svg>
+        Parkings
+      </button>
+      <button class="poi-cat-chip" data-cat="toilets" onclick="filterPoiCat('toilets')" style="--cat-color:#0891b2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2.5" stroke-linecap="round"><circle cx="7" cy="6" r="1.5"/><circle cx="17" cy="6" r="1.5"/><path d="M5 11h4l-1 7h2l1-9M14 9l-1 9h2l1-7h2"/></svg>
+        Toilettes
+      </button>
+      <button class="poi-cat-chip" data-cat="charging" onclick="filterPoiCat('charging')" style="--cat-color:#7c3aed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke-linejoin="round"/></svg>
+        Bornes élec.
+      </button>
+      <button class="poi-cat-chip" data-cat="transit" onclick="filterPoiCat('transit')" style="--cat-color:#ea580c">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-linecap="round"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16M8 17l-2 4M16 17l2 4"/></svg>
+        Transports
+      </button>
+      <button class="poi-cat-chip" data-cat="fuel" onclick="filterPoiCat('fuel')" style="--cat-color:#f97316">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 11h12"/><path d="M15 6.5l2 2L19 7a2 2 0 0 1 2 2v6.5a1.5 1.5 0 0 1-3 0V13"/><path d="M3 22h12"/></svg>
+        Essence
+      </button>
+      <button class="poi-cat-chip" data-cat="water" onclick="filterPoiCat('water')" style="--cat-color:#0ea5e9">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round"><path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/></svg>
+        Eau potable
+      </button>
+      <button class="poi-cat-chip" data-cat="bench" onclick="filterPoiCat('bench')" style="--cat-color:#16a34a">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="10" width="18" height="3" rx="1"/><path d="M6 10V7M18 10V7M4 13v4M20 13v4"/></svg>
+        Bancs
+      </button>
+    </div>
+    <!-- Barre de recherche adresse -->
+    <div style="padding:0 14px 10px;position:relative">
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid var(--border-soft);border-radius:14px;padding:0 14px;height:46px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="addr-search-input" type="text" placeholder="Rechercher une adresse…" autocomplete="off"
+          style="flex:1;background:none;border:none;color:var(--text);font-family:inherit;font-size:15px;outline:none"
+          oninput="onAddrSearchInput(this.value)"
+          onkeydown="if(event.key==='Enter')doAddrSearch()"
+        />
+        <button id="addr-search-clear" onclick="clearAddrSearch()" style="display:none;background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;font-size:16px;line-height:1">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="addr-search-results" style="display:none;position:absolute;left:14px;right:14px;top:52px;background:var(--glass-solid);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-2);z-index:10;max-height:220px;overflow-y:auto;backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)"></div>
     </div>
     <!-- Liste -->
     <div class="poi-list" id="poi-list">
@@ -1717,8 +1689,8 @@ function toggleLayer(id) {
   if (tog) { tog.classList.toggle('on', lyr.on); tog.setAttribute('aria-checked', String(lyr.on)); }
   applyLayerVisibility(id); saveFilterPrefs(); updateFilterBtnState();
 }
-function updateFilterBtnState() { document.getElementById('filter-btn').classList.toggle('active', !Object.values(layers).every(l => l.on)); }
-function toggleFilterPanel(force) { const panel = document.getElementById('filter-panel'), btn = document.getElementById('filter-btn'), open = typeof force === 'boolean' ? force : !panel.classList.contains('open'); panel.classList.toggle('open', open); btn.setAttribute('aria-expanded', String(open)); }
+function updateFilterBtnState() { /* bouton filtre supprimé */ }
+function toggleFilterPanel(force) { /* bouton filtre supprimé */ }
 
 /* ═══ MODALS ═══ */
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -1745,6 +1717,88 @@ function applyConsent(newConsent) {
   else { unsubscribeFirebase(); loadLocalSignals(); }
   refreshSettingsUI();
 }
+/* ═══════════════════════════════════════
+   RECHERCHE D'ADRESSE — Nominatim
+═══════════════════════════════════════ */
+let _addrSearchTimer = null;
+
+function onAddrSearchInput(val) {
+  const clearBtn = document.getElementById('addr-search-clear');
+  const results  = document.getElementById('addr-search-results');
+  if (clearBtn) clearBtn.style.display = val.length ? 'block' : 'none';
+  if (!val.trim() || val.length < 3) { if (results) results.style.display = 'none'; return; }
+  clearTimeout(_addrSearchTimer);
+  _addrSearchTimer = setTimeout(() => doAddrSearch(val), 400);
+}
+
+async function doAddrSearch(query) {
+  const input   = document.getElementById('addr-search-input');
+  const results = document.getElementById('addr-search-results');
+  const q = query || (input ? input.value.trim() : '');
+  if (!q || q.length < 3) return;
+  if (results) { results.style.display = 'block'; results.innerHTML = '<div style="padding:12px 14px;color:var(--muted);font-size:13px">Recherche…</div>'; }
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1&accept-language=fr&countrycodes=fr`;
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error('Nominatim error');
+    const data = await r.json();
+    if (!data.length) { results.innerHTML = '<div style="padding:12px 14px;color:var(--muted);font-size:13px">Aucun résultat</div>'; return; }
+    results.innerHTML = data.map((item, idx) => {
+      const name    = item.display_name.split(',').slice(0,3).join(', ');
+      const type    = item.type || item.class || '';
+      const typeLbl = type === 'street' ? 'Rue' : type === 'city' ? 'Ville' : type === 'suburb' ? 'Quartier' : type;
+      return `<div onclick="selectAddrResult(${idx})" style="padding:12px 14px;border-bottom:1px solid var(--border-soft);cursor:pointer;display:flex;align-items:flex-start;gap:10px" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background=''">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</div>
+          ${typeLbl ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(typeLbl)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+    // Stocker les résultats pour la sélection
+    window._addrResults = data;
+  } catch(e) { if (results) results.innerHTML = '<div style="padding:12px 14px;color:var(--danger);font-size:13px">Erreur de connexion</div>'; }
+}
+
+function selectAddrResult(idx) {
+  const item = window._addrResults?.[idx];
+  if (!item) return;
+  const lat  = parseFloat(item.lat);
+  const lon  = parseFloat(item.lon);
+  const name = item.display_name.split(',').slice(0,2).join(', ');
+  // Créer un POI synthétique de type adresse
+  const fakePoi = {
+    id: 'addr_' + Date.now(),
+    name, cat: 'address',
+    lat, lon,
+    dist: distanceM(state.lat, state.lng, lat, lon),
+    tags: {},
+  };
+  selectedPoi = fakePoi;
+  addToPOIHistory(fakePoi);
+  document.getElementById('arOverlay')?.classList.add('has-poi');
+  updateDestBadge();
+  const arBtn = document.getElementById('poi-ar-btn');
+  if (arBtn) arBtn.disabled = false;
+  // Fermer les résultats et le panneau
+  const results = document.getElementById('addr-search-results');
+  if (results) results.style.display = 'none';
+  // Centrer la carte
+  if (state.map) state.map.setView([lat, lon], 16, { animate: true });
+  closePoiPanel();
+  toast(`${name} — Ouvrez l'AR pour naviguer`, 'ok');
+}
+
+function clearAddrSearch() {
+  const input   = document.getElementById('addr-search-input');
+  const results = document.getElementById('addr-search-results');
+  const clearBtn = document.getElementById('addr-search-clear');
+  if (input)   input.value = '';
+  if (results) results.style.display = 'none';
+  if (clearBtn) clearBtn.style.display = 'none';
+  window._addrResults = [];
+}
+
 function clearPoiSelection() {
   selectedPoi = null;
   document.getElementById('arOverlay')?.classList.remove('has-poi');
@@ -1811,9 +1865,7 @@ function stopWatch() { if (state.watchId !== null) { navigator.geolocation.clear
 function updateLayout() {
   const cs = getComputedStyle(document.documentElement);
   const safeB = parseFloat(cs.getPropertyValue('--safe-b')) || 0;
-  const fabBottom = 24 + safeB, fabHeight = 60 + 52 + 10, sideBtnBottom = fabBottom + fabHeight + 12;
-  document.getElementById('filter-btn').style.bottom = sideBtnBottom + 'px';
-  document.getElementById('filter-panel').style.bottom = (sideBtnBottom + 56) + 'px';
+  /* filter-btn supprimé — updateLayout simplifié */
 }
 function showFatal(msg) { const f = document.getElementById('fatal'); if (msg) document.getElementById('fatal-msg').textContent = msg; f.classList.add('show'); }
 
@@ -2076,15 +2128,23 @@ function checkZoneAlert(lat, lng) {
    CONFIGURATION POI
 ═══════════════════════════════════════ */
 const POI_CATEGORIES = {
-  pharmacy:    { label:'Pharmacie',              color:'#00b87a', overpass:'amenity=pharmacy' },
-  police:      { label:'Commissariat',           color:'#2255cc', overpass:'amenity=police' },
-  atm:         { label:'Distributeur',           color:'#d97000', overpass:'amenity=atm' },
-  hospital:    { label:'Hôpital',                color:'#dc2626', overpass:'amenity=hospital' },
-  supermarket: { label:'Supermarché',            color:'#7c3aed', overpass:'shop=supermarket' },
-  intermarche: { label:'Intermarché',            color:'#e11d48', overpass:'shop=supermarket', nameFilter:'intermarché' },
-  restaurant:  { label:'Restaurant',              color:'#ea580c', overpass:'amenity=restaurant' },
-  cafe:        { label:'Café',                   color:'#92400e', overpass:'amenity=cafe' },
-  museum:      { label:'Musée',                  color:'#1d4ed8', overpass:'tourism=museum' },
+  pharmacy:    { label:'Pharmacie',       color:'#00b87a', overpass:'amenity=pharmacy' },
+  police:      { label:'Commissariat',    color:'#2255cc', overpass:'amenity=police' },
+  atm:         { label:'Distributeur',    color:'#d97000', overpass:'amenity=atm' },
+  hospital:    { label:'Hôpital',         color:'#dc2626', overpass:'amenity=hospital' },
+  supermarket: { label:'Supermarché',     color:'#7c3aed', overpass:'shop=supermarket' },
+  intermarche: { label:'Intermarché',     color:'#e11d48', overpass:'shop=supermarket', nameFilter:'intermarché' },
+  restaurant:  { label:'Restaurant',      color:'#ea580c', overpass:'amenity=restaurant' },
+  cafe:        { label:'Café',            color:'#92400e', overpass:'amenity=cafe' },
+  museum:      { label:'Musée',           color:'#1d4ed8', overpass:'tourism=museum' },
+  parking:     { label:'Parking',         color:'#2563eb', overpass:'amenity=parking' },
+  toilets:     { label:'Toilettes',       color:'#0891b2', overpass:'amenity=toilets' },
+  water:       { label:'Eau potable',     color:'#0ea5e9', overpass:'amenity=drinking_water' },
+  bench:       { label:'Banc / Parc',     color:'#16a34a', overpass:'amenity=bench' },
+  charging:    { label:'Borne élec.',     color:'#7c3aed', overpass:'amenity=charging_station' },
+  transit:     { label:'Transport',       color:'#ea580c', overpass:'highway=bus_stop' },
+  fuel:        { label:'Essence',         color:'#f97316', overpass:'amenity=fuel' },
+  address:     { label:'Adresse',         color:'#6b7280', overpass:null, isAddress:true },
 };
 
 const POI_ICONS_SVG = {
@@ -2097,6 +2157,14 @@ const POI_ICONS_SVG = {
   cafe:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>',
   museum:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="3" y1="22" x2="21" y2="22"/><path d="M9 22V12h6v10"/></svg>',
   intermarche: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  parking:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 8h3a2 2 0 0 1 0 4h-3v5"/></svg>',
+  toilets:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="7" cy="6" r="1.5"/><circle cx="17" cy="6" r="1.5"/><path d="M5 11h4l-1 7h2l1-9M14 9l-1 9h2l1-7h2"/></svg>',
+  water:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2C6 8 4 12 4 15a8 8 0 0 0 16 0c0-3-2-7-8-13z"/></svg>',
+  bench:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="10" width="18" height="3" rx="1"/><path d="M6 10V7M18 10V7M4 13v4M20 13v4"/></svg>',
+  charging:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke-linejoin="round"/></svg>',
+  transit:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="4" y="3" width="16" height="14" rx="2"/><path d="M4 11h16M8 17l-2 4M16 17l2 4"/></svg>',
+  fuel:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M3 11h12"/><path d="M15 6.5l2 2L19 7a2 2 0 0 1 2 2v6.5a1.5 1.5 0 0 1-3 0V13"/><path d="M3 22h12"/></svg>',
+  address:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>',
 };
 
 /* ═══ STATE POI ═══ */
@@ -2132,10 +2200,13 @@ async function loadAllPoiCategories() {
 
   // Construire une seule requête Overpass pour tous les types
   // Les restaurants ont un filtre diététique spécial (végétarien + halal)
-  const nodes = Object.entries(POI_CATEGORIES).map(([cat, cfg]) => {
-    const [key, val] = cfg.overpass.split('=');
-    return `node["${key}"="${val}"](around:${radius},${lat},${lng});`;
-  }).join('');
+  const nodes = Object.entries(POI_CATEGORIES)
+    .filter(([cat, cfg]) => cfg.overpass && !cfg.isAddress)
+    .map(([cat, cfg]) => {
+      const [key, val] = cfg.overpass.split('=');
+      if (cfg.nameFilter) return `node["${key}"="${val}"](around:${radius},${lat},${lng});`;
+      return `node["${key}"="${val}"](around:${radius},${lat},${lng});`;
+    }).join('');
   const q = `[out:json][timeout:20];(${nodes});out;`;
 
   try {
@@ -2147,6 +2218,7 @@ async function loadAllPoiCategories() {
         const t = e.tags;
         let cat = 'other';
         for (const [c, cfg] of Object.entries(POI_CATEGORIES)) {
+          if (!cfg.overpass || cfg.isAddress) continue;
           const [key, val] = cfg.overpass.split('=');
           if (t[key] === val) {
             if (cfg.nameFilter && !(t.name || '').toLowerCase().includes(cfg.nameFilter)) continue;
@@ -3082,10 +3154,10 @@ function bindEvents() {
   document.getElementById('hist-btn')?.addEventListener('click', openHistPanel);
   document.getElementById('hist-close')?.addEventListener('click', closeHistPanel);
   document.getElementById('btn-locate').addEventListener('click', locateMe);
-  document.getElementById('filter-btn').addEventListener('click', () => toggleFilterPanel());
+  /* filter-btn supprimé */
   document.getElementById('menu-btn').addEventListener('click', openSettings);
-  document.querySelectorAll('.fp-item[data-layer]').forEach(el => el.addEventListener('click', () => toggleLayer(el.dataset.layer)));
-  document.addEventListener('click', (e) => { const panel = document.getElementById('filter-panel'), btn = document.getElementById('filter-btn'); if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) toggleFilterPanel(false); });
+  /* fp-item listeners supprimés */
+  /* click-outside filtre supprimé */
   // Consentements
   [{ id:'consent-geo', key:'geo' }, { id:'consent-share', key:'share' }, { id:'consent-watch', key:'watch' }].forEach(({ id, key }) => {
     const row = document.querySelector(`label[for="${id}"]`), tog = document.getElementById(id + '-toggle'), chk = document.getElementById(id);
@@ -3183,8 +3255,9 @@ if (document.readyState === 'loading') {
 </script>
 
 <script>
+/* Service Worker désactivé — causait des erreurs sur les requêtes Overpass */
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('/vacuum/sw.js').catch(() => {}); });
+  navigator.serviceWorker.getRegistrations().then(regs => { regs.forEach(r => r.unregister()); });
 }
 </script>
 </body>
