@@ -2503,53 +2503,117 @@ function closePoiPanel() {
   document.body.style.overflow = '';
 }
 
+/* Mapping Nominatim amenity/shop → catégorie Vacuum */
+const NOMINATIM_CAT_MAP = {
+  pharmacy: 'pharmacy', hospital: 'hospital', police: 'police',
+  atm: 'atm', restaurant: 'restaurant', cafe: 'cafe', museum: 'museum',
+  parking: 'parking', toilets: 'toilets', drinking_water: 'water',
+  bench: 'bench', charging_station: 'charging', bus_stop: 'transit',
+  fuel: 'fuel', supermarket: 'supermarket',
+};
+
 async function loadAllPoiCategories() {
   if (poiLoadInFlight) return;
   poiLoadInFlight = true;
   const list = document.getElementById('poi-list');
-  list.innerHTML = '<div class="poi-list-loader"><div class="poi-spin"></div>Chargement des lieux proches…</div>';
+  if (list) list.innerHTML = '<div class="poi-list-loader"><div class="poi-spin"></div>Chargement des lieux proches…</div>';
 
   const lat = state.lat, lng = state.lng;
-  const radius = 1200;
-
-  // Construire une seule requête Overpass pour tous les types
-  // Les restaurants ont un filtre diététique spécial (végétarien + halal)
-  const nodes = Object.entries(POI_CATEGORIES)
-    .filter(([cat, cfg]) => cfg.overpass && !cfg.isAddress)
-    .map(([cat, cfg]) => {
-      const [key, val] = cfg.overpass.split('=');
-      if (cfg.nameFilter) return `node["${key}"="${val}"](around:${radius},${lat},${lng});`;
-      return `node["${key}"="${val}"](around:${radius},${lat},${lng});`;
-    }).join('');
-  const q = `[out:json][timeout:20];(${nodes});out;`;
+  const radius = 1500; // mètres
 
   try {
-    const data = await overpassQuery(q, null);
-    const elements = data.elements || [];
-    allPoiData = elements
-      .filter(e => e.tags?.name)
-      .map(e => {
-        const t = e.tags;
-        let cat = 'other';
-        for (const [c, cfg] of Object.entries(POI_CATEGORIES)) {
-          if (!cfg.overpass || cfg.isAddress) continue;
-          const [key, val] = cfg.overpass.split('=');
-          if (t[key] === val) {
-            if (cfg.nameFilter && !(t.name || '').toLowerCase().includes(cfg.nameFilter)) continue;
-            cat = c; break;
-          }
-        }
-        const dist = distanceM(lat, lng, e.lat, e.lon);
-        return { id: e.id, lat: e.lat, lon: e.lon, name: t.name, cat, dist, tags: t };
-      })
-      .filter(p => p.cat !== 'other')
-      .sort((a, b) => a.dist - b.dist);
+    // Nominatim search — supporte CORS depuis n'importe quel domaine
+    // On lance une requête par type de catégorie active
+    const cats = Object.entries(POI_CATEGORIES).filter(([c, cfg]) => cfg.overpass && !cfg.isAddress);
+    const results = [];
+
+    // Grouper par type Nominatim pour limiter les requêtes
+    const amenityTypes = cats
+      .map(([c, cfg]) => cfg.overpass.split('=')[1])
+      .filter(Boolean).join(',');
+
+    const url = 'https://nominatim.openstreetmap.org/search?'
+      + 'format=json&limit=60&addressdetails=0'
+      + '&accept-language=fr'
+      + '&bounded=1'
+      + '&viewbox=' + (lng-0.015) + ',' + (lat+0.012) + ',' + (lng+0.015) + ',' + (lat-0.012)
+      + '&q=' + encodeURIComponent('amenity');
+
+    // Requête Nominatim par bounding box pour chaque catégorie principale
+    const fetchCat = async (amenityVal, shopVal) => {
+      const q = shopVal
+        ? 'https://nominatim.openstreetmap.org/search?format=json&limit=20&addressdetails=0&accept-language=fr&bounded=1'
+          + '&viewbox=' + (lng-0.015) + ',' + (lat+0.013) + ',' + (lng+0.015) + ',' + (lat-0.013)
+          + '&q=' + encodeURIComponent(shopVal)
+        : 'https://nominatim.openstreetmap.org/search?format=json&limit=20&addressdetails=0&accept-language=fr&bounded=1'
+          + '&viewbox=' + (lng-0.015) + ',' + (lat+0.013) + ',' + (lng+0.015) + ',' + (lat-0.013)
+          + '&q=' + encodeURIComponent(amenityVal);
+      const r = await fetch(q, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return [];
+      return await r.json();
+    };
+
+    // Charger les catégories les plus utiles
+    const toLoad = [
+      { key: 'amenity', val: 'pharmacy',         cat: 'pharmacy' },
+      { key: 'amenity', val: 'hospital',          cat: 'hospital' },
+      { key: 'amenity', val: 'restaurant',        cat: 'restaurant' },
+      { key: 'amenity', val: 'cafe',              cat: 'cafe' },
+      { key: 'amenity', val: 'parking',           cat: 'parking' },
+      { key: 'amenity', val: 'fuel',              cat: 'fuel' },
+      { key: 'amenity', val: 'atm',               cat: 'atm' },
+      { key: 'amenity', val: 'police',            cat: 'police' },
+      { key: 'amenity', val: 'toilets',           cat: 'toilets' },
+      { key: 'amenity', val: 'charging_station',  cat: 'charging' },
+      { key: 'shop',    val: 'supermarket',       cat: 'supermarket' },
+      { key: 'tourism', val: 'museum',            cat: 'museum' },
+      { key: 'highway', val: 'bus_stop',          cat: 'transit' },
+    ];
+
+    // Requêtes en parallèle par lots de 4
+    const chunkSize = 4;
+    for (let i = 0; i < toLoad.length; i += chunkSize) {
+      const chunk = toLoad.slice(i, i + chunkSize);
+      await Promise.all(chunk.map(async ({ key, val, cat }) => {
+        try {
+          const viewbox = [lng-0.015, lat+0.013, lng+0.015, lat-0.013].join(',');
+          const q = 'https://nominatim.openstreetmap.org/search?format=json&limit=15&addressdetails=0&accept-language=fr&bounded=1'
+            + '&viewbox=' + viewbox
+            + '&' + key + '=' + encodeURIComponent(val);
+          const r = await fetch(q, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) });
+          if (!r.ok) return;
+          const data = await r.json();
+          data.forEach(item => {
+            if (!item.display_name) return;
+            const name = item.display_name.split(',')[0].trim();
+            if (!name || name.length < 2) return;
+            const ilat = parseFloat(item.lat), ilon = parseFloat(item.lon);
+            const dist = distanceM(lat, lng, ilat, ilon);
+            if (dist > radius) return;
+            // Éviter les doublons
+            if (results.find(r => r.id === item.place_id)) return;
+            // Filtre Intermarché
+            if (cat === 'supermarket' && name.toLowerCase().includes('intermarché')) {
+              results.push({ id: item.place_id, lat: ilat, lon: ilon, name, cat: 'intermarche', dist, tags: {} });
+              return;
+            }
+            results.push({ id: item.place_id, lat: ilat, lon: ilon, name, cat, dist, tags: {} });
+          });
+        } catch {}
+      }));
+    }
+
+    allPoiData = results.sort((a, b) => a.dist - b.dist);
     poiDataLoaded = true;
-    filteredPoiData = [...allPoiData];
+    filteredPoiData = currentPoiCat === 'all' ? [...allPoiData] : allPoiData.filter(p => p.cat === currentPoiCat);
     renderPoiList();
     placePoiMarkersOnMap();
+
+    if (!allPoiData.length && list) {
+      list.innerHTML = '<div class="poi-list-empty">Aucun lieu trouvé à proximité.</div>';
+    }
   } catch(e) {
-    list.innerHTML = '<div class="poi-list-empty">Impossible de charger les lieux. Vérifiez votre connexion.</div>';
+    if (list) list.innerHTML = '<div class="poi-list-empty">Impossible de charger les lieux. Vérifiez votre connexion.</div>';
   }
   poiLoadInFlight = false;
 }
@@ -3497,14 +3561,20 @@ function startMapNavigation() {
   closePoiPanel();
   if (state.map) {
     state.map.setView([selectedPoi.lat, selectedPoi.lon], 17, { animate: true });
-    // Ajouter marqueur destination temporaire
     if (window._destMarker) { state.map.removeLayer(window._destMarker); }
     const icon = L.divIcon({
       html: '<div style="width:20px;height:20px;background:#16a34a;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(22,163,74,0.5)"></div>',
       className: '', iconSize: [20,20], iconAnchor: [10,10]
     });
+    const popupContent = '<div style="min-width:150px;padding:4px 0">'
+      + '<b style="font-size:14px">' + esc(selectedPoi.name) + '</b>'
+      + '<br><small style="color:#6b7280">Destination sélectionnée</small>'
+      + '<br><button onclick="startArNavigation()" style="margin-top:8px;width:100%;padding:8px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">'
+      + 'Naviguer en AR'
+      + '</button>'
+      + '</div>';
     window._destMarker = L.marker([selectedPoi.lat, selectedPoi.lon], { icon })
-      .bindPopup('<b>' + esc(selectedPoi.name) + '</b><br><small>Destination</small>')
+      .bindPopup(popupContent, { maxWidth: 200 })
       .addTo(state.map).openPopup();
   }
   toast('Destination sur la carte : ' + selectedPoi.name, 'ok');
