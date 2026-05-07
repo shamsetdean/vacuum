@@ -32,25 +32,124 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous" defer></script>
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js" crossorigin="anonymous" defer></script>
 
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, limit, getDocs, deleteDoc, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-const FIREBASE_CONFIG = {
-  apiKey:"AIzaSyBpE7O7m_D7feXOj-TpgsZ6H8wIALpi-W4",
-  authDomain:"vacuum-ffb0f.firebaseapp.com",
-  projectId:"vacuum-ffb0f",
-  storageBucket:"vacuum-ffb0f.firebasestorage.app",
-  messagingSenderId:"214784696691",
-  appId:"1:214784696691:web:7532e123c17a1fc501a506",
+<script>
+/* ═══════════════════════════════════════════════════════
+   FIREBASE REST API — zéro SDK, zéro long-polling
+   Compatible Safari iOS + GitHub Pages
+═══════════════════════════════════════════════════════ */
+const FB_PROJECT = 'vacuum-ffb0f';
+const FB_API_KEY = 'AIzaSyBpE7O7m_D7feXOj-TpgsZ6H8wIALpi-W4';
+const FB_BASE    = 'https://firestore.googleapis.com/v1/projects/' + FB_PROJECT + '/databases/(default)/documents';
+
+/* Convertir valeur JS → format Firestore REST */
+function toFBValue(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === 'string') return { stringValue: v };
+  if (v instanceof Date) return { timestampValue: v.toISOString() };
+  if (typeof v === 'object' && v._serverTs) return { timestampValue: new Date().toISOString() };
+  return { stringValue: String(v) };
+}
+
+/* Convertir document Firestore REST → objet JS */
+function fromFBDoc(doc) {
+  if (!doc || !doc.fields) return null;
+  const out = { _id: (doc.name || '').split('/').pop(), _ref: doc.name };
+  for (const [k, v] of Object.entries(doc.fields)) {
+    if (v.timestampValue)   out[k] = new Date(v.timestampValue);
+    else if (v.stringValue !== undefined) out[k] = v.stringValue;
+    else if (v.integerValue !== undefined) out[k] = parseInt(v.integerValue, 10);
+    else if (v.doubleValue  !== undefined) out[k] = v.doubleValue;
+    else if (v.booleanValue !== undefined) out[k] = v.booleanValue;
+    else if (v.nullValue    !== undefined) out[k] = null;
+  }
+  return out;
+}
+
+/* serverTimestamp marker */
+function fbServerTimestamp() { return { _serverTs: true }; }
+
+/* POST — créer un document */
+async function fbAddDoc(colPath, data) {
+  const fields = {};
+  for (const [k, v] of Object.entries(data)) fields[k] = toFBValue(v);
+  const url = FB_BASE + '/' + colPath + '?key=' + FB_API_KEY;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error('fbAddDoc ' + r.status);
+  return await r.json();
+}
+
+/* GET — lire une collection avec filtre simple */
+async function fbGetDocs(colPath, filters) {
+  // Utiliser runQuery pour les filtres composites
+  const structuredQuery = {
+    from: [{ collectionId: colPath.split('/').pop() }],
+    where: filters && filters.length > 0 ? {
+      compositeFilter: {
+        op: 'AND',
+        filters: filters.map(f => ({
+          fieldFilter: {
+            field: { fieldPath: f.field },
+            op: f.op,
+            value: toFBValue(f.value),
+          }
+        }))
+      }
+    } : undefined,
+    limit: 200,
+  };
+  const parent = FB_BASE.replace('/documents', '') + '/documents';
+  const url = FB_BASE + ':runQuery?key=' + FB_API_KEY;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ structuredQuery }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error('fbGetDocs ' + r.status);
+  const results = await r.json();
+  return results
+    .filter(item => item.document)
+    .map(item => fromFBDoc(item.document));
+}
+
+/* DELETE — supprimer un document par son chemin complet */
+async function fbDeleteDoc(docPath) {
+  const url = 'https://firestore.googleapis.com/v1/' + docPath + '?key=' + FB_API_KEY;
+  const r = await fetch(url, { method: 'DELETE', signal: AbortSignal.timeout(6000) });
+  if (!r.ok && r.status !== 404) throw new Error('fbDeleteDoc ' + r.status);
+}
+
+/* POLL — simuler onSnapshot par polling toutes les Xs */
+function fbSubscribe(colPath, filters, onData, intervalMs) {
+  let active = true;
+  const poll = async () => {
+    if (!active) return;
+    try {
+      const docs = await fbGetDocs(colPath, filters);
+      if (active) onData(docs);
+    } catch(e) { console.warn('[fb-poll]', e?.message); }
+    if (active) setTimeout(poll, intervalMs || 30000);
+  };
+  poll();
+  return () => { active = false; };
+}
+
+window._fb = {
+  addDoc:          fbAddDoc,
+  getDocs:         fbGetDocs,
+  deleteDoc:       fbDeleteDoc,
+  subscribe:       fbSubscribe,
+  serverTimestamp: fbServerTimestamp,
 };
-let firebaseOk = false;
-try {
-  const app = initializeApp(FIREBASE_CONFIG);
-  window._db = getFirestore(app);
-  window._fbModules = { collection, addDoc, onSnapshot, query, where, orderBy, limit, getDocs, deleteDoc, serverTimestamp, Timestamp };
-  firebaseOk = true;
-} catch(e) { console.warn('[vacuum] Firebase indisponible', e); }
-window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { ok: firebaseOk } }));
+
+window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { ok: true } }));
 </script>
 
 <style>
@@ -1415,45 +1514,43 @@ function popup(title, lines = [], lat = null, lng = null) {
   return `<b>${safeTitle}</b>${safeLines}`;
 }
 
-/* ═══ FIREBASE ═══ */
+/* ═══ FIREBASE REST ═══ */
 function subscribeToSignals() {
-  if (!window._db || !window._fbModules) return;
+  if (!window._fb) return;
   if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
-  const { collection, onSnapshot, query, where, Timestamp } = window._fbModules;
-  const cutoff = Timestamp.fromMillis(Date.now() - CFG.MAX_AGE_MS);
-  const q = query(collection(window._db, 'signals'), where('ts', '>', cutoff));
-  state.unsubscribe = onSnapshot(q,
-    (snap) => {
-      state.signals = snap.docs.map(d => {
-        const data = d.data();
-        return { id: d.id, key: typeof data.h3 === 'string' ? data.h3 : '0_0', lat: typeof data.lat === 'number' ? data.lat : 0, lng: typeof data.lng === 'number' ? data.lng : 0, t: data.ts?.toMillis?.() ?? Date.now() };
-      });
+  const cutoff = new Date(Date.now() - CFG.MAX_AGE_MS);
+  state.unsubscribe = window._fb.subscribe(
+    'signals',
+    [{ field: 'ts', op: 'GREATER_THAN', value: cutoff }],
+    (docs) => {
+      state.signals = docs
+        .filter(d => isFinite(d.lat) && isFinite(d.lng))
+        .map(d => ({ id: d._id, key: d.h3 || '0_0', lat: d.lat, lng: d.lng, t: d.ts instanceof Date ? d.ts.getTime() : Date.now() }));
       renderHexes(); updateZonePill(); updateCounter(); saveOfflineCache(); showTakenBtn(hasActiveSignalNearby());
     },
-    (err) => { console.warn('[firestore] erreur', err); state.firebaseOk = false; if (!loadOfflineCache()) loadLocalSignals(); else toast('Mode hors ligne', 'warn'); }
+    25000
   );
 }
 function unsubscribeFirebase() { if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; } }
 async function pushSignalFirebase(lat, lng, key) {
-  if (!window._db || !window._fbModules) throw new Error('firebase-not-ready');
-  const { collection, addDoc, serverTimestamp } = window._fbModules;
+  if (!window._fb) throw new Error('firebase-not-ready');
   const round = (x) => Math.round(x * 10**CFG.COORD_PRECISION) / 10**CFG.COORD_PRECISION;
-  return addDoc(collection(window._db, 'signals'), { h3: String(key).slice(0,49), lat: round(lat), lng: round(lng), userId: String(state.userId).slice(0,49), ts: serverTimestamp() });
+  return window._fb.addDoc('signals', {
+    h3: String(key).slice(0, 49), lat: round(lat), lng: round(lng),
+    userId: String(state.userId).slice(0, 49), ts: window._fb.serverTimestamp(),
+  });
 }
 let purgeInflight = false;
 async function purgeOldSignals() {
-  if (purgeInflight || !window._db || !window._fbModules || !state.online || !state.consent.share) return;
+  if (purgeInflight || !window._fb || !state.online || !state.consent.share) return;
   purgeInflight = true;
   try {
-    const { collection, query, where, orderBy, limit, getDocs, deleteDoc, Timestamp } = window._fbModules;
-    const cutoff = Timestamp.fromMillis(Date.now() - CFG.PURGE_AFTER_MS);
-    const q = query(collection(window._db, 'signals'), where('ts', '<', cutoff), orderBy('ts', 'asc'), limit(CFG.PURGE_BATCH_SIZE));
-    const snap = await getDocs(q);
-    if (snap.empty) return;
+    const cutoff = new Date(Date.now() - CFG.PURGE_AFTER_MS);
+    const docs = await window._fb.getDocs('signals', [{ field: 'ts', op: 'LESS_THAN', value: cutoff }]);
     let deleted = 0;
-    for (const docSnap of snap.docs) { try { await deleteDoc(docSnap.ref); deleted++; } catch {} }
-    if (deleted > 0) console.info(`[purge] ${deleted} signaux supprimés`);
-  } catch(e) { console.warn('[purge] échec', e?.message); } finally { purgeInflight = false; }
+    for (const d of docs.slice(0, CFG.PURGE_BATCH_SIZE)) { try { await window._fb.deleteDoc(d._ref); deleted++; } catch {} }
+    if (deleted > 0) console.info('[purge]', deleted, 'signaux supprimés');
+  } catch(e) { console.warn('[purge]', e?.message); } finally { purgeInflight = false; }
 }
 function loadLocalSignals() {
   try {
@@ -1809,7 +1906,7 @@ function applyConsent(newConsent) {
   saveConsent(state.consent);
   if (state.consent.geo && state.consent.watch) startWatch(); else stopWatch();
   if (state.consent.geo && !prev.geo) firstGeolocation();
-  if (state.consent.share && state.firebaseOk) { if (!state.unsubscribe) subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
+  if (state.consent.share) { if (!state.unsubscribe) subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
   else { unsubscribeFirebase(); loadLocalSignals(); }
   refreshSettingsUI();
 }
@@ -2256,13 +2353,14 @@ async function reportTaken() {
   if (recentMine) incrementConfirmed();
   state.signals = state.signals.filter(s => !(s.key === key && now - s.t < CFG.MAX_AGE_MS));
   renderHexes(); updateZonePill(); updateCounter();
-  if (state.firebaseOk && state.consent.share && state.online && window._fbModules) {
+  if (state.firebaseOk && state.consent.share && state.online && window._fb) {
     try {
-      const { collection, query, where, getDocs, deleteDoc, Timestamp } = window._fbModules;
-      const cutoff = Timestamp.fromMillis(now - CFG.MAX_AGE_MS);
-      const q = query(collection(window._db, 'signals'), where('h3', '==', key), where('ts', '>', cutoff));
-      const snap = await getDocs(q);
-      for (const d of snap.docs) { try { await deleteDoc(d.ref); } catch {} }
+      const cutoff = new Date(now - CFG.MAX_AGE_MS);
+      const docs = await window._fb.getDocs('signals', [
+        { field: 'h3', op: 'EQUAL', value: key },
+        { field: 'ts', op: 'GREATER_THAN', value: cutoff },
+      ]);
+      for (const d of docs) { try { await window._fb.deleteDoc(d._ref); } catch {} }
     } catch(e) { console.warn('[taken]', e); }
   }
   showTakenBtn(false); toast('Place prise — zone mise à jour', 'ok'); takenCooldown = true;
@@ -3678,38 +3776,28 @@ function checkDrivingSpeed(speed) {
 let _presenceInterval = null;
 
 async function registerPresence() {
-  if (!window._db || !window._fbModules || !state.online) return;
+  if (!window._fb || !state.online) return;
   try {
-    const { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, Timestamp } = window._fbModules;
-    // Purger mes anciennes présences
     const myId = state.userId;
-    const old = query(collection(window._db, 'presence'), where('userId', '==', myId));
-    const snap = await getDocs(old);
-    snap.forEach(d => deleteDoc(d.ref).catch(() => {}));
-    // Enregistrer présence fraîche
-    await addDoc(collection(window._db, 'presence'), {
-      userId: myId,
-      ts: serverTimestamp(),
-    });
+    const old = await window._fb.getDocs('presence', [{ field: 'userId', op: 'EQUAL', value: myId }]);
+    for (const d of old) { try { await window._fb.deleteDoc(d._ref); } catch {} }
+    await window._fb.addDoc('presence', { userId: myId, ts: window._fb.serverTimestamp() });
   } catch(e) { /* silencieux */ }
 }
 
 async function countActiveUsers() {
-  if (!window._db || !window._fbModules || !state.online) return;
+  if (!window._fb || !state.online) return;
   try {
-    const { collection, query, where, getDocs, Timestamp, deleteDoc } = window._fbModules;
-    const cutoff = Timestamp.fromMillis(Date.now() - 5 * 60_000); // actif dans les 5 dernières minutes
-    const q = query(collection(window._db, 'presence'), where('ts', '>', cutoff));
-    const snap = await getDocs(q);
-    const n = Math.max(1, snap.size);
+    const cutoff = new Date(Date.now() - 5 * 60000);
+    const docs = await window._fb.getDocs('presence', [{ field: 'ts', op: 'GREATER_THAN', value: cutoff }]);
+    const n = Math.max(1, docs.length);
     const el = document.getElementById('users-ctr');
     if (el) el.textContent = n;
-    // Nettoyer les vieilles présences
-    const oldCutoff = Timestamp.fromMillis(Date.now() - 10 * 60_000);
-    const oldQ = query(collection(window._db, 'presence'), where('ts', '<', oldCutoff));
-    const oldSnap = await getDocs(oldQ);
-    oldSnap.forEach(d => deleteDoc(d.ref).catch(() => {}));
-  } catch(e) { /* silencieux */ }
+    // Purger les très vieilles présences
+    const oldCutoff = new Date(Date.now() - 10 * 60000);
+    const old = await window._fb.getDocs('presence', [{ field: 'ts', op: 'LESS_THAN', value: oldCutoff }]);
+    for (const d of old) { try { await window._fb.deleteDoc(d._ref); } catch {} }
+  } catch { /* silencieux */ }
 }
 
 /* ═══════════════════════════════════════
@@ -3813,7 +3901,7 @@ function _tryBoot() {
 
 window.addEventListener('firebase-ready', (e) => {
   state.firebaseOk = !!e.detail?.ok;
-  if (state.firebaseOk && state.consent?.share) { subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
+  if (state.consent?.share) { subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
   else if (!state.consent?.share) loadLocalSignals();
   _fbReadyFired = true;
   _tryBoot();
