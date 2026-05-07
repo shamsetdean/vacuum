@@ -32,15 +32,11 @@
   style-src 'self' 'unsafe-inline' https://unpkg.com;
   connect-src 'self'
     https://*.basemaps.cartocdn.com
-    https://overpass-api.de
-    https://overpass.kumi.systems
-    https://overpass.openstreetmap.fr
     https://nominatim.openstreetmap.org
-    https://firestore.googleapis.com
+    https://*.googleapis.com
     https://*.firebaseio.com
     wss://*.firebaseio.com
-    wss://firestore.googleapis.com
-    https://overpass.private.coffee
+    wss://*.googleapis.com
     https://www.gstatic.com;
   img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://shamsetdean.github.io;
   font-src 'self';
@@ -186,7 +182,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 @keyframes badgeIn { from { opacity:0; transform:scale(0.85) translateY(-4px); } to { opacity:1; transform:scale(1) translateY(0); } }
 
 /* ═══ ZONE PILL ═══ */
-.zone-pill { position: fixed; top: calc(var(--safe-t) + 64px); left: 50%; transform: translateX(-50%); z-index: 15; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 8px 16px; pointer-events: none; white-space: nowrap; transition: opacity 0.3s, transform 0.3s; opacity: 1; }
+.zone-pill { position: fixed; top: calc(var(--safe-t) + 110px); left: 50%; transform: translateX(-50%); z-index: 15; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 8px 16px; pointer-events: none; white-space: nowrap; transition: opacity 0.3s, transform 0.3s; opacity: 1; }
 .zone-pill.hidden { opacity: 0; transform: translateX(-50%) translateY(-6px); pointer-events: none; }
 .zp-prob { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; transition: color 0.4s; }
 .zp-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
@@ -328,7 +324,7 @@ body.driving-mode .fab { min-height: 72px; font-size: 18px; }
 body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 16px); }
 
 /* ═══ INFO BAR ═══ */
-.info-bar { position: fixed; top: calc(var(--safe-t) + 116px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
+.info-bar { position: fixed; top: calc(var(--safe-t) + 110px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
 .info-bar.empty { opacity: 0; }
 .ib-traffic { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 .ib-traffic.ok   { color: var(--accent); }
@@ -404,7 +400,7 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 16px); }
 .ob-legal { font-size: 11px; color: var(--muted); margin: 8px 0 4px; text-align: center; }
 
 /* ═══ TAKEN BTN ═══ */
-.taken-btn { position: fixed; bottom: calc(var(--safe-b) + 152px); right: 16px; background: rgba(234,67,53,0.92); color: #fff; border: none; border-radius: 20px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(0,0,0,.18); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s, transform .25s; z-index: 1000; }
+.taken-btn { position: fixed; bottom: calc(var(--safe-b) + 216px); right: 16px; background: rgba(234,67,53,0.92); color: #fff; border: none; border-radius: 20px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; box-shadow: 0 2px 8px rgba(0,0,0,.18); opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s, transform .25s; z-index: 1000; }
 .taken-btn.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .taken-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
@@ -443,22 +439,22 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 16px); }
 .hist-impact strong { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* ═══ LOCATE BTN ═══ */
-.locate-btn { position: fixed; bottom: calc(var(--safe-b) + 100px); right: 16px; width: 42px; height: 42px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s, transform .15s; }
+.locate-btn { position: fixed; bottom: calc(var(--safe-b) + 160px); right: 16px; width: 42px; height: 42px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s, transform .15s; }
 .locate-btn:active { transform: scale(0.92); }
 .locate-btn svg { width: 20px; height: 20px; color: var(--blue); }
 .locate-btn.tracking svg { color: var(--accent); }
 
 /* ═══ MODE CONDUITE ═══ */
 body.driving-mode .info-bar { display: none; }
-.drive-badge { position: fixed; top: calc(var(--safe-t, 0px) + 52px); left: 50%; transform: translateX(-50%); background: rgba(22,163,74,0.92); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; z-index: 2000; display: none; letter-spacing: 0.3px; }
+.drive-badge { position: fixed; top: calc(var(--safe-t, 0px) + 58px); left: 50%; transform: translateX(-50%); display:none; background: rgba(22,163,74,0.92); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; z-index: 2000; display: none; letter-spacing: 0.3px; }
 body.driving-mode .drive-badge { display: block; }
 
 /* ═══ BADGE VITESSE PASSAGER ═══ */
 .speed-badge {
   position: fixed;
-  top: calc(var(--safe-t) + 12px);
-  left: 50%;
-  transform: translateX(-50%);
+  top: calc(var(--safe-t) + 58px);
+  right: 12px;
+  left: auto;
   z-index: 21;
   display: none;
   align-items: center;
@@ -485,7 +481,7 @@ body.driving-mode .drive-badge { display: block; }
 .speed-badge-legal { font-size: 10px; opacity: 0.7; font-weight: 500; display:block; text-align:center; margin-top: 2px; }
 
 /* ═══ ALERTE ZONE ═══ */
-.zone-alert { position: fixed; top: calc(var(--safe-t, 0px) + 72px); left: 50%; transform: translateX(-50%); background: rgba(22,163,74,0.95); color: #fff; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 24px; z-index: 2001; opacity: 0; pointer-events: none; transition: opacity .3s; white-space: nowrap; }
+.zone-alert { position: fixed; top: calc(var(--safe-t, 0px) + 110px); left: 50%; transform: translateX(-50%); background: rgba(22,163,74,0.95); color: #fff; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 24px; z-index: 2001; opacity: 0; pointer-events: none; transition: opacity .3s; white-space: nowrap; }
 .zone-alert.show { opacity: 1; }
 
 /* ═══ AR OVERLAY ═══ */
@@ -995,12 +991,12 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 </div>
 
 <!-- BARRE RECHERCHE ADRESSE SUR CARTE -->
-<div id="map-search-bar" style="position:fixed;top:calc(var(--safe-t) + 62px);left:12px;right:12px;z-index:20;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:0 14px;height:44px;box-shadow:0 2px 12px rgba(0,0,0,0.12);">
+<div id="map-search-bar" style="position:fixed;top:calc(var(--safe-t) + 58px);left:12px;right:12px;z-index:20;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:0 14px;height:44px;box-shadow:0 2px 12px rgba(0,0,0,0.12);">
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
   <input id="map-search-input" type="text" placeholder="Rechercher une adresse…" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1;border:none;background:transparent;font-size:15px;color:#1a1f2e;font-family:inherit;outline:none" oninput="onMapSearchInput(this.value)" onkeydown="if(event.key='Enter')doMapSearch()"/>
   <button id="map-search-clear" onclick="clearMapSearch()" style="display:none;background:none;border:none;color:#9aa0ae;cursor:pointer;padding:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 </div>
-<div id="map-search-results" style="display:none;position:fixed;top:calc(var(--safe-t) + 112px);left:12px;right:12px;z-index:20;background:rgba(255,255,255,0.97);border:1px solid rgba(0,0,0,0.08);border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;"></div>
+<div id="map-search-results" style="display:none;position:fixed;top:calc(var(--safe-t) + 108px);left:12px;right:12px;z-index:20;background:rgba(255,255,255,0.97);border:1px solid rgba(0,0,0,0.08);border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;"></div>
 
 <!-- INFO BAR -->
 <div class="info-bar glass empty" id="info-bar">
@@ -1891,9 +1887,7 @@ function selectMapSearchResult(idx) {
   const lat  = parseFloat(item.lat);
   const lon  = parseFloat(item.lon);
   const name = item.display_name.split(',').slice(0, 2).join(', ');
-  // Centrer la carte
-  if (state.map) state.map.setView([lat, lon], 16, { animate: true });
-  // Créer POI synthétique
+
   const fakePoi = { id: 'addr_' + Date.now(), name, cat: 'address', lat, lon, dist: distanceM(state.lat, state.lng, lat, lon), tags: {} };
   selectedPoi = fakePoi;
   addToPOIHistory(fakePoi);
@@ -1901,8 +1895,27 @@ function selectMapSearchResult(idx) {
   updateDestBadge();
   const arBtn = document.getElementById('poi-ar-btn');
   if (arBtn) arBtn.disabled = false;
+  const mapBtn2 = document.getElementById('poi-map-btn');
+  if (mapBtn2) { mapBtn2.disabled = false; mapBtn2.style.opacity = '1'; }
   clearMapSearch();
-  toast(name + " — Ouvrez l'AR pour naviguer", 'ok');
+
+  if (state.map) {
+    state.map.setView([lat, lon], 16, { animate: true });
+    if (window._destMarker) { state.map.removeLayer(window._destMarker); }
+    const dIcon = L.divIcon({
+      html: '<div style="width:20px;height:20px;background:#16a34a;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(22,163,74,0.5)"></div>',
+      className: '', iconSize: [20,20], iconAnchor: [10,10]
+    });
+    const popupContent = '<div style="min-width:160px;padding:4px 0">'
+      + '<div style="font-size:13px;font-weight:700;color:#1a1f2e;margin-bottom:8px">' + esc(name) + '</div>'
+      + '<div style="display:flex;gap:6px">'
+      + '<button onclick="startMapNavigation()" style="flex:1;padding:8px 4px;background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.3);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Carte</button>'
+      + '<button onclick="startArNavigation()" style="flex:2;padding:8px 6px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Naviguer en AR</button>'
+      + '</div></div>';
+    window._destMarker = L.marker([lat, lon], { icon: dIcon })
+      .bindPopup(popupContent, { maxWidth: 220 })
+      .addTo(state.map).openPopup();
+  }
 }
 
 function clearMapSearch() {
