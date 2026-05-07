@@ -39,7 +39,10 @@
     https://firestore.googleapis.com
     https://*.firebaseio.com
     wss://*.firebaseio.com
-    wss://firestore.googleapis.com;
+    wss://firestore.googleapis.com
+    https://data.economie.gouv.fr
+    https://overpass.private.coffee
+    https://www.gstatic.com;
   img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://shamsetdean.github.io;
   font-src 'self';
   manifest-src 'self';
@@ -1344,9 +1347,10 @@ const CFG = Object.freeze({
 });
 
 const OVERPASS_ENDPOINTS = Object.freeze([
-  'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.openstreetmap.fr/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ]);
 
 const STORAGE_KEYS = Object.freeze({
