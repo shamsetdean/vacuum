@@ -166,6 +166,11 @@ window._fb = {
   serverTimestamp: fbServerTimestamp,
 };
 
+// Marquer firebase comme prêt — le listener vérifiera ce flag au démarrage
+window._firebaseReadyResult = { ok: true };
+// Tenter de dispatcher (si le listener est déjà enregistré)
+// Stocker le résultat pour que le listener tardif puisse le récupérer
+window._firebaseReadyResult = { ok: true };
 window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { ok: true } }));
 </script>
 
@@ -3907,35 +3912,33 @@ function init() {
   updateHistoryUI();
 }
 
-/* ═══ BOOT — attend Leaflet + firebase-ready ═══ */
-let _fbReadyFired = false;
-let _leafletReady = false;
-
-function _tryBoot() {
-  if (!_fbReadyFired || !_leafletReady) return;
+/* ═══ BOOT — attend uniquement Leaflet ═══
+   Firebase REST est synchrone — pas besoin d'attendre un événement async
+═══════════════════════════════════════ */
+function _boot() {
+  // Firebase REST disponible immédiatement via window._fb
+  state.firebaseOk = !!window._fb;
+  // Démarrer les signaux selon le consentement
+  const stored = loadConsent();
+  if (stored && stored.version === CFG.CONSENT_VERSION) {
+    state.consent = stored;
+    if (state.consent.share) { subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
+    else loadLocalSignals();
+  } else {
+    loadLocalSignals();
+  }
   init();
 }
 
-window.addEventListener('firebase-ready', (e) => {
-  state.firebaseOk = !!e.detail?.ok;
-  if (state.consent?.share) { subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
-  else if (!state.consent?.share) loadLocalSignals();
-  _fbReadyFired = true;
-  _tryBoot();
-}, { once: true });
-
-// Attendre que Leaflet soit disponible (chargé en defer)
 function _waitForLeaflet() {
   if (typeof L !== 'undefined') {
-    _leafletReady = true;
-    _tryBoot();
+    _boot();
   } else {
     let tries = 0;
     const wait = setInterval(() => {
       if (typeof L !== 'undefined') {
         clearInterval(wait);
-        _leafletReady = true;
-        _tryBoot();
+        _boot();
       } else if (++tries > 50) {
         clearInterval(wait);
         showFatal("Le moteur de carte (Leaflet) n'a pas pu être chargé.");
