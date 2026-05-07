@@ -3773,20 +3773,47 @@ function init() {
   updateHistoryUI();
 }
 
+/* ═══ BOOT — attend Leaflet + firebase-ready ═══ */
+let _fbReadyFired = false;
+let _leafletReady = false;
+
+function _tryBoot() {
+  if (!_fbReadyFired || !_leafletReady) return;
+  init();
+}
+
 window.addEventListener('firebase-ready', (e) => {
   state.firebaseOk = !!e.detail?.ok;
-  if (state.firebaseOk && state.consent.share) { subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
-  else if (!state.consent.share) loadLocalSignals();
+  if (state.firebaseOk && state.consent?.share) { subscribeToSignals(); setTimeout(purgeOldSignals, 8000); }
+  else if (!state.consent?.share) loadLocalSignals();
+  _fbReadyFired = true;
+  _tryBoot();
 }, { once: true });
 
+// Attendre que Leaflet soit disponible (chargé en defer)
+function _waitForLeaflet() {
+  if (typeof L !== 'undefined') {
+    _leafletReady = true;
+    _tryBoot();
+  } else {
+    let tries = 0;
+    const wait = setInterval(() => {
+      if (typeof L !== 'undefined') {
+        clearInterval(wait);
+        _leafletReady = true;
+        _tryBoot();
+      } else if (++tries > 50) {
+        clearInterval(wait);
+        showFatal('Le moteur de carte (Leaflet) n'a pas pu être chargé.');
+      }
+    }, 100);
+  }
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof L === 'undefined') { let tries = 0; const wait = setInterval(() => { if (typeof L !== 'undefined') { clearInterval(wait); init(); } else if (++tries > 30) { clearInterval(wait); showFatal(); } }, 100); }
-    else init();
-  });
+  document.addEventListener('DOMContentLoaded', _waitForLeaflet);
 } else {
-  if (typeof L === 'undefined') { let tries = 0; const wait = setInterval(() => { if (typeof L !== 'undefined') { clearInterval(wait); init(); } else if (++tries > 30) { clearInterval(wait); showFatal(); } }, 100); }
-  else init();
+  _waitForLeaflet();
 }
 </script>
 
