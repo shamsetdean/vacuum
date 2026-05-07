@@ -40,7 +40,6 @@
     https://*.firebaseio.com
     wss://*.firebaseio.com
     wss://firestore.googleapis.com
-    https://data.economie.gouv.fr
     https://overpass.private.coffee
     https://www.gstatic.com;
   img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://shamsetdean.github.io;
@@ -329,7 +328,7 @@ body.driving-mode .fab { min-height: 72px; font-size: 18px; }
 body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 16px); }
 
 /* ═══ INFO BAR ═══ */
-.info-bar { position: fixed; top: calc(var(--safe-t) + 72px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
+.info-bar { position: fixed; top: calc(var(--safe-t) + 116px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
 .info-bar.empty { opacity: 0; }
 .ib-traffic { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 .ib-traffic.ok   { color: var(--accent); }
@@ -1022,6 +1021,14 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   </div>
 </div>
 
+<!-- BARRE RECHERCHE ADRESSE SUR CARTE -->
+<div id="map-search-bar" style="position:fixed;top:calc(var(--safe-t) + 62px);left:12px;right:12px;z-index:20;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.95);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:0 14px;height:44px;box-shadow:0 2px 12px rgba(0,0,0,0.12);">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9aa0ae" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+  <input id="map-search-input" type="text" placeholder="Rechercher une adresse…" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1;border:none;background:transparent;font-size:15px;color:#1a1f2e;font-family:inherit;outline:none" oninput="onMapSearchInput(this.value)" onkeydown="if(event.key='Enter')doMapSearch()"/>
+  <button id="map-search-clear" onclick="clearMapSearch()" style="display:none;background:none;border:none;color:#9aa0ae;cursor:pointer;padding:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+</div>
+<div id="map-search-results" style="display:none;position:fixed;top:calc(var(--safe-t) + 112px);left:12px;right:12px;z-index:20;background:rgba(255,255,255,0.97);border:1px solid rgba(0,0,0,0.08);border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.15);max-height:240px;overflow-y:auto;"></div>
+
 <!-- INFO BAR -->
 <div class="info-bar glass empty" id="info-bar">
   <div class="ib-traffic" id="ib-traffic" hidden>
@@ -1252,7 +1259,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
       <div class="poi-list-loader"><div class="poi-spin"></div>Chargement des lieux…</div>
     </div>
     <!-- Bouton naviguer -->
-    <button class="poi-ar-btn" id="poi-ar-btn" onclick="startArNavigation()" disabled>
+    <button class="poi-ar-btn" id="poi-ar-btn" onclick="startArNavigation()" disabled style="min-height:58px;font-size:17px;letter-spacing:-0.3px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M2 12L12 2l10 10-10 10z"/><circle cx="12" cy="12" r="3"/></svg>
       Naviguer en AR vers ce lieu
     </button>
@@ -1387,13 +1394,13 @@ const state = {
 };
 
 const layers = {
-  parking: { on: true, markers: [] },
-  wc:      { on: true, markers: [] },
-  water:   { on: true, markers: [] },
-  bench:   { on: true, markers: [] },
-  ev:      { on: true, markers: [] },
-  transit: { on: true, markers: [] },
-  fuel:    { on: true, markers: [] },
+  parking: { on: false, markers: [] },
+  wc:      { on: false, markers: [] },
+  water:   { on: false, markers: [] },
+  bench:   { on: false, markers: [] },
+  ev:      { on: false, markers: [] },
+  transit: { on: false, markers: [] },
+  fuel:    { on: false, markers: [] },
 };
 
 /* ═══ STORAGE ═══ */
@@ -1864,6 +1871,83 @@ function applyConsent(newConsent) {
    RECHERCHE D'ADRESSE — Nominatim
 ═══════════════════════════════════════ */
 let _addrSearchTimer = null;
+let _mapSearchTimer  = null;
+
+/* ── Recherche adresse sur la carte principale ── */
+function onMapSearchInput(val) {
+  const clear = document.getElementById('map-search-clear');
+  const res   = document.getElementById('map-search-results');
+  if (clear) clear.style.display = val.length ? 'block' : 'none';
+  if (!val.trim() || val.length < 3) { if (res) res.style.display = 'none'; return; }
+  clearTimeout(_mapSearchTimer);
+  _mapSearchTimer = setTimeout(() => doMapSearch(val), 420);
+}
+
+async function doMapSearch(query) {
+  const input = document.getElementById('map-search-input');
+  const res   = document.getElementById('map-search-results');
+  const q = query || (input ? input.value.trim() : '');
+  if (!q || q.length < 3) return;
+  if (res) { res.style.display = 'block'; res.innerHTML = '<div style="padding:12px 14px;color:#9aa0ae;font-size:13px">Recherche…</div>'; }
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json&limit=5&addressdetails=1&accept-language=fr&countrycodes=fr';
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) throw new Error('err');
+    const data = await r.json();
+    window._mapSearchResults = data;
+    if (!data.length) { res.innerHTML = '<div style="padding:12px 14px;color:#9aa0ae;font-size:13px">Aucun résultat</div>'; return; }
+    res.innerHTML = data.map((item, idx) => {
+      const name = item.display_name.split(',').slice(0, 3).join(', ');
+      return '<div onclick="selectMapSearchResult(' + idx + ')" style="padding:12px 14px;border-bottom:1px solid rgba(0,0,0,0.06);cursor:pointer;display:flex;align-items:center;gap:10px">'
+        + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><circle cx="12" cy="10" r="3"/><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 8 12 8 12s8-6.75 8-12c0-4.42-3.58-8-8-8z"/></svg>'
+        + '<div style="font-size:13px;font-weight:600;color:#1a1f2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(name) + '</div>'
+        + '</div>';
+    }).join('');
+  } catch { if (res) res.innerHTML = '<div style="padding:12px 14px;color:#dc2626;font-size:13px">Erreur de connexion</div>'; }
+}
+
+function selectMapSearchResult(idx) {
+  const item = window._mapSearchResults?.[idx];
+  if (!item) return;
+  const lat  = parseFloat(item.lat);
+  const lon  = parseFloat(item.lon);
+  const name = item.display_name.split(',').slice(0, 2).join(', ');
+  // Centrer la carte
+  if (state.map) state.map.setView([lat, lon], 16, { animate: true });
+  // Créer POI synthétique
+  const fakePoi = { id: 'addr_' + Date.now(), name, cat: 'address', lat, lon, dist: distanceM(state.lat, state.lng, lat, lon), tags: {} };
+  selectedPoi = fakePoi;
+  addToPOIHistory(fakePoi);
+  document.getElementById('arOverlay')?.classList.add('has-poi');
+  updateDestBadge();
+  const arBtn = document.getElementById('poi-ar-btn');
+  if (arBtn) arBtn.disabled = false;
+  clearMapSearch();
+  toast(name + ' — Ouvrez l'AR pour naviguer', 'ok');
+}
+
+function clearMapSearch() {
+  const input = document.getElementById('map-search-input');
+  const res   = document.getElementById('map-search-results');
+  const clear = document.getElementById('map-search-clear');
+  if (input) input.value = '';
+  if (res)   res.style.display = 'none';
+  if (clear) clear.style.display = 'none';
+  window._mapSearchResults = [];
+}
+
+/* ── Zoom automatique en mode conduite ── */
+let _drivingZoom = false;
+function updateDrivingZoom(speed) {
+  if (!state.map || !_passengerConfirmed) return;
+  if (speed > 15 && !_drivingZoom) {
+    _drivingZoom = true;
+    state.map.setZoom(17, { animate: true });
+  } else if (speed <= 8 && _drivingZoom) {
+    _drivingZoom = false;
+    state.map.setZoom(15, { animate: true });
+  }
+}
 
 function onAddrSearchInput(val) {
   const clearBtn = document.getElementById('addr-search-clear');
@@ -1987,6 +2071,7 @@ function startWatch() {
         lastSpeed = pos.coords.speed * 3.6; // m/s → km/h
         checkDrivingSpeed(lastSpeed);
         updateSpeedBadge(lastSpeed);
+        updateDrivingZoom(lastSpeed);
         fetchSpeedLimit(lat, lng);
         if (lastSpeedPos) {
           lastSpeedPos = { lat, lng, t: Date.now() };
@@ -2338,6 +2423,8 @@ function computeSpeed(lat, lng) {
   checkDrivingSpeed(lastSpeed);
   // Badge vitesse passager
   updateSpeedBadge(lastSpeed);
+  // Zoom automatique conduite
+  updateDrivingZoom(lastSpeed);
   // Fetch limite toutes les 60s
   fetchSpeedLimit(lat, lng);
 }
@@ -2525,6 +2612,15 @@ function renderPoiList() {
   if (subtitle) subtitle.textContent = `${filteredPoiData.length} lieu${filteredPoiData.length > 1 ? 'x' : ''} trouvé${filteredPoiData.length > 1 ? 's' : ''} à proximité`;
 }
 
+function selectPoiAndNavigate(poiId) {
+  selectPoi(poiId);
+  // Fermer le popup et ouvrir AR après un court délai
+  if (state.map) state.map.closePopup();
+  setTimeout(() => {
+    if (selectedPoi) startArNavigation();
+  }, 350);
+}
+
 function selectPoi(poiId) {
   const poi = allPoiData.find(p => p.id === poiId);
   if (!poi) return;
@@ -2614,9 +2710,24 @@ function placePoiMarkersOnMap() {
     });
 
     const distLabel = poi.dist < 1000 ? Math.round(poi.dist) + 'm' : (poi.dist/1000).toFixed(1) + 'km';
+    const walkMin = Math.max(1, Math.round(poi.dist / 80));
+    const popupHtml = `
+      <div style="min-width:160px;padding:2px 0">
+        <div style="font-size:14px;font-weight:700;color:#1a1f2e;margin-bottom:4px">${esc(poi.name)}</div>
+        <div style="font-size:11px;font-weight:700;color:${cfg.color};margin-bottom:6px">${cfg.label} · ${distLabel} · ~${walkMin} min</div>
+        <button onclick="selectPoiAndNavigate(${poi.id})" style="
+          width:100%;padding:9px 0;background:${cfg.color};color:#fff;
+          border:none;border-radius:10px;font-size:13px;font-weight:700;
+          cursor:pointer;font-family:inherit;display:flex;align-items:center;
+          justify-content:center;gap:6px
+        ">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M2 12L12 2l10 10-10 10z"/><circle cx="12" cy="12" r="3"/></svg>
+          Naviguer en AR
+        </button>
+      </div>`;
     const marker = L.marker([poi.lat, poi.lon], { icon });
-    marker.bindPopup(`<b>${esc(poi.name)}</b><br><span style="color:${cfg.color};font-size:11px;font-weight:700">${cfg.label}</span> · <small>${distLabel}</small>`);
-    marker.on('click', () => { selectPoi(poi.id); toast(`${poi.name} sélectionné — tap AR pour naviguer`, 'ok'); });
+    marker.bindPopup(popupHtml, { maxWidth: 220 });
+    marker.on('click', () => selectPoi(poi.id));
     if (state.map.getZoom() >= 15) marker.addTo(state.map);
     poiMapMarkers.push(marker);
   });
@@ -3558,31 +3669,10 @@ let _fuelPrices = {}; // { stationId: { sp95, gazole, e10, name, lat, lon } }
 let _fuelLoaded = false;
 
 async function loadFuelPrices(lat, lng) {
-  if (_fuelLoaded) return;
-  try {
-    // API Prix des Carburants — data.gouv.fr
-    const geoParam = "geom'POINT(" + lng + " " + lat + ")',5000m";
-    const url = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=20&where=distance(geom," + geoParam + ")&select=id,nom,adresse,ville,sp95,gazole,e10,sp98,latitude,longitude&order_by=distance(geom," + geoParam + ")";
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return;
-    const data = await r.json();
-    _fuelLoaded = true;
-    const records = data.results || [];
-    records.forEach(s => {
-      if (!s.latitude || !s.longitude) return;
-      _fuelPrices[s.id] = {
-        name: s.nom || s.adresse || 'Station',
-        lat: parseFloat(s.latitude),
-        lon: parseFloat(s.longitude),
-        sp95:   s.sp95   ? parseFloat(s.sp95).toFixed(3)   : null,
-        gazole: s.gazole ? parseFloat(s.gazole).toFixed(3) : null,
-        e10:    s.e10    ? parseFloat(s.e10).toFixed(3)    : null,
-        sp98:   s.sp98   ? parseFloat(s.sp98).toFixed(3)   : null,
-      };
-    });
-    // Mettre à jour les marqueurs fuel existants si possible
-    updateFuelMarkers();
-  } catch(e) { console.warn('[fuel prices]', e?.message); }
+  // Tarifs essence désactivés temporairement — requiert un proxy backend
+  // (data.economie.gouv.fr bloque les requêtes directes depuis GitHub Pages)
+  // Sera activé avec le proxy Vercel
+  return;
 }
 
 function getBestFuelPrice(lat, lon) {
