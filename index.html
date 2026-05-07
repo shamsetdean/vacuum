@@ -3804,7 +3804,7 @@ function _waitForLeaflet() {
         _tryBoot();
       } else if (++tries > 50) {
         clearInterval(wait);
-        showFatal('Le moteur de carte (Leaflet) n'a pas pu être chargé.');
+        showFatal("Le moteur de carte (Leaflet) n'a pas pu être chargé.");
       }
     }, 100);
   }
