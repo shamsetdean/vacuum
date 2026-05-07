@@ -2503,18 +2503,7 @@ async function loadAllPoiCategories() {
       + '&q=' + encodeURIComponent('amenity');
 
     // Requête Nominatim par bounding box pour chaque catégorie principale
-    const fetchCat = async (amenityVal, shopVal) => {
-      const q = shopVal
-        ? 'https://nominatim.openstreetmap.org/search?format=json&limit=20&addressdetails=0&accept-language=fr&bounded=1'
-          + '&viewbox=' + (lng-0.015) + ',' + (lat+0.013) + ',' + (lng+0.015) + ',' + (lat-0.013)
-          + '&q=' + encodeURIComponent(shopVal)
-        : 'https://nominatim.openstreetmap.org/search?format=json&limit=20&addressdetails=0&accept-language=fr&bounded=1'
-          + '&viewbox=' + (lng-0.015) + ',' + (lat+0.013) + ',' + (lng+0.015) + ',' + (lat-0.013)
-          + '&q=' + encodeURIComponent(amenityVal);
-      const r = await fetch(q, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) });
-      if (!r.ok) return [];
-      return await r.json();
-    };
+    // fetchCat remplacé par le système par chunks ci-dessous
 
     // Charger les catégories les plus utiles
     const toLoad = [
@@ -2540,9 +2529,14 @@ async function loadAllPoiCategories() {
       await Promise.all(chunk.map(async ({ key, val, cat }) => {
         try {
           const viewbox = [lng-0.015, lat+0.013, lng+0.015, lat-0.013].join(',');
+          // Nominatim : utiliser &q= pour la recherche par type
+          const searchTerm = key === 'shop' ? val + ' magasin'
+            : key === 'tourism' ? val
+            : key === 'highway' ? 'arrêt de bus'
+            : val;
           const q = 'https://nominatim.openstreetmap.org/search?format=json&limit=15&addressdetails=0&accept-language=fr&bounded=1'
             + '&viewbox=' + viewbox
-            + '&' + key + '=' + encodeURIComponent(val);
+            + '&q=' + encodeURIComponent(searchTerm);
           const r = await fetch(q, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) });
           if (!r.ok) return;
           const data = await r.json();
@@ -3002,7 +2996,7 @@ async function fetchARStops(lat, lng) {
     const d = 0.006;
     const viewbox = (lng-d)+','+(lat+d*0.8)+','+(lng+d)+','+(lat-d*0.8);
     const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=12&addressdetails=0'
-      + '&accept-language=fr&bounded=1&viewbox=' + viewbox + '&highway=bus_stop';
+      + '&accept-language=fr&bounded=1&viewbox=' + viewbox + '&q=arr%C3%AAt+de+bus';
     const r = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(6000) });
     if (!r.ok) return;
     const data = await r.json();
