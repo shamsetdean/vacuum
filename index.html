@@ -26,32 +26,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234caf50'/%3E%3Ctext x='16' y='23' font-family='system-ui,sans-serif' font-size='20' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'none';
-  script-src 'self' 'unsafe-inline' https://unpkg.com https://www.gstatic.com;
-  style-src 'self' 'unsafe-inline' https://unpkg.com;
-  connect-src 'self'
-    https://*.basemaps.cartocdn.com
-    https://nominatim.openstreetmap.org
-    https://overpass-api.de
-    https://overpass.kumi.systems
-    https://overpass.openstreetmap.fr
-    https://overpass.private.coffee
-    https://*.googleapis.com
-    https://*.firebaseio.com
-    wss://*.firebaseio.com
-    wss://*.googleapis.com
-    https://www.gstatic.com;
-  img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://shamsetdean.github.io;
-  font-src 'self';
-  manifest-src 'self';
-  worker-src 'self' blob:;
-  media-src 'self' blob:;
-  object-src 'none';
-  base-uri 'self';
-  form-action 'none';
-  frame-ancestors 'none';
-">
+<!-- CSP gérée côté serveur — meta CSP retirée car incompatible avec Firebase sur GitHub Pages -->
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous" defer></script>
