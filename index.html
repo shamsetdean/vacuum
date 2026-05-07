@@ -85,34 +85,51 @@ async function fbAddDoc(colPath, data) {
   return await r.json();
 }
 
-/* GET — lire une collection avec filtre simple */
+/* GET — lire une collection avec filtre simple via REST */
 async function fbGetDocs(colPath, filters) {
-  // Utiliser runQuery pour les filtres composites
-  const structuredQuery = {
-    from: [{ collectionId: colPath.split('/').pop() }],
-    where: filters && filters.length > 0 ? {
-      compositeFilter: {
-        op: 'AND',
-        filters: filters.map(f => ({
-          fieldFilter: {
-            field: { fieldPath: f.field },
-            op: f.op,
-            value: toFBValue(f.value),
-          }
-        }))
-      }
-    } : undefined,
-    limit: 200,
-  };
-  const parent = FB_BASE.replace('/documents', '') + '/documents';
-  const url = FB_BASE + ':runQuery?key=' + FB_API_KEY;
-  const r = await fetch(url, {
+  // URL correcte : /v1/projects/{proj}/databases/(default)/documents:runQuery
+  const runQueryUrl = 'https://firestore.googleapis.com/v1/projects/' + FB_PROJECT
+    + '/databases/(default)/documents:runQuery?key=' + FB_API_KEY;
+
+  // Construire la requête structurée
+  const colId = colPath.split('/').pop();
+  const sq = { from: [{ collectionId: colId }], limit: 200 };
+
+  if (filters && filters.length > 0) {
+    if (filters.length === 1) {
+      sq.where = {
+        fieldFilter: {
+          field: { fieldPath: filters[0].field },
+          op: filters[0].op,
+          value: toFBValue(filters[0].value),
+        }
+      };
+    } else {
+      sq.where = {
+        compositeFilter: {
+          op: 'AND',
+          filters: filters.map(f => ({
+            fieldFilter: {
+              field: { fieldPath: f.field },
+              op: f.op,
+              value: toFBValue(f.value),
+            }
+          }))
+        }
+      };
+    }
+  }
+
+  const r = await fetch(runQueryUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ structuredQuery }),
+    body: JSON.stringify({ structuredQuery: sq }),
     signal: AbortSignal.timeout(8000),
   });
-  if (!r.ok) throw new Error('fbGetDocs ' + r.status);
+  if (!r.ok) {
+    const err = await r.text().catch(() => r.status);
+    throw new Error('fbGetDocs ' + r.status + ': ' + err);
+  }
   const results = await r.json();
   return results
     .filter(item => item.document)
