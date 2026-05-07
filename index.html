@@ -1488,16 +1488,8 @@ function buildPoisQuery(lat, lng) {
 
 let poisInflight = null;
 async function loadAllPois(lat, lng) {
-  const cacheKey = `pois_${lat.toFixed(3)}_${lng.toFixed(3)}`;
-  const cached = cacheGet(cacheKey, CFG.POI_REFRESH);
-  if (cached) { dispatchPois(cached); return; }
-  if (poisInflight) return;
-  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 18000);
-  poisInflight = (async () => {
-    try { const data = await overpassQuery(buildPoisQuery(lat, lng), ctrl.signal); const elements = Array.isArray(data?.elements) ? data.elements : []; cacheSet(cacheKey, elements); dispatchPois(elements); }
-    catch(e) { if (e?.name !== 'AbortError') console.warn('[overpass]', e); }
-    finally { clearTimeout(t); poisInflight = null; }
-  })();
+  // Désactivé — remplacé par loadAllPoiCategories (Nominatim, compatible CORS)
+  return;
 }
 
 function dispatchPois(elements) {
@@ -2312,30 +2304,9 @@ let _lastSpeedLimitFetch = 0;
 let _overSpeedVibrated = false;
 
 async function fetchSpeedLimit(lat, lng) {
-  // Ne chercher que toutes les 60s et si passager confirmé
-  if (!_passengerConfirmed) return;
-  if (Date.now() - _lastSpeedLimitFetch < 60000) return;
-  _lastSpeedLimitFetch = Date.now();
-  const q = `[out:json][timeout:6];way[maxspeed](around:30,${lat},${lng});out 1;`;
-  try {
-    for (const ep of OVERPASS_ENDPOINTS) {
-      const r = await fetch(ep, {
-        method: 'POST',
-        body: 'data=' + encodeURIComponent(q),
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!r.ok) continue;
-      const d = await r.json();
-      const way = (d.elements || [])[0];
-      if (way?.tags?.maxspeed) {
-        const raw = way.tags.maxspeed;
-        const parsed = parseInt(raw, 10);
-        if (!isNaN(parsed)) { _currentSpeedLimit = parsed; return; }
-        if (raw === 'walk') { _currentSpeedLimit = 20; return; }
-      }
-      break;
-    }
-  } catch { /* silencieux */ }
+  // Désactivé — Overpass bloqué par CORS depuis GitHub Pages
+  // Sera réactivé via proxy Vercel
+  return;
 }
 
 function updateSpeedBadge(speed) {
@@ -3027,17 +2998,19 @@ function closeAR() {
 async function fetchARStops(lat, lng) {
   if (Date.now() - arLastStopFetch < 30000) return;
   arLastStopFetch = Date.now();
-  const q = `[out:json][timeout:10];(node[highway=bus_stop](around:${CFG.AR_STOPS_RADIUS},${lat},${lng});node[railway=subway_entrance](around:${CFG.AR_STOPS_RADIUS},${lat},${lng});node[railway=tram_stop](around:${CFG.AR_STOPS_RADIUS},${lat},${lng});node[railway=station](around:${CFG.AR_STOPS_RADIUS},${lat},${lng}););out;`;
   try {
-    const data = await overpassQuery(q, null);
-    arNearbyStops = (data.elements || []).filter(e => e.tags?.name).slice(0, 12).map(e => {
-      const t = e.tags;
-      let kind = 'Bus', color = '#ff4757';
-      if (t.railway === 'subway_entrance') { kind = 'Métro'; color = '#4488ff'; }
-      else if (t.railway === 'tram_stop') { kind = 'Tram'; color = '#a855f7'; }
-      else if (t.railway === 'station') { kind = 'Gare'; color = '#ff6b35'; }
-      return { lat: e.lat, lon: e.lon, name: t.name, kind, color };
-    });
+    const d = 0.006;
+    const viewbox = (lng-d)+','+(lat+d*0.8)+','+(lng+d)+','+(lat-d*0.8);
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=12&addressdetails=0'
+      + '&accept-language=fr&bounded=1&viewbox=' + viewbox + '&highway=bus_stop';
+    const r = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return;
+    const data = await r.json();
+    const seen = new Set();
+    arNearbyStops = data
+      .filter(e => { const n = e.display_name.split(',')[0].trim(); if (seen.has(n)) return false; seen.add(n); return true; })
+      .slice(0, 12)
+      .map(e => ({ lat: parseFloat(e.lat), lon: parseFloat(e.lon), name: e.display_name.split(',')[0].trim(), kind: 'Bus', color: '#ff4757' }));
     updateARStats();
   } catch {}
 }
