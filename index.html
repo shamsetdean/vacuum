@@ -1544,15 +1544,10 @@ async function pushSignalFirebase(lat, lng, key) {
 }
 let purgeInflight = false;
 async function purgeOldSignals() {
-  if (purgeInflight || !window._fb || !state.online || !state.consent.share) return;
-  purgeInflight = true;
-  try {
-    const cutoff = new Date(Date.now() - CFG.PURGE_AFTER_MS);
-    const docs = await window._fb.getDocs('signals', [{ field: 'ts', op: 'LESS_THAN', value: cutoff }]);
-    let deleted = 0;
-    for (const d of docs.slice(0, CFG.PURGE_BATCH_SIZE)) { try { await window._fb.deleteDoc(d._ref); deleted++; } catch {} }
-    if (deleted > 0) console.info('[purge]', deleted, 'signaux supprimés');
-  } catch(e) { console.warn('[purge]', e?.message); } finally { purgeInflight = false; }
+  // Purge désactivée côté client — Safari bloque les requêtes PATCH/DELETE cross-origin
+  // Les vieux signaux sont filtrés côté client via CFG.MAX_AGE_MS
+  return;
+  purgeInflight = false;
 }
 function loadLocalSignals() {
   try {
@@ -2355,16 +2350,8 @@ async function reportTaken() {
   if (recentMine) incrementConfirmed();
   state.signals = state.signals.filter(s => !(s.key === key && now - s.t < CFG.MAX_AGE_MS));
   renderHexes(); updateZonePill(); updateCounter();
-  if (state.firebaseOk && state.consent.share && state.online && window._fb) {
-    try {
-      const cutoff = new Date(now - CFG.MAX_AGE_MS);
-      const docs = await window._fb.getDocs('signals', [
-        { field: 'h3', op: 'EQUAL', value: key },
-        { field: 'ts', op: 'GREATER_THAN', value: cutoff },
-      ]);
-      for (const d of docs) { try { await window._fb.deleteDoc(d._ref); } catch {} }
-    } catch(e) { console.warn('[taken]', e); }
-  }
+  // Suppression Firebase désactivée (PATCH/DELETE bloqués Safari)
+  // Les signaux expirent naturellement via MAX_AGE_MS
   showTakenBtn(false); toast('Place prise — zone mise à jour', 'ok'); takenCooldown = true;
   setTimeout(() => { takenCooldown = false; }, 30000);
 }
@@ -3778,28 +3765,14 @@ function checkDrivingSpeed(speed) {
 let _presenceInterval = null;
 
 async function registerPresence() {
-  if (!window._fb || !state.online) return;
-  try {
-    const myId = state.userId;
-    const old = await window._fb.getDocs('presence', [{ field: 'userId', op: 'EQUAL', value: myId }]);
-    for (const d of old) { try { await window._fb.deleteDoc(d._ref); } catch {} }
-    await window._fb.addDoc('presence', { userId: myId, ts: window._fb.serverTimestamp() });
-  } catch(e) { /* silencieux */ }
+  // Désactivé — PATCH/DELETE bloqués par Safari cross-origin
+  return;
 }
 
 async function countActiveUsers() {
-  if (!window._fb || !state.online) return;
-  try {
-    const cutoff = new Date(Date.now() - 5 * 60000);
-    const docs = await window._fb.getDocs('presence', [{ field: 'ts', op: 'GREATER_THAN', value: cutoff }]);
-    const n = Math.max(1, docs.length);
-    const el = document.getElementById('users-ctr');
-    if (el) el.textContent = n;
-    // Purger les très vieilles présences
-    const oldCutoff = new Date(Date.now() - 10 * 60000);
-    const old = await window._fb.getDocs('presence', [{ field: 'ts', op: 'LESS_THAN', value: oldCutoff }]);
-    for (const d of old) { try { await window._fb.deleteDoc(d._ref); } catch {} }
-  } catch { /* silencieux */ }
+  // Désactivé — collection presence bloquée par Safari cross-origin
+  // Le compteur reste à 1 (utilisateur actuel)
+  return;
 }
 
 /* ═══════════════════════════════════════
