@@ -55,8 +55,11 @@ function toFBValue(v) {
 /* Convertir document Firestore REST → objet JS */
 function fromFBDoc(doc) {
   if (!doc || !doc.fields) return null;
+  // Ignorer les docs soft-deleted
+  if (doc.fields._deleted?.booleanValue === true) return null;
   const out = { _id: (doc.name || '').split('/').pop(), _ref: doc.name };
   for (const [k, v] of Object.entries(doc.fields)) {
+    if (k === '_deleted') continue;
     if (v.timestampValue)   out[k] = new Date(v.timestampValue);
     else if (v.stringValue !== undefined) out[k] = v.stringValue;
     else if (v.integerValue !== undefined) out[k] = parseInt(v.integerValue, 10);
@@ -133,14 +136,24 @@ async function fbGetDocs(colPath, filters) {
   const results = await r.json();
   return results
     .filter(item => item.document)
-    .map(item => fromFBDoc(item.document));
+    .map(item => fromFBDoc(item.document))
+    .filter(Boolean);
 }
 
 /* DELETE — supprimer un document par son chemin complet */
 async function fbDeleteDoc(docPath) {
-  const url = 'https://firestore.googleapis.com/v1/' + docPath + '?key=' + FB_API_KEY;
-  const r = await fetch(url, { method: 'DELETE', signal: AbortSignal.timeout(6000) });
-  if (!r.ok && r.status !== 404 && r.status !== 403) throw new Error('fbDeleteDoc ' + r.status);
+  // Safari bloque DELETE cross-origin — on utilise PATCH avec _deleted:true
+  // Les docs marqués sont filtrés côté client
+  const url = 'https://firestore.googleapis.com/v1/' + docPath
+    + '?updateMask.fieldPaths=_deleted&key=' + FB_API_KEY;
+  try {
+    await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: { _deleted: { booleanValue: true } } }),
+      signal: AbortSignal.timeout(6000),
+    });
+  } catch { /* silencieux */ }
 }
 
 /* POLL — simuler onSnapshot par polling toutes les Xs */
@@ -2100,7 +2113,7 @@ function eraseAllData() {
 function firstGeolocation() {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
-    (pos) => { const lat = pos.coords.latitude, lng = pos.coords.longitude; if (!isFinite(lat)||!isFinite(lng)) return; updateUserMarker(lat, lng); state.map.setView([lat, lng], 15, { animate: false }); onUserMoved(lat, lng); debouncedReverseGeo(lat, lng); loadFuelPrices(lat, lng); },
+    (pos) => { const lat = pos.coords.latitude, lng = pos.coords.longitude; if (!isFinite(lat)||!isFinite(lng)) return; updateUserMarker(lat, lng); state.map.setView([lat, lng], 17, { animate: false }); onUserMoved(lat, lng); debouncedReverseGeo(lat, lng); loadFuelPrices(lat, lng); },
     (err) => { console.warn('[geo] failed', err?.code); if (err?.code === 1) toast('Géolocalisation refusée', 'warn'); },
     { timeout: 6000, enableHighAccuracy: true }
   );
@@ -2162,7 +2175,7 @@ function showFatal(msg) { const f = document.getElementById('fatal'); if (msg) d
 function initMap() {
   if (typeof L === 'undefined') { showFatal('Le moteur de carte (Leaflet) n\'a pas pu être chargé.'); return false; }
   const rotateOpts = (typeof L.Map.prototype.setBearing === 'function' || (L.Map && L.Map.mergeOptions)) ? { rotate: true, bearing: 0 } : {};
-  state.map = L.map('map', { center: [state.lat, state.lng], zoom: 15, zoomControl: false, attributionControl: true, maxZoom: 19, ...rotateOpts });
+  state.map = L.map('map', { center: [state.lat, state.lng], zoom: 17, zoomControl: false, attributionControl: true, maxZoom: 19, ...rotateOpts });
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OpenStreetMap · © CARTO', crossOrigin: 'anonymous' }).addTo(state.map);
   state.map.on('zoomend', () => { for (const id of Object.keys(layers)) applyLayerVisibility(id); });
   state.map.on('dragstart', () => {
