@@ -140,7 +140,7 @@ async function fbGetDocs(colPath, filters) {
 async function fbDeleteDoc(docPath) {
   const url = 'https://firestore.googleapis.com/v1/' + docPath + '?key=' + FB_API_KEY;
   const r = await fetch(url, { method: 'DELETE', signal: AbortSignal.timeout(6000) });
-  if (!r.ok && r.status !== 404) throw new Error('fbDeleteDoc ' + r.status);
+  if (!r.ok && r.status !== 404 && r.status !== 403) throw new Error('fbDeleteDoc ' + r.status);
 }
 
 /* POLL — simuler onSnapshot par polling toutes les Xs */
