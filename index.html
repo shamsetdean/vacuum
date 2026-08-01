@@ -140,20 +140,30 @@ async function fbGetDocs(colPath, filters) {
     .filter(Boolean);
 }
 
-/* DELETE — supprimer un document par son chemin complet */
+/* PATCH — marquer un document comme supprimé (_deleted:true).
+   Firestore REST autorise PATCH/DELETE cross-origin comme n'importe quelle
+   autre méthode — ce n'est pas bloqué par Safari. Le vrai piège précédent :
+   les erreurs étaient avalées silencieusement, jamais vérifiées. */
 async function fbDeleteDoc(docPath) {
-  // Safari bloque DELETE cross-origin — on utilise PATCH avec _deleted:true
-  // Les docs marqués sont filtrés côté client
   const url = 'https://firestore.googleapis.com/v1/' + docPath
     + '?updateMask.fieldPaths=_deleted&key=' + FB_API_KEY;
   try {
-    await fetch(url, {
+    const r = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fields: { _deleted: { booleanValue: true } } }),
       signal: AbortSignal.timeout(6000),
     });
-  } catch { /* silencieux */ }
+    if (!r.ok) {
+      const err = await r.text().catch(() => r.status);
+      console.warn('[fbDeleteDoc]', r.status, err);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[fbDeleteDoc] failed', e?.message);
+    return false;
+  }
 }
 
 /* POLL — simuler onSnapshot par polling toutes les Xs */
@@ -1317,15 +1327,21 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   <div class="modal">
     <div class="modal-handle" aria-hidden="true"></div>
     <h2 id="privacy-title">Politique de confidentialité</h2>
-    <p><small>Dernière mise à jour : avril 2026</small></p>
+    <p><small>Dernière mise à jour : août 2026</small></p>
     <h3>Statut de l'application</h3>
     <p><strong>Vacuum est en phase de développement actif (version bêta).</strong></p>
     <h3>Qui traite vos données ?</h3>
     <p>Vacuum est un projet bénévole et gratuit. Contact : <strong>shamsetdean@gmail.com</strong></p>
     <h3>Quelles données sont collectées ?</h3>
-    <ul><li>Identifiant anonyme généré aléatoirement</li><li>Position approximative au moment du signalement</li><li>Horodatage serveur</li></ul>
+    <ul>
+      <li>Identifiant anonyme généré aléatoirement (aucun lien avec votre identité)</li>
+      <li>Position approximative au moment du signalement</li>
+      <li>Horodatage serveur</li>
+      <li>Présence anonyme (identifiant + horodatage) pour afficher le nombre d'utilisateurs actifs — aucune position n'est associée à cette donnée</li>
+    </ul>
+    <p><small>La photo de profil que vous pouvez ajouter reste uniquement sur votre appareil (stockage local) : elle n'est jamais envoyée à nos serveurs ni partagée avec d'autres utilisateurs.</small></p>
     <h3>Combien de temps ?</h3>
-    <p>Les signalements ont une durée de vie cible de <strong>24 heures maximum</strong>.</p>
+    <p>Les signalements sont conservés <strong>24 heures maximum</strong>, puis supprimés automatiquement. Les données de présence sont conservées <strong>1 heure maximum</strong>.</p>
     <h3>Vos droits</h3>
     <p>Retrait du consentement, effacement des données, réclamation auprès de la <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">CNIL</a>.</p>
     <div class="modal-actions"><button class="btn btn-primary" id="privacy-close">J'ai compris</button></div>
@@ -1713,7 +1729,7 @@ function subscribeToSignals() {
     (docs) => {
       state.signals = docs
         .filter(d => isFinite(d.lat) && isFinite(d.lng))
-        .map(d => ({ id: d._id, key: d.h3 || '0_0', lat: d.lat, lng: d.lng, t: d.ts instanceof Date ? d.ts.getTime() : Date.now() }));
+        .map(d => ({ id: d._id, ref: d._ref, key: d.h3 || '0_0', lat: d.lat, lng: d.lng, t: d.ts instanceof Date ? d.ts.getTime() : Date.now() }));
       renderHexes(); updateZonePill(); updateCounter(); saveOfflineCache(); showTakenBtn(hasActiveSignalNearby());
     },
     25000
@@ -1730,9 +1746,23 @@ async function pushSignalFirebase(lat, lng, key) {
 }
 let purgeInflight = false;
 async function purgeOldSignals() {
-  // Purge désactivée côté client — Safari bloque les requêtes PATCH/DELETE cross-origin
-  // Les vieux signaux sont filtrés côté client via CFG.MAX_AGE_MS
-  return;
+  if (purgeInflight || !window._fb || !state.online) return;
+  purgeInflight = true;
+  try {
+    const targets = [
+      { col: 'signals',  cutoff: new Date(Date.now() - CFG.PURGE_AFTER_MS) },
+      { col: 'presence', cutoff: new Date(Date.now() - PRESENCE_PURGE_MS) },
+    ];
+    for (const { col, cutoff } of targets) {
+      const stale = await fbGetDocs(col, [{ field: 'ts', op: 'LESS_THAN', value: cutoff }]);
+      const batch = stale.slice(0, CFG.PURGE_BATCH_SIZE).filter(d => d._ref);
+      await Promise.all(batch.map(d => fbDeleteDoc(d._ref)));
+    }
+  } catch (e) {
+    console.warn('[purge] failed', e?.message);
+  } finally {
+    purgeInflight = false;
+  }
 }
 function loadLocalSignals() {
   try {
@@ -2378,11 +2408,27 @@ function clearPoiSelection() {
   if (btn) btn.disabled = true;
 }
 
-function eraseAllData() {
-  if (!window.confirm('Effacer toutes vos données locales ?\n\n• Identifiant anonyme : supprimé\n• Signalements locaux : supprimés\n\nLes données envoyées au serveur sont effacées par la purge collaborative (cible 24h).')) return;
-  lsRemove(STORAGE_KEYS.USER_ID); lsRemove(STORAGE_KEYS.LOCAL_SIGS); lsRemove(STORAGE_KEYS.CONSENT);
+async function eraseAllData() {
+  if (!window.confirm("Effacer toutes vos données personnelles ?\n\n• Identifiant anonyme : supprimé (un nouveau sera généré)\n• Signalements sur le serveur : supprimés immédiatement\n• Signalements locaux et photo de profil : supprimés\n\nVotre historique de contributions (statistiques, sans donnée de position précise) est conservé localement, sans lien avec le nouvel identifiant.")) return;
+  const oldUserId = state.userId;
+
+  // Suppression immédiate côté serveur — droit à l'effacement RGPD, on ne
+  // dépend plus seulement de la purge automatique (24h signaux / 1h présence).
+  if (window._fb && oldUserId) {
+    try {
+      const [staleSignals, stalePresence] = await Promise.all([
+        fbGetDocs('signals', [{ field: 'userId', op: 'EQUAL', value: oldUserId }]),
+        fbGetDocs('presence', [{ field: 'userId', op: 'EQUAL', value: oldUserId }]),
+      ]);
+      await Promise.all([...staleSignals, ...stalePresence].filter(d => d._ref).map(d => fbDeleteDoc(d._ref)));
+    } catch (e) { console.warn('[erase] server cleanup failed', e?.message); }
+  }
+
+  lsRemove(STORAGE_KEYS.USER_ID); lsRemove(STORAGE_KEYS.LOCAL_SIGS); lsRemove(STORAGE_KEYS.CONSENT); lsRemove(STORAGE_KEYS.PROFILE_PHOTO);
   try { sessionStorage.clear(); } catch {}
   state.userId = getOrCreateUserId(); state.consent = { geo: false, share: false, watch: false, version: 0 };
+  state.profilePhoto = null; refreshSettingsAvatarUI();
+  if (userMarker && state.map) { userMarker.setIcon(buildUserIcon()); updateUserHeading(lastKnownHeading); }
   state.signals = []; unsubscribeFirebase(); stopWatch();
   renderHexes(); updateZonePill(); updateCounter();
   closeModal('settings-modal'); toast('Données effacées', 'ok');
@@ -2658,10 +2704,14 @@ async function reportTaken() {
   const key = gridKey(state.lat, state.lng), now = Date.now();
   const myHistory = getHistory(), recentMine = myHistory.some(h => h.t > now - CFG.MAX_AGE_MS && Math.abs(h.lat - state.lat) < 0.001 && Math.abs(h.lng - state.lng) < 0.001);
   if (recentMine) incrementConfirmed();
+  const toRemove = state.signals.filter(s => s.key === key && now - s.t < CFG.MAX_AGE_MS);
   state.signals = state.signals.filter(s => !(s.key === key && now - s.t < CFG.MAX_AGE_MS));
   renderHexes(); updateZonePill(); updateCounter();
-  // Suppression Firebase désactivée (PATCH/DELETE bloqués Safari)
-  // Les signaux expirent naturellement via MAX_AGE_MS
+  // Marque aussi les signaux comme supprimés côté serveur — sinon les autres
+  // utilisateurs continuent de voir la zone comme disponible jusqu'à expiration.
+  if (state.firebaseOk && state.online) {
+    toRemove.forEach(s => { if (s.ref) fbDeleteDoc(s.ref); });
+  }
   showTakenBtn(false); toast('Place prise — zone mise à jour', 'ok'); takenCooldown = true;
   setTimeout(() => { takenCooldown = false; }, 30000);
 }
@@ -4167,18 +4217,39 @@ function checkDrivingSpeed(speed) {
 
 /* ═══════════════════════════════════════
    PRÉSENCE UTILISATEURS TEMPS RÉEL
+   Même principe que les signalements : chaque appareil "pointe"
+   régulièrement (POST simple), et on compte les pings récents et
+   distincts. Pas de PATCH/DELETE — donc pas de blocage Safari.
 ═══════════════════════════════════════ */
 let _presenceInterval = null;
+const PRESENCE_PING_MS   = 3 * 60_000;  // fréquence de pointage
+const PRESENCE_WINDOW_MS = 7 * 60_000;  // fenêtre "actif" (> 2x la fréquence, marge de sécurité)
+const PRESENCE_PURGE_MS  = 60 * 60_000; // au-delà, une présence n'a plus aucun sens : purge
 
 async function registerPresence() {
-  // Désactivé — PATCH/DELETE bloqués par Safari cross-origin
-  return;
+  if (!window._fb || !state.userId) return;
+  try {
+    await window._fb.addDoc('presence', {
+      userId: String(state.userId).slice(0, 49),
+      ts: window._fb.serverTimestamp(),
+    });
+  } catch (e) { console.warn('[presence] ping failed', e?.message); }
 }
 
 async function countActiveUsers() {
-  // Désactivé — collection presence bloquée par Safari cross-origin
-  // Le compteur reste à 1 (utilisateur actuel)
-  return;
+  const el = document.getElementById('users-ctr');
+  if (!el) return;
+  if (!window._fb) { el.textContent = '1'; return; }
+  try {
+    const cutoff = new Date(Date.now() - PRESENCE_WINDOW_MS);
+    const docs = await window._fb.getDocs('presence', [{ field: 'ts', op: 'GREATER_THAN', value: cutoff }]);
+    const uniqueUsers = new Set(docs.map(d => d.userId).filter(Boolean));
+    uniqueUsers.add(state.userId); // toujours se compter soi-même, même avant le 1er ping
+    el.textContent = String(uniqueUsers.size);
+  } catch (e) {
+    console.warn('[presence] count failed', e?.message);
+    el.textContent = el.textContent || '1';
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -4262,11 +4333,11 @@ function init() {
   }, 15000);
   setInterval(purgeOldSignals, CFG.PURGE_INTERVAL_MS);
 
-  // Présence utilisateurs toutes les 3 minutes
+  // Présence utilisateurs — pointage régulier + comptage des présences récentes
   setTimeout(() => {
     registerPresence();
     countActiveUsers();
-    _presenceInterval = setInterval(() => { registerPresence(); countActiveUsers(); }, 3 * 60_000);
+    _presenceInterval = setInterval(() => { registerPresence(); countActiveUsers(); }, PRESENCE_PING_MS);
   }, 4000);
 
   state.ready = true;
