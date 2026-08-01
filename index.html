@@ -5,25 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Vacuum">
+<meta name="apple-mobile-web-app-title" content="UFindGo">
 <meta name="theme-color" content="#eef2f7">
 <link rel="manifest" href="manifest.json">
 <meta name="format-detection" content="telephone=no">
 <meta name="referrer" content="no-referrer">
-<title>Vacuum — places libres</title>
+<title>UFindGo — places libres</title>
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://shamsetdean.github.io/vacuum/">
-<meta property="og:title" content="Vacuum — Trouvez et signalez des places libres en temps réel">
+<meta property="og:title" content="UFindGo — Trouvez et signalez des places libres en temps réel">
 <meta property="og:description" content="Signalez et trouvez des places de stationnement libres en temps réel. Collaboratif, gratuit, sans compte, sans pub.">
-<meta property="og:image" content="https://shamsetdean.github.io/vacuum/og-image.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image" content="https://shamsetdean.github.io/vacuum/og-image.png">
+<meta property="og:image:width" content="1536">
+<meta property="og:image:height" content="1024">
 <meta property="og:locale" content="fr_FR">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Vacuum — Trouvez et signalez des places libres en temps réel">
+<meta name="twitter:title" content="UFindGo — Trouvez et signalez des places libres en temps réel">
 <meta name="twitter:description" content="Signalez et trouvez des places de stationnement libres en temps réel.">
-<meta name="twitter:image" content="https://shamsetdean.github.io/vacuum/og-image.jpg">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%234caf50'/%3E%3Ctext x='16' y='23' font-family='system-ui,sans-serif' font-size='20' font-weight='700' fill='white' text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+<meta name="twitter:image" content="https://shamsetdean.github.io/vacuum/og-image.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
 <!-- CSP gérée côté serveur — meta CSP retirée car incompatible avec Firebase sur GitHub Pages -->
@@ -1000,7 +1001,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
     <button id="arCloseBtn" onclick="closeAR()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
-    <div id="arTitle">Vacuum AR</div>
+    <div id="arTitle">UFindGo AR</div>
     <div id="arCompass">
       <svg id="arCompassNeedle" width="24" height="24" viewBox="0 0 24 24" fill="none">
         <polygon points="12,3 14.5,12 12,10.5 9.5,12" fill="#16a34a"/>
@@ -1147,8 +1148,8 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 <!-- TOP BAR -->
 <header class="top">
   <div class="logo glass">
-    <div class="logo-mark" aria-hidden="true">V</div>
-    <span class="logo-name">VAC<b>UUM</b></span>
+    <div class="logo-mark" aria-hidden="true">U</div>
+    <span class="logo-name">UFind<b>Go</b></span>
     <span class="logo-beta" title="Application en développement">Bêta</span>
   </div>
   <div class="top-right">
@@ -1275,7 +1276,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
         <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="56" height="56"><circle cx="24" cy="24" r="22" fill="var(--accent)" opacity=".12"/><path d="M24 8C15.16 8 8 15.16 8 24s7.16 16 16 16 16-7.16 16-16S32.84 8 24 8zm0 4a12 12 0 0 1 0 24 12 12 0 0 1 0-24zm0 4a8 8 0 0 0 0 16 8 8 0 0 0 0-16zm0 4a4 4 0 0 1 0 8 4 4 0 0 1 0-8z" fill="var(--accent)"/></svg>
       </div>
       <h2 id="onboarding-title" style="font-size:22px;line-height:1.3;margin-bottom:12px">Trouvez une place.<br>Aidez les autres.</h2>
-      <p style="font-size:14px;color:var(--text-2);line-height:1.55;margin-bottom:16px">Vacuum est une carte collaborative. Chacun signale les places libres qu'il voit. Tout le monde en profite en temps réel.</p>
+      <p style="font-size:14px;color:var(--text-2);line-height:1.55;margin-bottom:16px">UFindGo est une carte collaborative. Chacun signale les places libres qu'il voit. Tout le monde en profite en temps réel.</p>
       <div class="ob-steps"><span class="ob-dot active"></span><span class="ob-dot"></span><span class="ob-dot"></span></div>
       <button class="btn btn-primary ob-next" data-next="2" style="width:100%;margin-top:4px">Suivant</button>
     </div>
@@ -1329,9 +1330,9 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
     <h2 id="privacy-title">Politique de confidentialité</h2>
     <p><small>Dernière mise à jour : août 2026</small></p>
     <h3>Statut de l'application</h3>
-    <p><strong>Vacuum est en phase de développement actif (version bêta).</strong></p>
+    <p><strong>UFindGo est en phase de développement actif (version bêta).</strong></p>
     <h3>Qui traite vos données ?</h3>
-    <p>Vacuum est un projet bénévole et gratuit. Contact : <strong>shamsetdean@gmail.com</strong></p>
+    <p>UFindGo est un projet bénévole et gratuit. Contact : <strong>shamsetdean@gmail.com</strong></p>
     <h3>Quelles données sont collectées ?</h3>
     <ul>
       <li>Identifiant anonyme généré aléatoirement (aucun lien avec votre identité)</li>
@@ -1529,14 +1530,14 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
     </div>
     <div class="safety-title">Votre sécurité d'abord</div>
     <div class="safety-body">
-      N'utilisez pas Vacuum en conduisant.<br>
+      N'utilisez pas UFindGo en conduisant.<br>
       Cette application est réservée aux <strong>passagers</strong> et aux personnes à l'arrêt.<br><br>
       En continuant, vous confirmez que vous <strong>n'êtes pas le conducteur</strong> du véhicule.<br><br>
       <small style="color:var(--muted);font-size:11px;line-height:1.5;display:block">
         L'indicateur de vitesse affiché est <strong>informatif uniquement</strong>.
         Il ne constitue pas un avertisseur de vitesse homologué et ne remplace
         pas votre vigilance ni les équipements certifiés.
-        Vacuum décline toute responsabilité en cas d'utilisation non conforme.
+        UFindGo décline toute responsabilité en cas d'utilisation non conforme.
       </small>
     </div>
     <button class="safety-confirm" onclick="acceptSafety()">Je suis passager ou à l'arrêt</button>
@@ -1553,7 +1554,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
     <div class="safety-title">Vous semblez en mouvement</div>
     <div class="safety-body">
       Votre vitesse indique que vous pourriez conduire.<br>
-      Vacuum se met en pause pour votre sécurité.
+      UFindGo se met en pause pour votre sécurité.
     </div>
     <button class="safety-confirm" onclick="confirmPassenger()">Je suis passager</button>
     <button class="safety-cancel" onclick="pauseForDriving()">Je conduis — mettre en pause</button>
@@ -1562,7 +1563,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 
 <!-- FATAL ERROR -->
 <div class="fatal" id="fatal">
-  <div class="logo-mark" style="width:48px;height:48px;font-size:20px;border-radius:14px;margin-bottom:14px;" aria-hidden="true">V</div>
+  <div class="logo-mark" style="width:48px;height:48px;font-size:20px;border-radius:14px;margin-bottom:14px;" aria-hidden="true">U</div>
   <h1>Impossible de charger</h1>
   <p id="fatal-msg">Une ressource essentielle n'a pas pu être chargée. Vérifiez votre connexion et réessayez.</p>
   <button class="btn btn-primary" onclick="location.reload()">Recharger</button>
@@ -2913,7 +2914,7 @@ function closePoiPanel() {
   document.body.style.overflow = '';
 }
 
-/* Mapping Nominatim amenity/shop → catégorie Vacuum */
+/* Mapping Nominatim amenity/shop → catégorie UFindGo */
 const NOMINATIM_CAT_MAP = {
   pharmacy: 'pharmacy', hospital: 'hospital', police: 'police',
   atm: 'atm', restaurant: 'restaurant', cafe: 'cafe', museum: 'museum',
