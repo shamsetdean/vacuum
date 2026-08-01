@@ -665,12 +665,6 @@ body.driving-mode .drive-badge { display: block; }
 #arVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
 #arCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
 
-#arGrid { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.05; background-image: linear-gradient(rgba(22,163,74,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(22,163,74,0.8) 1px, transparent 1px); background-size: 40px 40px; animation: arGridMove 8s linear infinite; }
-@keyframes arGridMove { from{background-position:0 0;} to{background-position:40px 40px;} }
-
-#arScanLine { position: absolute; left: 0; right: 0; height: 2px; z-index: 1; background: linear-gradient(90deg, transparent, rgba(22,163,74,0.8), transparent); pointer-events: none; animation: arScanLine 3s ease-in-out infinite; }
-@keyframes arScanLine { 0%{top:0%;opacity:0;} 10%{opacity:1;} 90%{opacity:1;} 100%{top:100%;opacity:0;} }
-
 #arHeader { position: absolute; top: calc(0px + var(--safe-t)); left: 0; right: 0; z-index: 2; padding: 12px 16px; display: flex; align-items: center; gap: 12px; background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, transparent 100%); }
 #arCloseBtn { width: 44px; height: 44px; background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 0.5px solid rgba(255,255,255,0.2); border-radius: 50%; color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 #arTitle { flex: 1; font-size: 14px; font-weight: 600; color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.6); }
@@ -990,8 +984,6 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 
 <!-- AR Overlay -->
 <div id="arOverlay">
-  <div id="arGrid"></div>
-  <div id="arScanLine"></div>
   <video id="arVideo" autoplay muted playsinline></video>
   <canvas id="arCanvas"></canvas>
   <div id="arHeader">
@@ -3488,12 +3480,18 @@ function drawARDestinationArrow(ctx, W, H) {
   const heading = arOrientation.alpha;
   const dist    = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
   const navTarget = getArNavTarget() || { lat: selectedPoi.lat, lng: selectedPoi.lon, label: null };
+  // Distance jusqu'au point réellement visé par la flèche (prochain virage,
+  // ou destination finale s'il n'y a plus de virage) — c'est CE nombre qu'il
+  // faut afficher à côté de l'instruction, pas la distance totale du trajet.
+  const turnDist = navTarget.label ? distanceM(state.lat, state.lng, navTarget.lat, navTarget.lng) : dist;
   const bearing = calcBearing(state.lat, state.lng, navTarget.lat, navTarget.lng);
   const cfg     = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
   const col     = cfg.color;
   const now     = Date.now() / 1000;
   const isClose = dist < 60;
   const isArrived = dist < 12;
+  const distTxt = formatDist(turnDist);
+  const label = (navTarget.label ? navTarget.label : selectedPoi.name).slice(0, 34);
 
   // Son de proximité
   tickProximitySound(dist);
@@ -3504,111 +3502,64 @@ function drawARDestinationArrow(ctx, W, H) {
   const cx = W / 2, cy = H / 2;
   const inFOV = Math.abs(relAngle) <= 55 && !isArrived;
 
+  /* Bloc d'info commun (distance + instruction) — une seule carte lisible,
+     jamais deux étiquettes empilées, jamais de clignotement agressif. */
+  function drawInfoCard(x, top) {
+    ctx.font = '800 20px -apple-system, system-ui';
+    const dw = ctx.measureText(distTxt).width;
+    ctx.font = '600 13px -apple-system, system-ui';
+    const lwText = ctx.measureText(label).width;
+    const w = Math.max(dw, lwText) + 28;
+    const h = 60;
+    const x0 = x - w / 2;
+    ctx.beginPath(); ctx.roundRect(x0, top, w, h, 14);
+    ctx.fillStyle = 'rgba(8,10,14,0.86)'; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '800 20px -apple-system, system-ui'; ctx.fillStyle = col;
+    ctx.fillText(distTxt, x, top + 23);
+    ctx.font = '600 12.5px -apple-system, system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(label, x, top + 46);
+    return h;
+  }
+
   // ─────────────────────────────────────────────────
   // CAS 1 : DESTINATION DANS LE CHAMP DE VISION
   // ─────────────────────────────────────────────────
   if (inFOV) {
     const screenX = cx + (relAngle / 55) * (W * 0.38);
     const screenY = H * 0.24;
-    const pulse   = 0.5 + 0.5 * Math.sin(now * 3);
+    const breathe = 1 + 0.06 * Math.sin(now * 2.2); // pulsation légère = "suivi en direct", pas un ornement
 
     ctx.save();
 
-    // ── Anneaux concentriques rotatifs ──
-    for (let i = 0; i < 3; i++) {
-      const r   = 52 + i * 22 + pulse * 6;
-      const rot = now * (i % 2 === 0 ? 0.6 : -0.4);
-      ctx.save();
-      ctx.translate(screenX, screenY);
-      ctx.rotate(rot);
-      // arc haut
-      ctx.beginPath();
-      ctx.arc(0, 0, r, -0.3, 0.3);
-      ctx.strokeStyle = col + Math.round((0.55 - i * 0.12) * 255).toString(16).padStart(2,'0');
-      ctx.lineWidth = i === 0 ? 2.5 : 1.5;
-      ctx.stroke();
-      // arc bas
-      ctx.beginPath();
-      ctx.arc(0, 0, r, Math.PI - 0.3, Math.PI + 0.3);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // ── Cercle central translucide ──
-    const rC = 38 + pulse * 5;
-    const grd = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, rC);
-    grd.addColorStop(0, col + '40');
-    grd.addColorStop(1, col + '08');
-    ctx.beginPath(); ctx.arc(screenX, screenY, rC, 0, Math.PI * 2);
-    ctx.fillStyle = grd; ctx.fill();
-    ctx.strokeStyle = col; ctx.lineWidth = 2;
-    ctx.shadowColor = col; ctx.shadowBlur = isClose ? 30 : 14;
+    // ── Réticule de verrouillage — indique la position exacte de la cible ──
+    const r = 30 * breathe;
+    ctx.beginPath(); ctx.arc(screenX, screenY, r, 0, Math.PI * 2);
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+    ctx.shadowColor = col; ctx.shadowBlur = isClose ? 18 : 8;
     ctx.stroke(); ctx.shadowBlur = 0;
-
-    // ── Réticule HUD ──
-    const seg = 14, gap = 8;
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8;
-    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy]) => {
-      ctx.beginPath();
-      ctx.moveTo(screenX + dx*gap, screenY + dy*gap);
-      ctx.lineTo(screenX + dx*(gap+seg), screenY + dy*(gap+seg));
-      ctx.stroke();
-    });
-    // Point central
     ctx.beginPath(); ctx.arc(screenX, screenY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.shadowColor = col; ctx.shadowBlur = 12; ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff'; ctx.fill();
 
-    // ── Chevrons animés descendant vers la cible ──
-    for (let i = 0; i < 4; i++) {
-      const phase = (now * 2.4 + i * 0.5) % 2;
-      const yOff  = (screenY + rC + 12) + phase * 28;
-      const alpha = 1 - phase / 2;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(screenX - 8, yOff - 6);
-      ctx.lineTo(screenX, yOff + 2);
-      ctx.lineTo(screenX + 8, yOff - 6);
-      ctx.stroke();
-      ctx.restore();
-    }
+    // ── Ligne de rattachement — relie la cible à sa fiche d'info ──
+    const cardTop = screenY + r + 26;
+    ctx.beginPath();
+    ctx.moveTo(screenX, screenY + r + 4);
+    ctx.lineTo(screenX, cardTop - 4);
+    ctx.strokeStyle = col + '80'; ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-    // ── Étiquette distancielle ──
-    const distTxt = isClose ? '⬤ ' + formatDist(dist) : formatDist(dist);
-    ctx.font = '700 14px -apple-system, system-ui';
-    const dtw = ctx.measureText(distTxt).width;
-    const dx = screenX - dtw/2 - 12, dy = screenY + rC + 48;
-    ctx.beginPath(); ctx.roundRect(dx, dy, dtw + 24, 32, 10);
-    const bgGrd = ctx.createLinearGradient(dx, dy, dx, dy + 32);
-    bgGrd.addColorStop(0, 'rgba(0,0,0,0.88)');
-    bgGrd.addColorStop(1, 'rgba(0,0,0,0.70)');
-    ctx.fillStyle = bgGrd; ctx.fill();
-    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
-    ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(distTxt, screenX, dy + 16);
+    drawInfoCard(screenX, cardTop);
 
-    // ── Nom du POI, ou instruction de virage si un itinéraire routier est connu ──
-    const name = (navTarget.label ? navTarget.label : selectedPoi.name).slice(0, 30);
-    ctx.font = '600 12px -apple-system, system-ui';
-    const nw = ctx.measureText(name).width;
-    ctx.beginPath(); ctx.roundRect(screenX - nw/2 - 10, dy + 36, nw + 20, 24, 7);
-    ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle';
-    ctx.fillText(name, screenX, dy + 48);
-
-    // ── Badge ARRIVÉE si très proche ──
+    // ── Alerte d'arrivée proche — utile, pas décorative ──
     if (isClose) {
-      const flash = Math.sin(now * 6) > 0;
-      ctx.beginPath(); ctx.roundRect(cx - 80, H * 0.13, 160, 34, 10);
-      ctx.fillStyle = flash ? col : 'rgba(0,0,0,0.85)'; ctx.fill();
-      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
-      ctx.font = '800 13px -apple-system, system-ui';
-      ctx.fillStyle = flash ? '#fff' : col;
+      ctx.beginPath(); ctx.roundRect(cx - 90, H * 0.11, 180, 32, 16);
+      ctx.fillStyle = col; ctx.globalAlpha = 0.92; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.font = '800 12.5px -apple-system, system-ui';
+      ctx.fillStyle = '#fff';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('▶ VOUS APPROCHEZ ◀', cx, H * 0.13 + 17);
+      ctx.fillText('VOUS APPROCHEZ', cx, H * 0.11 + 16);
     }
 
     ctx.restore();
@@ -3616,102 +3567,45 @@ function drawARDestinationArrow(ctx, W, H) {
   }
 
   // ─────────────────────────────────────────────────
-  // CAS 2 : HORS CHAMP — GRANDE FLÈCHE HUD
+  // CAS 2 : HORS CHAMP — GRANDE FLÈCHE DE CAP
   // ─────────────────────────────────────────────────
   ctx.save();
 
-  const pulse2 = 0.5 + 0.5 * Math.sin(now * 2.8);
-  const R      = Math.min(W, H) * 0.3;
+  const R      = Math.min(W, H) * 0.28;
   const angle  = (relAngle * Math.PI / 180) - Math.PI / 2;
   const ax     = cx + Math.cos(angle) * R;
-  const ay     = cy + Math.sin(angle) * R + 20;
+  const ay     = cy + Math.sin(angle) * R + 10;
 
-  // ── Anneaux de guidage ──
-  [R + 28, R, R - 20].forEach((r, i) => {
-    ctx.beginPath(); ctx.arc(cx, cy + 20, r, 0, Math.PI * 2);
-    ctx.strokeStyle = col + ['18','0e','06'][i];
-    ctx.lineWidth = 1; ctx.stroke();
-  });
-
-  // ── Arc directionnel large ──
-  const span = 0.65;
-  ctx.beginPath(); ctx.arc(cx, cy + 20, R, angle - span, angle + span);
-  const arcGrd = ctx.createLinearGradient(
-    cx + Math.cos(angle - span) * R, cy + 20 + Math.sin(angle - span) * R,
-    cx + Math.cos(angle + span) * R, cy + 20 + Math.sin(angle + span) * R
-  );
-  arcGrd.addColorStop(0, col + '22');
-  arcGrd.addColorStop(0.5, col + 'ee');
-  arcGrd.addColorStop(1, col + '22');
-  ctx.strokeStyle = arcGrd; ctx.lineWidth = 5;
-  ctx.shadowColor = col; ctx.shadowBlur = 22; ctx.stroke(); ctx.shadowBlur = 0;
-
-  // ── Flèche principale ──
+  // ── Flèche unique, sans traînée ni halo décoratif ──
   ctx.save();
   ctx.translate(ax, ay);
   ctx.rotate(angle + Math.PI / 2);
-
-  // Traînées
-  for (let i = 1; i <= 5; i++) {
-    ctx.save();
-    ctx.translate(0, i * 9);
-    ctx.globalAlpha = (0.22 - i * 0.04);
-    ctx.beginPath();
-    ctx.moveTo(0, -22); ctx.lineTo(18 - i*2, 12); ctx.lineTo(0, 6); ctx.lineTo(-(18 - i*2), 12);
-    ctx.closePath();
-    ctx.fillStyle = col; ctx.fill();
-    ctx.restore();
-  }
-
-  // Corps
-  const sz = 28 + pulse2 * 6;
   ctx.beginPath();
-  ctx.moveTo(0, -sz);
-  ctx.lineTo(18, 14); ctx.lineTo(0, 7); ctx.lineTo(-18, 14);
+  ctx.moveTo(0, -24); ctx.lineTo(17, 13); ctx.lineTo(0, 6); ctx.lineTo(-17, 13);
   ctx.closePath();
   ctx.fillStyle = col;
-  ctx.shadowColor = col; ctx.shadowBlur = 28; ctx.fill(); ctx.shadowBlur = 0;
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
 
-  // Point brillant sur la pointe
-  ctx.beginPath(); ctx.arc(0, -sz, 4, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff'; ctx.fill();
-
-  ctx.restore(); // fin translate+rotate
-
-  // ── Étiquette latérale ──
-  const name2  = (navTarget.label ? navTarget.label : selectedPoi.name).slice(0, 26);
+  // ── Fiche d'info à côté de la flèche ──
   const lIsRight = ax >= cx;
-  ctx.font = '700 13px -apple-system, system-ui';
-  const lw2 = Math.max(ctx.measureText(name2).width, ctx.measureText(formatDist(dist)).width) + 24;
-  const lh2 = 46, lx2 = lIsRight ? ax + 20 : ax - lw2 - 20, ly2 = ay - lh2 / 2;
+  ctx.font = '800 20px -apple-system, system-ui';
+  const dw2 = ctx.measureText(distTxt).width;
+  ctx.font = '600 13px -apple-system, system-ui';
+  const lw2 = Math.max(dw2, ctx.measureText(label).width) + 28;
+  const cardX = lIsRight ? ax + 20 + lw2 / 2 : ax - 20 - lw2 / 2;
+  drawInfoCard(cardX, ay - 30);
 
-  ctx.beginPath(); ctx.roundRect(lx2, ly2, lw2, lh2, 12);
-  const lblGrd = ctx.createLinearGradient(lx2, ly2, lx2, ly2 + lh2);
-  lblGrd.addColorStop(0, 'rgba(0,0,0,0.90)');
-  lblGrd.addColorStop(1, 'rgba(0,0,0,0.75)');
-  ctx.fillStyle = lblGrd; ctx.fill();
-  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
-  ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.stroke(); ctx.shadowBlur = 0;
-
+  // ── Bandeau d'instruction, en bas — l'action à faire, sans clignoter ──
+  const dir = relAngle > 0 ? 'Tournez à droite' : 'Tournez à gauche';
+  ctx.font = '700 15px -apple-system, system-ui';
+  const dw = ctx.measureText(dir).width + 36;
+  ctx.beginPath(); ctx.roundRect(cx - dw/2, H * 0.78, dw, 40, 14);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.fillStyle = '#fff';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '600 12px -apple-system, system-ui'; ctx.fillStyle = '#fff';
-  ctx.fillText(name2, lx2 + lw2/2, ly2 + 14);
-  ctx.font = '800 14px -apple-system, system-ui'; ctx.fillStyle = col;
-  ctx.fillText(formatDist(dist), lx2 + lw2/2, ly2 + 32);
-
-  // ── Bandeau directionnel bas écran ──
-  const dir   = relAngle > 0 ? '▶ Tournez à droite' : '◀ Tournez à gauche';
-  const flash2 = Math.sin(now * 2.5) > 0;
-  ctx.font = '700 14px -apple-system, system-ui';
-  const dw = ctx.measureText(dir).width + 32;
-  ctx.beginPath(); ctx.roundRect(cx - dw/2, H * 0.76, dw, 38, 12);
-  ctx.fillStyle = flash2 ? col + 'cc' : 'rgba(0,0,0,0.82)'; ctx.fill();
-  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
-  ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
-  ctx.fillStyle = flash2 ? '#fff' : col;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(dir, cx, H * 0.76 + 19);
+  ctx.fillText(dir, cx, H * 0.78 + 20);
 
   ctx.restore();
 }
@@ -3735,32 +3629,18 @@ function drawARSignalZones(ctx, W, H) {
     const proximityFactor = 1 - Math.min(dist / CFG.AR_SIGNAL_RADIUS, 1);
     const screenY = H * 0.35 + proximityFactor * (H * 0.15);
     const col = p >= 0.65 ? '#22c55e' : p >= 0.40 ? '#f59e0b' : '#ef4444';
-    const t = Date.now() / 1000;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 2 + screenX);
-    const size = 28 + pulse * 8;
+    const size = 26;
 
     ctx.save();
-    // Halo pulsant
-    ctx.beginPath(); ctx.arc(screenX, screenY, size + 12, 0, Math.PI * 2);
-    ctx.fillStyle = col.replace('#', 'rgba(').replace(/(..)(..)(..)/, (_, r, g, b) => {
-      return `${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)}`;
-    }) + `,${0.08 + pulse * 0.06})`;
-    // Fallback simplifié
-    ctx.fillStyle = `${col}${Math.round((0.12 + pulse * 0.06) * 255).toString(16).padStart(2,'0')}`;
-    ctx.fill();
-
-    // Cercle principal
+    // Repère — cercle plein codé par couleur de disponibilité
     ctx.beginPath(); ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
     ctx.fillStyle = col + '33'; ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
-
-    // Icône parking P
     ctx.font = `800 ${Math.round(size * 0.7)}px -apple-system, system-ui`;
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.fillText('P', screenX, screenY);
-    ctx.shadowBlur = 0;
+    ctx.fillText('P', screenX, screenY);
 
-    // Label probabilité + distance
+    // Lecture : probabilité + distance
     ctx.font = '700 12px -apple-system, system-ui';
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     const labelY = screenY + size + 10;
@@ -3770,11 +3650,9 @@ function drawARSignalZones(ctx, W, H) {
     ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fill();
     ctx.fillStyle = col; ctx.fillText(label, screenX, labelY + 1);
 
-    // Ligne de connexion vers le bas
-    const grad = ctx.createLinearGradient(screenX, screenY + size, screenX, H * 0.85);
-    grad.addColorStop(0, col + '66'); grad.addColorStop(1, col + '00');
+    // Ligne de rattachement au sol — indique où se trouve réellement la zone
     ctx.beginPath(); ctx.moveTo(screenX, screenY + size); ctx.lineTo(screenX, H * 0.85);
-    ctx.strokeStyle = grad; ctx.lineWidth = 1; ctx.setLineDash([4, 6]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = col + '55'; ctx.lineWidth = 1; ctx.setLineDash([4, 6]); ctx.stroke(); ctx.setLineDash([]);
     ctx.restore();
   }
 }
@@ -3782,7 +3660,6 @@ function drawARSignalZones(ctx, W, H) {
 /* Dessiner les arrêts de transport en AR */
 function drawARTransitStops(ctx, W, H) {
   if (!arNearbyStops.length) return;
-  const t = Date.now() / 1000;
 
   // Dédoublonner par nom (garder le plus proche), limiter à 6
   const seen = new Map();
@@ -3808,16 +3685,13 @@ function drawARTransitStops(ctx, W, H) {
     const row = Math.floor(i / COLS);
     const bX = startX + col * (PILL_W + GAP_X);
     const bY = startY + row * (PILL_H + GAP_Y);
-    const pulse = 0.5 + 0.5 * Math.sin(t * 1.4 + i * 0.7);
 
     ctx.save();
 
     // Fond pilule
-    ctx.shadowColor = stop.color; ctx.shadowBlur = 5 + pulse * 5;
     ctx.beginPath(); ctx.roundRect(bX, bY, PILL_W, PILL_H, 11);
     ctx.fillStyle = "rgba(0,0,0,0.86)"; ctx.fill();
     ctx.strokeStyle = stop.color; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // Badge mode — fond coloré
     ctx.beginPath(); ctx.roundRect(bX + 5, bY + 5, 32, PILL_H - 10, 7);
@@ -3849,17 +3723,16 @@ function drawARTransitStops(ctx, W, H) {
 
 /* Scan overlay minimaliste */
 function drawARScanOverlay(ctx, W, H) {
-  const t = Date.now() / 1000;
   const cx = W / 2, cy = H / 2 - 30;
 
-  // Crosshair centre (uniquement sans destination)
+  // Réticule central — repère d'aiguisage, uniquement sans destination
   if (!selectedPoi) {
     const chLen = 16, chGap = 6;
     [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx, dy]) => {
       ctx.beginPath();
       ctx.moveTo(cx + dx*chGap, cy + dy*chGap);
       ctx.lineTo(cx + dx*(chGap+chLen), cy + dy*(chGap+chLen));
-      ctx.strokeStyle = `rgba(22,163,74,${0.5 + 0.3*Math.sin(t*2)})`;
+      ctx.strokeStyle = 'rgba(22,163,74,0.7)';
       ctx.lineWidth = 2; ctx.stroke();
     });
   }
@@ -3889,8 +3762,15 @@ function updateARInstruction() {
     const distLabel = formatDist(dist);
     const walkMin = Math.max(1, Math.round(dist / 80));
     const navTarget = getArNavTarget();
+    const hasTurn = !!(navTarget && navTarget.label);
+    // Le gros chiffre doit correspondre à ce qui est indiqué juste à côté :
+    // distance jusqu'au PROCHAIN VIRAGE quand on en connaît un, pas jusqu'à
+    // la destination finale — sinon "Tournez à droite" à côté de "6.3km"
+    // laisse croire que le virage est à 6,3 km.
+    const turnDist = hasTurn ? distanceM(state.lat, state.lng, navTarget.lat, navTarget.lng) : dist;
+    const bigLabel = dist < 20 ? 'Arrivé' : formatDist(turnDist);
     const walkStr = dist < 20 ? 'Arrivé !'
-      : navTarget && navTarget.label ? navTarget.label
+      : hasTurn ? navTarget.label + (dist > 150 ? ' · ' + distLabel + ' au total' : '')
       : dist < 100 ? distLabel + ' · Presque arrivé' : distLabel + ' · ~' + walkMin + ' min';
 
     const nameEl = document.getElementById('arNavName');
@@ -3900,7 +3780,7 @@ function updateARInstruction() {
 
     if (nameEl) nameEl.textContent = selectedPoi.name.slice(0, 26);
     if (metaEl) metaEl.textContent = walkStr;
-    if (distEl) { distEl.textContent = distLabel; distEl.style.color = cfg.color; }
+    if (distEl) { distEl.textContent = bigLabel; distEl.style.color = cfg.color; }
     if (iconEl) {
       iconEl.style.background = cfg.color + '22';
       iconEl.innerHTML = (POI_ICONS_SVG[selectedPoi.cat] || '')
