@@ -692,13 +692,13 @@ body.driving-mode .drive-badge { display: block; }
 #arSignalBtn:active { transform:scale(0.96); }
 #arVoiceBtn:active  { transform:scale(0.96); }
 
-#arInstruction { position: absolute; bottom: calc(32px + var(--safe-b)); left: 16px; right: 16px; z-index: 2; background: rgba(0,0,0,0.80); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 0.5px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; }
+#arInstruction { position: absolute; bottom: calc(126px + var(--safe-b)); left: 16px; right: 16px; z-index: 2; background: rgba(0,0,0,0.80); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 0.5px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; }
 #arInstructionIcon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; flex-shrink: 0; background: rgba(22,163,74,0.25); }
 #arInstructionText { flex: 1; min-width: 0; }
 #arInstructionMain { font-size: 16px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #arInstructionSub { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 3px; }
 
-#arStats { position: absolute; bottom: calc(130px + var(--safe-b)); left: 16px; right: 16px; z-index: 2; display: flex; gap: 8px; }
+#arStats { position: absolute; bottom: calc(212px + var(--safe-b)); left: 16px; right: 16px; z-index: 2; display: flex; gap: 8px; }
 .ar-stat { flex: 1; background: rgba(0,0,0,0.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 0.5px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 12px; text-align: center; }
 .ar-stat-val { font-size: 18px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
 .ar-stat-lbl { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
@@ -1002,7 +1002,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   <div id="arStats">
     <div class="ar-stat"><div class="ar-stat-val" id="arStatSignals">0</div><div class="ar-stat-lbl">signaux</div></div>
     <div class="ar-stat"><div class="ar-stat-val" id="arStatStops">0</div><div class="ar-stat-lbl">arrêts</div></div>
-    <div class="ar-stat"><div class="ar-stat-val" id="arStatDist">--</div><div class="ar-stat-lbl">mètres</div></div>
+    <div class="ar-stat"><div class="ar-stat-val" id="arStatDist">--</div><div class="ar-stat-lbl">m · plus proche</div></div>
   </div>
 
   <!-- Instruction AR scan (masquée quand POI actif) -->
@@ -2437,8 +2437,6 @@ function startWatch() {
       updateZonePill();
       showTakenBtn(hasActiveSignalNearby());
       if (navDirectionActive) updateNavDirectionDisplay();
-      // MAJ stats AR si actif
-      if (arActive) { document.getElementById('arStatDist').textContent = Math.round(distanceM(lat, lng, lat, lng) || 0); }
     },
     () => {},
     { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 }
@@ -3410,14 +3408,22 @@ async function fetchARStops(lat, lng) {
 }
 
 function updateARStats() {
+  const now = Date.now();
+  let nearest = Infinity;
   const signalCount = state.signals.filter(s => {
-    const now = Date.now();
     if (now - s.t >= CFG.MAX_AGE_MS) return false;
     const d = distanceM(state.lat, state.lng, s.lat, s.lng);
-    return d <= CFG.AR_SIGNAL_RADIUS;
+    if (d <= CFG.AR_SIGNAL_RADIUS) { if (d < nearest) nearest = d; return true; }
+    return false;
   }).length;
+  arNearbyStops.forEach(stop => {
+    const d = distanceM(state.lat, state.lng, stop.lat, stop.lon);
+    if (d < nearest) nearest = d;
+  });
   document.getElementById('arStatSignals').textContent = signalCount;
   document.getElementById('arStatStops').textContent = arNearbyStops.length;
+  const distEl = document.getElementById('arStatDist');
+  if (distEl) distEl.textContent = isFinite(nearest) ? Math.round(nearest) : '--';
 }
 
 function startARRender() {
@@ -3433,6 +3439,7 @@ function startARRender() {
   resize();
   window.addEventListener('resize', resize);
 
+  let lastStatsUpdate = 0;
   function frame() {
     const W = window.innerWidth, H = window.innerHeight;
     ctx.clearRect(0, 0, W, H);
@@ -3445,6 +3452,7 @@ function startARRender() {
       drawARSignalZones(ctx, W, H);
       drawARTransitStops(ctx, W, H);
       drawARScanOverlay(ctx, W, H);
+      if (Date.now() - lastStatsUpdate > 1000) { lastStatsUpdate = Date.now(); updateARStats(); }
     }
     updateARInstruction();
     arRAF = requestAnimationFrame(frame);
