@@ -329,10 +329,12 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 }
 .nav-direction-arrow { width: 22px; height: 22px; transition: transform 0.25s ease; }
 .nav-direction-info { display: flex; flex-direction: column; min-width: 0; padding-right: 4px; }
-.nav-direction-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.nav-direction-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
 .nav-direction-dist { font-size: 12.5px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.nav-direction-step { font-size: 11px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; margin-top: 1px; }
 .nav-direction-close { width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
 .nav-direction-close svg { width: 11px; height: 11px; }
+.nav-route-line { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25)); }
 
 /* ═══ BOUTONS LATERAUX — style "rond" (cf. iter : cercle glass, glow directionnel) ═══ */
 .side-btn { position: fixed; z-index: 15; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: bottom 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.12s ease, background 0.2s, color 0.2s, box-shadow 0.2s; }
@@ -1148,6 +1150,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   <div class="nav-direction-info">
     <div class="nav-direction-name" id="nav-direction-name">—</div>
     <div class="nav-direction-dist" id="nav-direction-dist">—</div>
+    <div class="nav-direction-step" id="nav-direction-step"></div>
   </div>
   <button class="nav-direction-close" id="nav-direction-close" aria-label="Arrêter la navigation" onclick="clearPoiSelection()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -3769,12 +3772,15 @@ function updateARInstruction() {
 
 /* ═══════════════════════════════════════
    DIRECTION VERS LA DESTINATION — mode carte
-   Équivalent non-AR de la flèche : un rond avec une flèche qui
-   pivote vers le lieu choisi, sans passer par la caméra.
+   Un rond avec une flèche qui pointe vers le prochain virage à
+   suivre sur la route (pas juste la destination à vol d'oiseau),
+   plus le tracé de l'itinéraire dessiné sur la carte.
 ═══════════════════════════════════════ */
 let navDirectionActive = false;
 let navHeading = null;
 let navOrientationListener = null;
+let navRoute = null;       // { coords:[[lat,lng]...], steps:[...], distance, duration }
+let navRouteLine = null;   // L.polyline
 
 function onNavOrientation(e) {
   let h;
@@ -3804,33 +3810,128 @@ function detachNavOrientationListener() {
   navHeading = null;
 }
 
+/* ── Itinéraire réel sur les routes (OSRM, service public gratuit) ── */
+async function fetchRoadRoute(lat1, lng1, lat2, lng2) {
+  try {
+    const url = 'https://router.project-osrm.org/route/v1/driving/'
+      + lng1 + ',' + lat1 + ';' + lng2 + ',' + lat2
+      + '?overview=full&geometries=geojson&steps=true';
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('osrm ' + r.status);
+    const data = await r.json();
+    const route = data?.routes?.[0];
+    if (!route) throw new Error('no route');
+    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+    const steps = (route.legs?.[0]?.steps || []).map(s => ({
+      distance: s.distance,
+      name: s.name || '',
+      type: s.maneuver?.type || '',
+      modifier: s.maneuver?.modifier || '',
+      loc: s.maneuver?.location ? [s.maneuver.location[1], s.maneuver.location[0]] : null,
+      coords: (s.geometry?.coordinates || []).map(c => [c[1], c[0]]),
+    }));
+    return { coords, steps, distance: route.distance, duration: route.duration };
+  } catch (e) { console.warn('[route] failed', e?.message); return null; }
+}
+function drawRoutePolyline(coords) {
+  removeRouteLine();
+  if (!state.map || !L || !coords || !coords.length) return;
+  navRouteLine = L.polyline(coords, { className: 'nav-route-line', color: '#16a34a', weight: 6, opacity: 0.55, lineCap: 'round', lineJoin: 'round' }).addTo(state.map);
+}
+function removeRouteLine() {
+  if (navRouteLine && state.map) state.map.removeLayer(navRouteLine);
+  navRouteLine = null;
+}
+const MANEUVER_FR = { left: 'à gauche', right: 'à droite', straight: 'tout droit', 'slight left': 'légèrement à gauche', 'slight right': 'légèrement à droite', 'sharp left': 'fortement à gauche', 'sharp right': 'fortement à droite', uturn: 'demi-tour' };
+function maneuverText(step) {
+  if (!step) return '';
+  if (step.type === 'arrive') return 'Vous arrivez à destination';
+  if (step.type === 'depart') return 'Départ' + (step.name ? ' · ' + step.name : '');
+  const dir = MANEUVER_FR[step.modifier] || 'tout droit';
+  const verb = step.type === 'roundabout' ? 'Au rond-point, sortie' : 'Tournez';
+  return verb + ' ' + dir + (step.name ? ' sur ' + step.name : '');
+}
+/* Trouve l'étape de l'itinéraire la plus proche de la position actuelle,
+   pour savoir quel virage arrive ensuite. */
+function findCurrentStepIndex(steps, lat, lng) {
+  let bestIdx = 0, bestD = Infinity;
+  steps.forEach((s, i) => {
+    (s.coords || []).forEach(c => {
+      const d = distanceM(lat, lng, c[0], c[1]);
+      if (d < bestD) { bestD = d; bestIdx = i; }
+    });
+  });
+  return bestIdx;
+}
+
 function showNavDirection() {
   if (!selectedPoi) return;
   navDirectionActive = true;
   const el = document.getElementById('nav-direction');
   const nameEl = document.getElementById('nav-direction-name');
-  if (nameEl) nameEl.textContent = selectedPoi.name.slice(0, 24);
+  if (nameEl) nameEl.textContent = selectedPoi.name.slice(0, 30);
   if (el) el.classList.remove('hidden');
   attachNavOrientationListener();
   updateNavDirectionDisplay();
 }
 function hideNavDirection() {
   navDirectionActive = false;
+  navRoute = null;
+  removeRouteLine();
   const el = document.getElementById('nav-direction');
   if (el) el.classList.add('hidden');
+  const stepEl = document.getElementById('nav-direction-step');
+  if (stepEl) stepEl.textContent = '';
   detachNavOrientationListener();
 }
 function updateNavDirectionDisplay() {
   if (!navDirectionActive || !selectedPoi) return;
-  const dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
-  const bearing = calcBearing(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const arrow = document.getElementById('nav-direction-arrow');
+  const distEl = document.getElementById('nav-direction-dist');
+  const stepEl = document.getElementById('nav-direction-step');
+
+  let targetLat = selectedPoi.lat, targetLng = selectedPoi.lon;
+  let dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  let stepLabel = '';
+
+  if (navRoute && navRoute.steps && navRoute.steps.length) {
+    // On vise le PROCHAIN virage sur la route, pas la destination finale —
+    // c'est ce qui permet de savoir précisément quelle route prendre.
+    const idx = findCurrentStepIndex(navRoute.steps, state.lat, state.lng);
+    const nextStep = navRoute.steps[idx + 1] || navRoute.steps[idx];
+    if (nextStep && nextStep.loc) {
+      targetLat = nextStep.loc[0]; targetLng = nextStep.loc[1];
+      const distToManeuver = distanceM(state.lat, state.lng, targetLat, targetLng);
+      stepLabel = maneuverText(nextStep) + ' · ' + formatDist(distToManeuver);
+    }
+  }
+
+  const bearing = calcBearing(state.lat, state.lng, targetLat, targetLng);
   // Avec cap téléphone connu : flèche relative à la direction regardée.
   // Sinon : cap absolu (nord en haut), toujours utile pour s'orienter.
   const relAngle = (navHeading !== null && isFinite(navHeading)) ? ((bearing - navHeading) + 360) % 360 : bearing;
-  const arrow = document.getElementById('nav-direction-arrow');
   if (arrow) arrow.style.transform = 'rotate(' + relAngle + 'deg)';
-  const distEl = document.getElementById('nav-direction-dist');
   if (distEl) distEl.textContent = dist < 20 ? 'Arrivé' : formatDist(dist);
+  if (stepEl) stepEl.textContent = stepLabel;
+}
+
+/* Lance le calcul d'itinéraire réel (routes) et le dessine sur la carte */
+async function startRouteNavigation() {
+  if (!selectedPoi) return;
+  const fromLat = state.lat, fromLng = state.lng;
+  const route = await fetchRoadRoute(fromLat, fromLng, selectedPoi.lat, selectedPoi.lon);
+  if (!selectedPoi) return; // annulé entre-temps
+  if (route) {
+    navRoute = route;
+    drawRoutePolyline(route.coords);
+    if (state.map && route.coords.length) {
+      state.map.fitBounds(L.latLngBounds(route.coords), { padding: [70, 70], maxZoom: 17 });
+    }
+  } else {
+    navRoute = null;
+    toast("Itinéraire indisponible — direction à vol d'oiseau", 'warn');
+  }
+  updateNavDirectionDisplay();
 }
 
 /* Navigation carte depuis panneau POI */
@@ -3856,6 +3957,7 @@ function startMapNavigation() {
       .addTo(state.map).openPopup();
   }
   showNavDirection();
+  startRouteNavigation();
   toast('Destination sur la carte : ' + selectedPoi.name, 'ok');
 }
 
