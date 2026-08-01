@@ -489,6 +489,17 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 @keyframes userDotBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 .user-dot-core { position: relative; width: 16px; height: 16px; animation: userDotBreathe 1.8s ease-in-out infinite; border-radius: 50%; background: var(--blue); border: 3px solid #fff; box-shadow: 0 0 10px rgba(37,99,235,0.65); z-index: 2; }
 .user-dot-heading { position: absolute; bottom: 50%; left: 50%; width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 24px solid rgba(37,99,235,0.85); transform-origin: 50% 100%; opacity: 0; transition: opacity 0.2s ease; filter: drop-shadow(0 0 4px rgba(37,99,235,0.5)); }
+
+/* ═══ RONDS DE POSITION — variante photo de profil, façon "avatar pin"
+   (cf. capture partagée) : photo dans un cercle blanc avec ombre, petit
+   point-repère en dessous, badge de cap orbitant en haut à droite ═══ */
+.user-avatar-wrap { position: relative; width: 60px; height: 78px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.user-avatar-pin { width: 56px; height: 56px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px var(--blue); overflow: hidden; background: #fff; flex-shrink: 0; animation: userDotBreathe 1.8s ease-in-out infinite; }
+.user-avatar-pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.user-avatar-tail { width: 8px; height: 8px; border-radius: 50%; background: rgba(15,29,54,0.28); margin-top: 4px; }
+.user-avatar-heading-badge { position: absolute; top: -4px; right: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--blue); border: 2.5px solid #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(37,99,235,0.5); opacity: 0; transition: opacity 0.2s ease; }
+.user-avatar-heading-badge.visible { opacity: 1; }
+.user-avatar-heading-arrow { width: 12px; height: 12px; transition: transform 0.2s ease; }
 .s-marker { width: 14px; height: 14px; background: var(--accent); border: 2.5px solid #fff; border-radius: 50%; box-shadow: 0 0 12px rgba(22,163,74,0.5), 0 2px 4px rgba(0,0,0,0.15); animation: signal-pop 0.45s cubic-bezier(0.4,0,0.2,1) forwards; }
 @keyframes signal-pop { 0%{ transform:scale(0); } 70%{ transform:scale(1.3); } 100%{ transform:scale(1); } }
 .accuracy-ring { border-radius: 50%; background: rgba(37,99,235,0.08); border: 1.5px solid rgba(37,99,235,0.25); pointer-events: none; }
@@ -1298,6 +1309,26 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   <div class="modal">
     <div class="modal-handle" aria-hidden="true"></div>
     <h2 id="settings-title">Réglages &amp; confidentialité</h2>
+    <div class="fp-item" id="settings-avatar-row" onclick="document.getElementById('profile-photo-input').click()">
+      <div class="fp-left">
+        <div class="fp-icon" id="settings-avatar-icon" style="background:var(--blue-soft);overflow:hidden;padding:0;position:relative;border-radius:50%;">
+          <img id="settings-avatar-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+          <svg id="settings-avatar-placeholder" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </div>
+        <div class="fp-text"><div class="fp-label">Photo de profil</div><div class="fp-sub" id="settings-avatar-sub">Affichée dans un rond sur la carte, à votre position</div></div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+    <input type="file" id="profile-photo-input" accept="image/*" style="display:none" onchange="onProfilePhotoSelected(event)">
+    <div class="fp-item" id="settings-avatar-remove-row" style="display:none" onclick="event.stopPropagation();removeProfilePhoto()">
+      <div class="fp-left">
+        <div class="fp-icon" style="background:var(--danger-soft);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+        </div>
+        <div class="fp-text"><div class="fp-label" style="color:var(--danger)">Retirer la photo</div><div class="fp-sub">Revenir au rond bleu par défaut</div></div>
+      </div>
+    </div>
+    <div class="fp-divider"></div>
     <div class="fp-item" id="settings-share">
       <div class="fp-left">
         <div class="fp-icon" style="background:var(--accent-soft);">
@@ -1550,6 +1581,7 @@ const STORAGE_KEYS = Object.freeze({
   CONFIRMED:  'vac_confirmed',
   POI_HISTORY: 'vac_poi_history',
   NIGHT_MODE:  'vac_night_mode',
+  PROFILE_PHOTO: 'vac_profile_photo',
 });
 
 /* ═══ STATE ═══ */
@@ -1558,6 +1590,7 @@ const state = {
   lastFetchLat: null, lastFetchLng: null,
   signals: [],
   map: null,
+  profilePhoto: null,
   hexLayers: new Map(),
   userId: null,
   firebaseOk: false,
@@ -1868,6 +1901,16 @@ function setStatus(msg) { const bar = document.getElementById('info-bar'), addr 
 /* ═══ USER MARKER ═══ */
 let userMarker = null;
 function buildUserIcon() {
+  if (state.profilePhoto) {
+    return L.divIcon({
+      html: '<div class="user-avatar-wrap">'
+          + '<div class="user-avatar-heading-badge"><svg class="user-avatar-heading-arrow" viewBox="0 0 24 24" fill="#fff"><path d="M12 2 L19 21 L12 17 L5 21 Z"/></svg></div>'
+          + '<div class="user-avatar-pin"><img src="' + state.profilePhoto + '" alt=""></div>'
+          + '<div class="user-avatar-tail"></div>'
+          + '</div>',
+      iconSize: [60, 78], iconAnchor: [30, 74], className: ''
+    });
+  }
   return L.divIcon({
     html: '<div class="user-dot-wrap"><div class="user-dot-pulse"></div><div class="user-dot-heading"></div><div class="user-dot-core"></div></div>',
     iconSize: [44, 44], iconAnchor: [22, 22], className: ''
@@ -1881,16 +1924,88 @@ function updateUserMarker(lat, lng, heading) {
   updateUserHeading(heading);
 }
 /* Met à jour uniquement la flèche de cap sans recréer l'icône entière,
-   pour que l'animation de respiration/pulse du rond ne redémarre jamais. */
+   pour que l'animation de respiration/pulse du rond ne redémarre jamais.
+   Fonctionne pour les deux variantes (rond plein ou photo de profil). */
 function updateUserHeading(heading) {
   if (!userMarker || !userMarker._icon) return;
-  const el = userMarker._icon.querySelector('.user-dot-heading');
-  if (!el) return;
-  if (typeof heading === 'number' && isFinite(heading)) {
-    el.style.opacity = '1';
-    el.style.transform = 'translate(-50%, 0) rotate(' + heading + 'deg)';
+  lastKnownHeading = (typeof heading === 'number' && isFinite(heading)) ? heading : null;
+  const dotArrow = userMarker._icon.querySelector('.user-dot-heading');
+  const avatarBadge = userMarker._icon.querySelector('.user-avatar-heading-badge');
+  const avatarArrow = userMarker._icon.querySelector('.user-avatar-heading-arrow');
+  const has = lastKnownHeading !== null;
+  if (dotArrow) {
+    dotArrow.style.opacity = has ? '1' : '0';
+    if (has) dotArrow.style.transform = 'translate(-50%, 0) rotate(' + lastKnownHeading + 'deg)';
+  }
+  if (avatarBadge) avatarBadge.classList.toggle('visible', has);
+  if (avatarArrow && has) avatarArrow.style.transform = 'rotate(' + lastKnownHeading + 'deg)';
+}
+let lastKnownHeading = null;
+
+/* ═══════════════════════════════════════
+   PHOTO DE PROFIL — rond personnalisé sur la carte
+═══════════════════════════════════════ */
+function loadProfilePhoto() { return lsGet(STORAGE_KEYS.PROFILE_PHOTO); }
+function onProfilePhotoSelected(e) {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (!file.type || !file.type.startsWith('image/')) { toast('Choisissez un fichier image', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      // Recadrage carré centré + réduction, pour rester léger en localStorage
+      const size = 160;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const s = Math.min(img.width, img.height);
+      const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+      ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      if (lsSet(STORAGE_KEYS.PROFILE_PHOTO, dataUrl)) {
+        applyProfilePhoto(dataUrl);
+        toast('Photo de profil mise à jour', 'ok');
+      } else {
+        toast('Stockage plein — impossible d\'enregistrer la photo', 'error');
+      }
+    };
+    img.onerror = () => toast('Image invalide', 'error');
+    img.src = ev.target.result;
+  };
+  reader.onerror = () => toast('Lecture du fichier impossible', 'error');
+  reader.readAsDataURL(file);
+}
+function removeProfilePhoto() {
+  lsRemove(STORAGE_KEYS.PROFILE_PHOTO);
+  applyProfilePhoto(null);
+  toast('Photo de profil retirée', 'ok');
+}
+function applyProfilePhoto(dataUrl) {
+  state.profilePhoto = dataUrl || null;
+  refreshSettingsAvatarUI();
+  if (userMarker && state.map) {
+    userMarker.setIcon(buildUserIcon());
+    updateUserHeading(lastKnownHeading);
+  }
+}
+function refreshSettingsAvatarUI() {
+  const img = document.getElementById('settings-avatar-img');
+  const placeholder = document.getElementById('settings-avatar-placeholder');
+  const sub = document.getElementById('settings-avatar-sub');
+  const removeRow = document.getElementById('settings-avatar-remove-row');
+  if (!img) return;
+  if (state.profilePhoto) {
+    img.src = state.profilePhoto; img.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+    if (sub) sub.textContent = 'Photo activée sur la carte';
+    if (removeRow) removeRow.style.display = 'flex';
   } else {
-    el.style.opacity = '0';
+    img.style.display = 'none';
+    if (placeholder) placeholder.style.display = 'block';
+    if (sub) sub.textContent = 'Affichée dans un rond sur la carte, à votre position';
+    if (removeRow) removeRow.style.display = 'none';
   }
 }
 function onUserMoved(lat, lng) {
@@ -2027,7 +2142,7 @@ function openModal(id) { document.getElementById(id).classList.add('open'); docu
 function closeModal(id) { document.getElementById(id).classList.remove('open'); if (!document.querySelector('.modal-backdrop.open')) document.body.style.overflow = ''; }
 function openOnboarding() { openModal('onboarding'); }
 function openPrivacy() { openModal('privacy-modal'); }
-function openSettings() { openModal('settings-modal'); refreshSettingsUI(); }
+function openSettings() { openModal('settings-modal'); refreshSettingsUI(); refreshSettingsAvatarUI(); }
 function refreshSettingsUI() {
   document.getElementById('toggle-share').classList.toggle('on', state.consent.share);
   document.getElementById('toggle-share').setAttribute('aria-checked', String(state.consent.share));
@@ -2919,6 +3034,7 @@ function updateDestBadge() {
 function startArNavigation() {
   if (!selectedPoi) return;
   closePoiPanel();
+  ensureNavRoute(); // asynchrone : la flèche AR bascule sur la route dès qu'elle est prête
   setTimeout(() => openAR(), 200);
 }
 
@@ -3335,7 +3451,8 @@ function drawARDestinationArrow(ctx, W, H) {
   if (!selectedPoi || !state.lat) return;
   const heading = arOrientation.alpha;
   const dist    = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
-  const bearing = calcBearing(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const navTarget = getArNavTarget() || { lat: selectedPoi.lat, lng: selectedPoi.lon, label: null };
+  const bearing = calcBearing(state.lat, state.lng, navTarget.lat, navTarget.lng);
   const cfg     = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
   const col     = cfg.color;
   const now     = Date.now() / 1000;
@@ -3437,8 +3554,8 @@ function drawARDestinationArrow(ctx, W, H) {
     ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(distTxt, screenX, dy + 16);
 
-    // ── Nom du POI ──
-    const name = selectedPoi.name.slice(0, 22);
+    // ── Nom du POI, ou instruction de virage si un itinéraire routier est connu ──
+    const name = (navTarget.label ? navTarget.label : selectedPoi.name).slice(0, 30);
     ctx.font = '600 12px -apple-system, system-ui';
     const nw = ctx.measureText(name).width;
     ctx.beginPath(); ctx.roundRect(screenX - nw/2 - 10, dy + 36, nw + 20, 24, 7);
@@ -3527,7 +3644,7 @@ function drawARDestinationArrow(ctx, W, H) {
   ctx.restore(); // fin translate+rotate
 
   // ── Étiquette latérale ──
-  const name2  = selectedPoi.name.slice(0, 18);
+  const name2  = (navTarget.label ? navTarget.label : selectedPoi.name).slice(0, 26);
   const lIsRight = ax >= cx;
   ctx.font = '700 13px -apple-system, system-ui';
   const lw2 = Math.max(ctx.measureText(name2).width, ctx.measureText(formatDist(dist)).width) + 24;
@@ -3735,7 +3852,10 @@ function updateARInstruction() {
     const cfg  = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
     const distLabel = formatDist(dist);
     const walkMin = Math.max(1, Math.round(dist / 80));
-    const walkStr = dist < 20 ? 'Arrivé !' : dist < 100 ? distLabel + ' · Presque arrivé' : distLabel + ' · ~' + walkMin + ' min';
+    const navTarget = getArNavTarget();
+    const walkStr = dist < 20 ? 'Arrivé !'
+      : navTarget && navTarget.label ? navTarget.label
+      : dist < 100 ? distLabel + ' · Presque arrivé' : distLabel + ' · ~' + walkMin + ' min';
 
     const nameEl = document.getElementById('arNavName');
     const metaEl = document.getElementById('arNavMeta');
@@ -3932,6 +4052,33 @@ async function startRouteNavigation() {
     toast("Itinéraire indisponible — direction à vol d'oiseau", 'warn');
   }
   updateNavDirectionDisplay();
+}
+
+/* Récupère l'itinéraire routier s'il n'est pas déjà en mémoire — utilisé
+   à la fois par le mode carte et par l'AR, pour ne jamais guider "à vol
+   d'oiseau" quand une route existe. */
+async function ensureNavRoute() {
+  if (!selectedPoi) return null;
+  if (navRoute) return navRoute;
+  const route = await fetchRoadRoute(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  if (!selectedPoi) return null; // annulé entre-temps
+  navRoute = route;
+  return navRoute;
+}
+/* Retourne le point à viser pour l'AR : le prochain virage sur la route
+   si elle est connue, sinon la destination finale (repli à vol d'oiseau). */
+function getArNavTarget() {
+  if (navRoute && navRoute.steps && navRoute.steps.length && selectedPoi) {
+    const idx = findCurrentStepIndex(navRoute.steps, state.lat, state.lng);
+    const nextStep = navRoute.steps[idx + 1] || navRoute.steps[idx];
+    if (nextStep && nextStep.loc) {
+      const d = distanceM(state.lat, state.lng, nextStep.loc[0], nextStep.loc[1]);
+      // Si on est déjà tout près du point de manœuvre, viser directement la
+      // destination finale évite à la flèche de "sauter" nerveusement.
+      if (d > 8) return { lat: nextStep.loc[0], lng: nextStep.loc[1], label: maneuverText(nextStep) };
+    }
+  }
+  return selectedPoi ? { lat: selectedPoi.lat, lng: selectedPoi.lon, label: null } : null;
 }
 
 /* Navigation carte depuis panneau POI */
@@ -4165,6 +4312,7 @@ function updateFuelMarkers() {
 
 function init() {
   state.userId = getOrCreateUserId();
+  state.profilePhoto = loadProfilePhoto();
   if (!initMap()) return;
   bindEvents(); applyStoredFilterPrefs(); updateLayout(); applyTraffic();
   initUiIdleWatcher();
