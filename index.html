@@ -300,6 +300,40 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .zp-prob { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; transition: color 0.4s; }
 .zp-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
 
+/* ═══ INDICATEUR DE DIRECTION (navigation carte) ═══
+   Rond avec flèche qui pivote vers la destination choisie —
+   équivalent "carte" de la flèche AR, visible sans passer par
+   la caméra. Se met à jour avec le cap du téléphone si dispo,
+   sinon avec le cap GPS (déplacement), sinon le nord. */
+.nav-direction {
+  position: fixed;
+  top: calc(var(--safe-t) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.nav-direction.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(-8px); }
+.nav-direction-ring {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-accent);
+  flex-shrink: 0;
+}
+.nav-direction-arrow { width: 22px; height: 22px; transition: transform 0.25s ease; }
+.nav-direction-info { display: flex; flex-direction: column; min-width: 0; padding-right: 4px; }
+.nav-direction-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.nav-direction-dist { font-size: 12.5px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+.nav-direction-close { width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
+.nav-direction-close svg { width: 11px; height: 11px; }
+
 /* ═══ BOUTONS LATERAUX — style "rond" (cf. iter : cercle glass, glow directionnel) ═══ */
 .side-btn { position: fixed; z-index: 15; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: bottom 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.12s ease, background 0.2s, color 0.2s, box-shadow 0.2s; }
 .side-btn:active { transform: scale(0.93); }
@@ -808,7 +842,7 @@ body.driving-mode .drive-badge { display: block; }
    désactivés), donc on ne joue que sur l'opacité.
 ═══════════════════════════════════════════════════════ */
 .top, .fab-wrap, .side-btn, .zone-pill, .info-bar,
-.hist-btn, .locate-btn, .drive-badge, .dest-badge {
+.hist-btn, .locate-btn, .drive-badge, .dest-badge, .nav-direction {
   transition: opacity 0.6s ease;
 }
 body.ui-idle .top,
@@ -1106,6 +1140,20 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   <span class="zp-label" id="zp-label">de disponibilité</span>
 </div>
 
+<!-- DIRECTION VERS LA DESTINATION (navigation carte, sans passer par l'AR) -->
+<div class="nav-direction glass hidden" id="nav-direction" role="status" aria-live="polite">
+  <div class="nav-direction-ring">
+    <svg class="nav-direction-arrow" id="nav-direction-arrow" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 2 L19 21 L12 17 L5 21 Z"/></svg>
+  </div>
+  <div class="nav-direction-info">
+    <div class="nav-direction-name" id="nav-direction-name">—</div>
+    <div class="nav-direction-dist" id="nav-direction-dist">—</div>
+  </div>
+  <button class="nav-direction-close" id="nav-direction-close" aria-label="Arrêter la navigation" onclick="clearPoiSelection()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+</div>
+
 <!-- LOCATE -->
 <button class="side-btn btn-locate glass tap-target" id="btn-locate" aria-label="Recentrer sur ma position">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
@@ -1383,13 +1431,13 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
     </div>
     <!-- Boutons navigation -->
     <div style="display:flex;gap:8px;padding:0 14px 14px;">
-      <button id="poi-map-btn" onclick="startMapNavigation()" disabled style="flex:1;height:52px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(37,99,235,0.1);color:#2563eb;border:1.5px solid rgba(37,99,235,0.3);border-radius:16px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,system-ui;transition:all 0.2s;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7"/><path d="M9 4v13M15 7v13"/></svg>
+      <button id="poi-map-btn" onclick="startMapNavigation()" disabled style="flex:1;height:56px;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;border:none;border-radius:16px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,system-ui;box-shadow:0 4px 14px rgba(37,99,235,0.3);transition:all 0.2s;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3V7"/><path d="M9 4v13M15 7v13"/></svg>
         Carte
       </button>
-      <button class="poi-ar-btn" id="poi-ar-btn" onclick="startArNavigation()" disabled style="flex:2;min-height:52px;font-size:15px;">
+      <button class="poi-ar-btn" id="poi-ar-btn" onclick="startArNavigation()" disabled style="flex:1;height:56px;min-height:56px;font-size:14px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M2 12L12 2l10 10-10 10z"/><circle cx="12" cy="12" r="3"/></svg>
-        Naviguer en AR
+        AR
       </button>
     </div>
   </div>
@@ -1621,7 +1669,6 @@ async function purgeOldSignals() {
   // Purge désactivée côté client — Safari bloque les requêtes PATCH/DELETE cross-origin
   // Les vieux signaux sont filtrés côté client via CFG.MAX_AGE_MS
   return;
-  purgeInflight = false;
 }
 function loadLocalSignals() {
   try {
@@ -2064,8 +2111,8 @@ function selectMapSearchResult(idx) {
     const popupContent = '<div style="min-width:160px;padding:4px 0">'
       + '<div style="font-size:13px;font-weight:700;color:#1a1f2e;margin-bottom:8px">' + esc(name) + '</div>'
       + '<div style="display:flex;gap:6px">'
-      + '<button onclick="startMapNavigation()" style="flex:1;padding:8px 4px;background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.3);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Carte</button>'
-      + '<button onclick="startArNavigation()" style="flex:2;padding:8px 6px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Naviguer en AR</button>'
+      + '<button onclick="startMapNavigation()" style="flex:1;padding:9px 4px;background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Carte</button>'
+      + '<button onclick="startArNavigation()" style="flex:1;padding:9px 6px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">AR</button>'
       + '</div></div>';
     window._destMarker = L.marker([lat, lon], { icon: dIcon })
       .bindPopup(popupContent, { maxWidth: 220 })
@@ -2179,6 +2226,8 @@ function clearPoiSelection() {
   selectedPoi = null;
   document.getElementById('arOverlay')?.classList.remove('has-poi');
   updateDestBadge();
+  hideNavDirection();
+  if (window._destMarker && state.map) { state.map.removeLayer(window._destMarker); window._destMarker = null; }
   const btn = document.getElementById('poi-ar-btn');
   if (btn) btn.disabled = true;
 }
@@ -2241,6 +2290,7 @@ function startWatch() {
       debouncedReverseGeo(lat, lng);
       updateZonePill();
       showTakenBtn(hasActiveSignalNearby());
+      if (navDirectionActive) updateNavDirectionDisplay();
       // MAJ stats AR si actif
       if (arActive) { document.getElementById('arStatDist').textContent = Math.round(distanceM(lat, lng, lat, lng) || 0); }
     },
@@ -3717,6 +3767,72 @@ function updateARInstruction() {
   }
 }
 
+/* ═══════════════════════════════════════
+   DIRECTION VERS LA DESTINATION — mode carte
+   Équivalent non-AR de la flèche : un rond avec une flèche qui
+   pivote vers le lieu choisi, sans passer par la caméra.
+═══════════════════════════════════════ */
+let navDirectionActive = false;
+let navHeading = null;
+let navOrientationListener = null;
+
+function onNavOrientation(e) {
+  let h;
+  if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+  else if (typeof e.alpha === 'number') h = 360 - e.alpha;
+  else return;
+  navHeading = h;
+  updateNavDirectionDisplay();
+}
+
+function attachNavOrientationListener() {
+  if (navOrientationListener) return;
+  const attach = () => {
+    navOrientationListener = onNavOrientation;
+    if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', navOrientationListener, true);
+    else window.addEventListener('deviceorientation', navOrientationListener, true);
+  };
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(p => { if (p === 'granted') attach(); }).catch(attach);
+  } else { attach(); }
+}
+function detachNavOrientationListener() {
+  if (!navOrientationListener) return;
+  window.removeEventListener('deviceorientationabsolute', navOrientationListener, true);
+  window.removeEventListener('deviceorientation', navOrientationListener, true);
+  navOrientationListener = null;
+  navHeading = null;
+}
+
+function showNavDirection() {
+  if (!selectedPoi) return;
+  navDirectionActive = true;
+  const el = document.getElementById('nav-direction');
+  const nameEl = document.getElementById('nav-direction-name');
+  if (nameEl) nameEl.textContent = selectedPoi.name.slice(0, 24);
+  if (el) el.classList.remove('hidden');
+  attachNavOrientationListener();
+  updateNavDirectionDisplay();
+}
+function hideNavDirection() {
+  navDirectionActive = false;
+  const el = document.getElementById('nav-direction');
+  if (el) el.classList.add('hidden');
+  detachNavOrientationListener();
+}
+function updateNavDirectionDisplay() {
+  if (!navDirectionActive || !selectedPoi) return;
+  const dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const bearing = calcBearing(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  // Avec cap téléphone connu : flèche relative à la direction regardée.
+  // Sinon : cap absolu (nord en haut), toujours utile pour s'orienter.
+  const relAngle = (navHeading !== null && isFinite(navHeading)) ? ((bearing - navHeading) + 360) % 360 : bearing;
+  const arrow = document.getElementById('nav-direction-arrow');
+  if (arrow) arrow.style.transform = 'rotate(' + relAngle + 'deg)';
+  const distEl = document.getElementById('nav-direction-dist');
+  if (distEl) distEl.textContent = dist < 20 ? 'Arrivé' : formatDist(dist);
+}
+
 /* Navigation carte depuis panneau POI */
 function startMapNavigation() {
   if (!selectedPoi) return;
@@ -3739,6 +3855,7 @@ function startMapNavigation() {
       .bindPopup(popupContent, { maxWidth: 200 })
       .addTo(state.map).openPopup();
   }
+  showNavDirection();
   toast('Destination sur la carte : ' + selectedPoi.name, 'ok');
 }
 
