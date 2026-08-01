@@ -346,11 +346,28 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .nav-direction-close svg { width: 11px; height: 11px; }
 .nav-route-line { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25)); }
 
-/* ═══ BOUTONS LATERAUX — style "rond" (cf. iter : cercle glass, glow directionnel) ═══ */
-.side-btn { position: fixed; z-index: 15; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: bottom 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.12s ease, background 0.2s, color 0.2s, box-shadow 0.2s; }
-.side-btn:active { transform: scale(0.93); }
-.side-btn.active { background: var(--blue-soft); border-color: rgba(37,99,235,0.3); color: var(--blue); box-shadow: 0 0 0 4px rgba(37,99,235,0.15), var(--shadow-2); }
-.btn-locate { right: calc(var(--safe-r) + 14px); top: 50% !important; bottom: auto !important; transform: translateY(-50%); color: var(--blue); }
+/* ═══ BOUTON EMPILÉ (droite, façon Find My) — mode nuit / recentrage ═══ */
+.locate-stack {
+  position: fixed;
+  right: calc(var(--safe-r) + 14px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 28px;
+  overflow: hidden;
+}
+.stack-btn {
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-2);
+  transition: transform 0.12s ease, color 0.2s;
+}
+.stack-btn:active { transform: scale(0.92); }
+.stack-divider { width: 30px; height: 1px; background: var(--border-soft); flex-shrink: 0; }
+.btn-locate { color: var(--blue); }
 .filter-btn { left: calc(var(--safe-l) + 14px); }
 
 /* ═══ FILTER PANEL ═══ */
@@ -870,13 +887,13 @@ body.driving-mode .drive-badge { display: block; }
    Le premier tap doit rester efficace (pas de pointer-events
    désactivés), donc on ne joue que sur l'opacité.
 ═══════════════════════════════════════════════════════ */
-.top, .fab-wrap, .side-btn, .zone-pill, .info-bar,
+.top, .fab-wrap, .locate-stack, .zone-pill, .info-bar,
 .hist-btn, .locate-btn, .drive-badge, .dest-badge, .nav-direction {
   transition: opacity 0.6s ease;
 }
 body.ui-idle .top,
 body.ui-idle .fab-wrap,
-body.ui-idle .side-btn,
+body.ui-idle .locate-stack,
 body.ui-idle .zone-pill,
 body.ui-idle .info-bar,
 body.ui-idle .hist-btn,
@@ -895,7 +912,7 @@ body.ui-idle .feedback.show {
    opacité immédiatement, sans attendre la fin du timer global. */
 body.ui-idle .top:hover,
 body.ui-idle .fab-wrap:hover,
-body.ui-idle .side-btn:hover,
+body.ui-idle .locate-stack:hover,
 body.ui-idle .hist-btn:hover,
 body.ui-idle .locate-btn:hover {
   opacity: 1;
@@ -904,7 +921,7 @@ body.ui-idle .locate-btn:hover {
    contrôles doivent rester lisibles en permanence pour le passager. */
 body.driving-mode.ui-idle .top,
 body.driving-mode.ui-idle .fab-wrap,
-body.driving-mode.ui-idle .side-btn,
+body.driving-mode.ui-idle .locate-stack,
 body.driving-mode.ui-idle .zone-pill,
 body.driving-mode.ui-idle .info-bar,
 body.driving-mode.ui-idle .hist-btn,
@@ -1147,16 +1164,13 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
       <b id="users-ctr">1</b>&nbsp;
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     </div>
-    <!-- Bouton mode nuit -->
+    <!-- Mode nuit déplacé dans le bouton empilé à droite de la carte -->
     <!-- Badge vitesse passager — dans la topbar -->
     <div class="speed-badge" id="speed-badge" role="status" aria-live="polite">
       <span class="speed-badge-kmh" id="speed-val">0</span>
       <span class="speed-badge-unit">km/h</span>
       <span class="speed-badge-limit" id="speed-limit" style="display:none"></span>
     </div>
-    <button class="icon-btn glass night-btn" id="night-btn" onclick="toggleNightMode()" aria-label="Mode nuit" title="Mode nuit">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-    </button>
     <button class="icon-btn glass tap-target" id="menu-btn" aria-label="Menu et paramètres">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>
     </button>
@@ -1184,10 +1198,16 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   </button>
 </div>
 
-<!-- LOCATE -->
-<button class="side-btn btn-locate glass tap-target" id="btn-locate" aria-label="Recentrer sur ma position">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-</button>
+<!-- BOUTON EMPILÉ — mode nuit (haut) + recentrage (bas), façon Find My -->
+<div class="locate-stack glass" id="locate-stack">
+  <button class="stack-btn night-btn" id="night-btn" onclick="toggleNightMode()" aria-label="Mode nuit" title="Mode nuit">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+  <div class="stack-divider" aria-hidden="true"></div>
+  <button class="stack-btn btn-locate tap-target" id="btn-locate" aria-label="Recentrer sur ma position">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+</div>
 
 
 
