@@ -274,7 +274,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 @keyframes dot-pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(22,163,74,0.5); } 50%{ box-shadow:0 0 0 6px rgba(22,163,74,0); } }
 
-.icon-btn { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: transform 0.12s, color 0.2s; }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: transform 0.12s, color 0.2s, box-shadow 0.15s; }
 .icon-btn:active { transform: scale(0.93); }
 .icon-btn:hover { color: var(--text); }
 
@@ -300,10 +300,10 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .zp-prob { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; transition: color 0.4s; }
 .zp-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
 
-/* ═══ BOUTONS LATERAUX ═══ */
-.side-btn { position: fixed; z-index: 15; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: bottom 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.12s ease, background 0.2s, color 0.2s; }
+/* ═══ BOUTONS LATERAUX — style "rond" (cf. iter : cercle glass, glow directionnel) ═══ */
+.side-btn { position: fixed; z-index: 15; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: bottom 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.12s ease, background 0.2s, color 0.2s, box-shadow 0.2s; }
 .side-btn:active { transform: scale(0.93); }
-.side-btn.active { background: var(--blue-soft); border-color: rgba(37,99,235,0.3); color: var(--blue); }
+.side-btn.active { background: var(--blue-soft); border-color: rgba(37,99,235,0.3); color: var(--blue); box-shadow: 0 0 0 4px rgba(37,99,235,0.15), var(--shadow-2); }
 .btn-locate { right: calc(var(--safe-r) + 14px); top: 50% !important; bottom: auto !important; transform: translateY(-50%); color: var(--blue); }
 .filter-btn { left: calc(var(--safe-l) + 14px); }
 
@@ -494,7 +494,8 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 .taken-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ═══ HISTORIQUE ═══ */
-.hist-btn { position: fixed; top: 50%; transform: translateY(-50%); left: 16px; width: 42px; height: 42px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s; }
+.hist-btn { position: fixed; top: 50%; transform: translateY(-50%); left: 16px; width: 48px; height: 48px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s, transform .15s, box-shadow .2s; }
+.hist-btn:active { transform: scale(0.93); }
 .hist-btn svg { width: 20px; height: 20px; color: var(--text); }
 .hist-btn .hist-badge { position: absolute; top: -3px; right: -3px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: none; align-items: center; justify-content: center; }
 .hist-btn .hist-badge.visible { display: flex; }
@@ -528,10 +529,11 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 .hist-impact strong { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* ═══ LOCATE BTN ═══ */
-.locate-btn { position: fixed; bottom: calc(var(--safe-b) + 194px); right: 16px; width: 42px; height: 42px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s, transform .15s; }
+.locate-btn { position: fixed; bottom: calc(var(--safe-b) + 194px); right: 16px; width: 48px; height: 48px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s, transform .15s, box-shadow .2s; }
 .locate-btn:active { transform: scale(0.92); }
 .locate-btn svg { width: 20px; height: 20px; color: var(--blue); }
 .locate-btn.tracking svg { color: var(--accent); }
+.locate-btn.tracking { box-shadow: 0 0 0 4px rgba(22,163,74,0.16), 0 2px 8px rgba(0,0,0,.12); }
 
 /* ═══ MODE CONDUITE ═══ */
 body.driving-mode .info-bar { display: none; }
@@ -667,7 +669,7 @@ body.driving-mode .drive-badge { display: block; }
 .users-counter b { color: var(--text); }
 
 /* ═══ COULEURS SÉCURISÉES ═══ */
-/* Rouge réservé aux urgences — zones à probabilité très faible remplacées par amber */
+/* Rouge réservé aux urgences — zones de signalement utilisent vert/orange/amber uniquement */
 
 /* ═══ PANNEAU POI ═══ */
 .poi-panel-backdrop {
@@ -777,6 +779,58 @@ body.driving-mode .drive-badge { display: block; }
   .poi-panel { background: rgba(14,19,32,0.97); }
 }
 
+/* ═══════════════════════════════════════════════════════
+   ESTOMPAGE DE L'INTERFACE EN CAS D'INACTIVITÉ
+   Même principe que sur iter : la carte, le point GPS et
+   les zones de disponibilité restent TOUJOURS visibles à
+   pleine opacité — seuls les éléments d'UI qui gênent la
+   lecture de la carte s'estompent après quelques secondes
+   sans interaction, comme sur une vraie appli de navigation.
+   Le premier tap doit rester efficace (pas de pointer-events
+   désactivés), donc on ne joue que sur l'opacité.
+═══════════════════════════════════════════════════════ */
+.top, .fab-wrap, .side-btn, .zone-pill, .info-bar,
+.hist-btn, .locate-btn, .drive-badge, .dest-badge {
+  transition: opacity 0.6s ease;
+}
+body.ui-idle .top,
+body.ui-idle .fab-wrap,
+body.ui-idle .side-btn,
+body.ui-idle .zone-pill,
+body.ui-idle .info-bar,
+body.ui-idle .hist-btn,
+body.ui-idle .locate-btn,
+body.ui-idle .dest-badge {
+  opacity: 0.18;
+}
+/* La place prise / alerte zone restent pleinement visibles : ce sont
+   des actions ponctuelles et urgentes, pas de l'habillage permanent. */
+body.ui-idle .taken-btn.visible,
+body.ui-idle .zone-alert.show,
+body.ui-idle .feedback.show {
+  opacity: 1;
+}
+/* Un simple survol/tap sur un élément estompé le ramène à pleine
+   opacité immédiatement, sans attendre la fin du timer global. */
+body.ui-idle .top:hover,
+body.ui-idle .fab-wrap:hover,
+body.ui-idle .side-btn:hover,
+body.ui-idle .hist-btn:hover,
+body.ui-idle .locate-btn:hover {
+  opacity: 1;
+}
+/* En mode conduite, on n'estompe jamais — la vitesse et les
+   contrôles doivent rester lisibles en permanence pour le passager. */
+body.driving-mode.ui-idle .top,
+body.driving-mode.ui-idle .fab-wrap,
+body.driving-mode.ui-idle .side-btn,
+body.driving-mode.ui-idle .zone-pill,
+body.driving-mode.ui-idle .info-bar,
+body.driving-mode.ui-idle .hist-btn,
+body.driving-mode.ui-idle .locate-btn {
+  opacity: 1;
+}
+
 /* ═══ RESPONSIVE ═══ */
 @media (min-width: 768px) { .fab-wrap { left: 0; right: 0; } .info-bar { max-width: 520px; } .filter-panel { max-width: 280px; } }
 @media (max-width: 360px) { .filter-panel { min-width: 200px; padding: 12px; } .fab { font-size: 15px; } .modal { padding: 20px 18px calc(20px + var(--safe-b)); } .modal h2 { font-size: 18px; } .btn { min-width: 100px; } }
@@ -816,8 +870,8 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 .poi-history-nav svg { width: 14px; height: 14px; stroke: var(--accent); }
 
 /* Bouton nuit dans topbar */
-.night-btn { transition: color 0.2s; }
-.night-btn.on { color: var(--warn) !important; }
+.night-btn { transition: color 0.2s, box-shadow 0.2s; }
+.night-btn.on { color: var(--warn) !important; box-shadow: 0 0 0 4px rgba(234,138,9,0.16), var(--shadow-1); }
 
 /* Bouton partage SMS */
 .share-sms-btn {
@@ -2170,9 +2224,35 @@ function initMap() {
       const btn = document.getElementById('locate-btn'); if (btn) btn.classList.remove('tracking');
     }
   });
+  // Estompage de l'UI en cas d'inactivité — toute interaction avec la
+  // carte (drag, zoom, pinch) réveille l'interface comme un tap direct.
+  state.map.on('movestart zoomstart dragstart', resetUiIdle);
   updateUserMarker(state.lat, state.lng);
   renderContributionHalos();
   return true;
+}
+
+/* ═══════════════════════════════════════
+   ESTOMPAGE UI EN CAS D'INACTIVITÉ
+   Repris du principe iter : après quelques secondes sans
+   interaction, on estompe l'habillage (topbar, FAB, boutons
+   latéraux…) pour libérer la lecture de la carte. La carte,
+   le point GPS et les zones de disponibilité restent inchangés.
+   Toute interaction (tap, drag, zoom, clavier) réinitialise
+   immédiatement le minuteur.
+═══════════════════════════════════════ */
+const UI_IDLE_DELAY_MS = 4500;
+let uiIdleTimer = null;
+function resetUiIdle() {
+  document.body.classList.remove('ui-idle');
+  clearTimeout(uiIdleTimer);
+  uiIdleTimer = setTimeout(() => { document.body.classList.add('ui-idle'); }, UI_IDLE_DELAY_MS);
+}
+function initUiIdleWatcher() {
+  ['pointerdown', 'touchstart', 'mousemove', 'keydown', 'wheel'].forEach(evt => {
+    window.addEventListener(evt, resetUiIdle, { passive: true });
+  });
+  resetUiIdle();
 }
 
 /* ═══ HISTORIQUE ═══ */
@@ -3823,6 +3903,7 @@ function init() {
   state.userId = getOrCreateUserId();
   if (!initMap()) return;
   bindEvents(); applyStoredFilterPrefs(); updateLayout(); applyTraffic();
+  initUiIdleWatcher();
 
   // Sécurité conducteur — afficher au premier lancement
   if (!_safetyAccepted) {
