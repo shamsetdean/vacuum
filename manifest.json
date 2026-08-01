@@ -1,6 +1,6 @@
 {
-  "name": "Vacuum — places libres",
-  "short_name": "Vacuum",
+  "name": "UFindGo — places libres",
+  "short_name": "UFindGo",
   "description": "Signalez et trouvez des places de stationnement libres en temps réel, collaborativement.",
   "start_url": "/vacuum/",
   "scope": "/vacuum/",
