@@ -3537,135 +3537,129 @@ function bearingToScreen(poiBearing, heading, W, H, FOV = 70) {
 function drawARDestinationArrow(ctx, W, H) {
   if (!selectedPoi || !state.lat) return;
   const heading = arOrientation.alpha;
-  const dist    = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  const hasHeading = typeof heading === 'number' && isFinite(heading);
+  const dist = distanceM(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
   const navTarget = getArNavTarget() || { lat: selectedPoi.lat, lng: selectedPoi.lon, label: null };
-  // Distance jusqu'au point réellement visé par la flèche (prochain virage,
-  // ou destination finale s'il n'y a plus de virage) — c'est CE nombre qu'il
-  // faut afficher à côté de l'instruction, pas la distance totale du trajet.
+  // Distance jusqu'au point réellement visé (prochain virage sur la route
+  // connue, ou destination finale s'il n'y en a plus) — jamais à vol d'oiseau
+  // quand un itinéraire routier est disponible.
   const turnDist = navTarget.label ? distanceM(state.lat, state.lng, navTarget.lat, navTarget.lng) : dist;
   const bearing = calcBearing(state.lat, state.lng, navTarget.lat, navTarget.lng);
-  const cfg     = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
-  const col     = cfg.color;
-  const now     = Date.now() / 1000;
-  const isClose = dist < 60;
+  const cfg = POI_CATEGORIES[selectedPoi.cat] || { color: '#16a34a', label: 'Lieu' };
+  const col = cfg.color;
+  const now = Date.now() / 1000;
   const isArrived = dist < 12;
-  const distTxt = formatDist(turnDist);
   const label = (navTarget.label ? navTarget.label : selectedPoi.name).slice(0, 34);
 
-  // Son de proximité
   tickProximitySound(dist);
 
-  let relAngle = ((bearing - heading) + 360) % 360;
-  if (relAngle > 180) relAngle -= 360;
+  // Position de la cible sur le cadran : 0° = tout en haut (là où le
+  // téléphone pointe). Le cadran tourne avec le cap réel du téléphone,
+  // comme une vraie boussole — la cible se déplace dessus en conséquence.
+  const relBearing = hasHeading ? ((bearing - heading) + 360) % 360 : bearing;
 
-  const cx = W / 2, cy = H / 2;
-  const inFOV = Math.abs(relAngle) <= 55 && !isArrived;
+  const cx = W / 2, cy = H * 0.46;
+  const R = Math.min(W, H) * 0.23;
+  const toXY = (screenDeg, r) => {
+    const a = (screenDeg * Math.PI / 180) - Math.PI / 2;
+    return [cx + Math.cos(a) * r, cy + Math.sin(a) * r];
+  };
 
-  /* Bloc d'info commun (distance + instruction) — une seule carte lisible,
-     jamais deux étiquettes empilées, jamais de clignotement agressif. */
-  function drawInfoCard(x, top) {
-    ctx.font = '800 20px -apple-system, system-ui';
-    const dw = ctx.measureText(distTxt).width;
-    ctx.font = '600 13px -apple-system, system-ui';
-    const lwText = ctx.measureText(label).width;
-    const w = Math.max(dw, lwText) + 28;
-    const h = 60;
-    const x0 = x - w / 2;
-    ctx.beginPath(); ctx.roundRect(x0, top, w, h, 14);
-    ctx.fillStyle = 'rgba(8,10,14,0.86)'; ctx.fill();
-    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = '800 20px -apple-system, system-ui'; ctx.fillStyle = col;
-    ctx.fillText(distTxt, x, top + 23);
-    ctx.font = '600 12.5px -apple-system, system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText(label, x, top + 46);
-    return h;
-  }
+  ctx.save();
 
-  // ─────────────────────────────────────────────────
-  // CAS 1 : DESTINATION DANS LE CHAMP DE VISION
-  // ─────────────────────────────────────────────────
-  if (inFOV) {
-    const screenX = cx + (relAngle / 55) * (W * 0.38);
-    const screenY = H * 0.24;
-    const breathe = 1 + 0.06 * Math.sin(now * 2.2); // pulsation légère = "suivi en direct", pas un ornement
+  // ── Anneau de base (structure du cadran) ──
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 2; ctx.stroke();
 
-    ctx.save();
-
-    // ── Réticule de verrouillage — indique la position exacte de la cible ──
-    const r = 30 * breathe;
-    ctx.beginPath(); ctx.arc(screenX, screenY, r, 0, Math.PI * 2);
-    ctx.strokeStyle = col; ctx.lineWidth = 2.5;
-    ctx.shadowColor = col; ctx.shadowBlur = isClose ? 18 : 8;
-    ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.beginPath(); ctx.arc(screenX, screenY, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff'; ctx.fill();
-
-    // ── Ligne de rattachement — relie la cible à sa fiche d'info ──
-    const cardTop = screenY + r + 26;
+  // ── Arc de proximité — se remplit à mesure qu'on approche (repère "on
+  //    se rapproche"), échelle fixe sur 400 m pour rester stable. ──
+  const progress = Math.max(0, Math.min(1, 1 - dist / 400));
+  if (progress > 0.01) {
     ctx.beginPath();
-    ctx.moveTo(screenX, screenY + r + 4);
-    ctx.lineTo(screenX, cardTop - 4);
-    ctx.strokeStyle = col + '80'; ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    drawInfoCard(screenX, cardTop);
-
-    // ── Alerte d'arrivée proche — utile, pas décorative ──
-    if (isClose) {
-      ctx.beginPath(); ctx.roundRect(cx - 90, H * 0.11, 180, 32, 16);
-      ctx.fillStyle = col; ctx.globalAlpha = 0.92; ctx.fill(); ctx.globalAlpha = 1;
-      ctx.font = '800 12.5px -apple-system, system-ui';
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('VOUS APPROCHEZ', cx, H * 0.11 + 16);
-    }
-
-    ctx.restore();
-    return;
+    ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.shadowColor = '#7dd3fc'; ctx.shadowBlur = 8;
+    ctx.stroke(); ctx.shadowBlur = 0;
   }
 
-  // ─────────────────────────────────────────────────
-  // CAS 2 : HORS CHAMP — GRANDE FLÈCHE DE CAP
-  // ─────────────────────────────────────────────────
-  ctx.save();
+  // ── Rose des vents — tourne avec le cap réel du téléphone ──
+  const compassPoints = [['N',0],['NE',45],['E',90],['SE',135],['S',180],['SW',225],['W',270],['NW',315]];
+  ctx.font = '700 12px -apple-system, system-ui';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  compassPoints.forEach(([name, deg]) => {
+    const screenDeg = hasHeading ? ((deg - heading) + 360) % 360 : deg;
+    const [tx1, ty1] = toXY(screenDeg, R - 8);
+    const [tx2, ty2] = toXY(screenDeg, R);
+    ctx.beginPath(); ctx.moveTo(tx1, ty1); ctx.lineTo(tx2, ty2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    const [lx, ly] = toXY(screenDeg, R + 16);
+    ctx.fillStyle = name === 'N' ? '#f97316' : 'rgba(255,255,255,0.55)';
+    ctx.fillText(name, lx, ly);
+  });
 
-  const R      = Math.min(W, H) * 0.28;
-  const angle  = (relAngle * Math.PI / 180) - Math.PI / 2;
-  const ax     = cx + Math.cos(angle) * R;
-  const ay     = cy + Math.sin(angle) * R + 10;
+  // ── Repère fixe en haut — c'est là où pointe le téléphone. Quand le
+  //    marqueur de destination s'aligne dessus, on regarde la bonne
+  //    direction. ──
+  [-9, 9].forEach(off => {
+    const [ix, iy] = toXY(off, R - 14);
+    const [ox, oy] = toXY(off, R + 10);
+    ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(ox, oy);
+    ctx.strokeStyle = '#f97316'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.shadowColor = '#f97316'; ctx.shadowBlur = 6;
+    ctx.stroke(); ctx.shadowBlur = 0;
+  });
 
-  // ── Flèche unique, sans traînée ni halo décoratif ──
-  ctx.save();
-  ctx.translate(ax, ay);
-  ctx.rotate(angle + Math.PI / 2);
-  ctx.beginPath();
-  ctx.moveTo(0, -24); ctx.lineTo(17, 13); ctx.lineTo(0, 6); ctx.lineTo(-17, 13);
-  ctx.closePath();
+  // ── Marqueur de destination — se déplace sur l'anneau selon la
+  //    direction réelle à suivre (prochain virage, pas vol d'oiseau) ──
+  const aligned = Math.abs(((relBearing + 180) % 360) - 180) < 12;
+  const pulse = 1 + 0.12 * Math.sin(now * 3);
+  const [px, py] = toXY(relBearing, R);
+  ctx.beginPath(); ctx.arc(px, py, (aligned ? 12 : 9) * pulse, 0, Math.PI * 2);
   ctx.fillStyle = col;
-  ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.fill(); ctx.shadowBlur = 0;
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.shadowColor = col; ctx.shadowBlur = aligned ? 18 : 8;
+  ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+
+  // ── Centre du cadran — icône catégorie ──
+  ctx.beginPath(); ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+
   ctx.restore();
 
-  // ── Fiche d'info à côté de la flèche ──
-  const lIsRight = ax >= cx;
-  ctx.font = '800 20px -apple-system, system-ui';
-  const dw2 = ctx.measureText(distTxt).width;
-  ctx.font = '600 13px -apple-system, system-ui';
-  const lw2 = Math.max(dw2, ctx.measureText(label).width) + 28;
-  const cardX = lIsRight ? ax + 20 + lw2 / 2 : ax - 20 - lw2 / 2;
-  drawInfoCard(cardX, ay - 30);
-
-  // ── Bandeau d'instruction, en bas — l'action à faire, sans clignoter ──
-  const dir = relAngle > 0 ? 'Tournez à droite' : 'Tournez à gauche';
-  ctx.font = '700 15px -apple-system, system-ui';
-  const dw = ctx.measureText(dir).width + 36;
-  ctx.beginPath(); ctx.roundRect(cx - dw/2, H * 0.78, dw, 40, 14);
-  ctx.fillStyle = col; ctx.fill();
+  // ── Lecture "DISTANCE", en grand, en haut à gauche ──
+  ctx.save();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  const readX = 20, readY = H * 0.155;
+  if (isArrived) {
+    ctx.font = '800 34px -apple-system, system-ui';
+    ctx.fillStyle = col;
+    ctx.shadowColor = col; ctx.shadowBlur = 14;
+    ctx.fillText('ARRIVÉ', readX, readY);
+    ctx.shadowBlur = 0;
+  } else {
+    const m = Math.round(turnDist);
+    ctx.font = '800 46px -apple-system, system-ui';
+    ctx.fillStyle = '#fff';
+    if (dist < 60) { ctx.shadowColor = col; ctx.shadowBlur = 16; }
+    ctx.fillText(String(m), readX, readY);
+    ctx.shadowBlur = 0;
+    ctx.font = '700 14px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillText('M', readX + ctx.measureText(String(m)).width + 22, readY - 24);
+    ctx.font = '700 11px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('DISTANCE', readX + 2, readY + 20);
+  }
+  // ── Instruction (nom du virage ou du lieu) sous le repère de distance ──
+  ctx.font = '600 14px -apple-system, system-ui';
   ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(dir, cx, H * 0.78 + 20);
-
+  ctx.fillText(label, readX, readY + 46);
+  if (!hasHeading) {
+    ctx.font = '600 11px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText('Cap indisponible — orientation approximative', readX, readY + 68);
+  }
   ctx.restore();
 }
 
