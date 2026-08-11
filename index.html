@@ -316,7 +316,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 @keyframes badgeIn { from { opacity:0; transform:scale(0.85) translateY(-4px); } to { opacity:1; transform:scale(1) translateY(0); } }
 
 /* ═══ ZONE PILL ═══ */
-.zone-pill { position: fixed; top: calc(var(--safe-t) + 110px); left: 50%; transform: translateX(-50%); z-index: 15; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 8px 16px; pointer-events: none; white-space: nowrap; transition: opacity 0.3s, transform 0.3s; opacity: 1; }
+.zone-pill { position: fixed; top: calc(var(--safe-t) + 122px); left: 50%; transform: translateX(-50%); z-index: 15; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 8px 16px; pointer-events: none; white-space: nowrap; transition: opacity 0.3s, transform 0.3s; opacity: 1; }
 .zone-pill.hidden { opacity: 0; transform: translateX(-50%) translateY(-6px); pointer-events: none; }
 .zp-prob { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; transition: color 0.4s; }
 .zp-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
@@ -328,7 +328,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
    sinon avec le cap GPS (déplacement), sinon le nord. */
 .nav-direction {
   position: fixed;
-  top: calc(var(--safe-t) + 12px);
+  top: calc(var(--safe-t) + 62px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 21;
@@ -337,6 +337,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   gap: 10px;
   padding: 6px 10px 6px 6px;
   border-radius: 999px;
+  max-width: calc(100vw - 24px);
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 .nav-direction.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(-8px); }
@@ -378,7 +379,8 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 }
 .stack-btn:active { transform: scale(0.92); }
 .stack-divider { width: 30px; height: 1px; background: var(--border-soft); flex-shrink: 0; }
-.btn-locate { color: var(--blue); }
+.btn-locate { color: var(--blue); transition: color 0.2s, box-shadow 0.2s; }
+.btn-locate.tracking { color: var(--accent); box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
 .filter-btn { left: calc(var(--safe-l) + 14px); }
 
 /* ═══ FILTER PANEL ═══ */
@@ -499,7 +501,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 
 /* ═══ INFO BAR ═══ */
-.info-bar { position: fixed; top: calc(var(--safe-t) + 110px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
+.info-bar { position: fixed; top: calc(var(--safe-t) + 122px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
 .info-bar.empty { opacity: 0; }
 .ib-traffic { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 .ib-traffic.ok   { color: var(--accent); }
@@ -521,11 +523,11 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 /* ═══ MARKERS ═══ */
 /* ═══ RONDS DE POSITION — "c'est moi", suit et pivote sur la carte,
    même principe que le point GPS d'iter (respiration + pulse + cap) ═══ */
-.user-dot-wrap { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-.user-dot-pulse { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: rgba(37,99,235,0.55); animation: userDotPulse 1.8s ease-out infinite; }
-@keyframes userDotPulse { 0% { transform: scale(0.6); opacity: 0.8; } 70% { transform: scale(2.6); opacity: 0; } 100% { opacity: 0; } }
+.user-dot-wrap { position: relative; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.user-dot-pulse { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: rgba(37,99,235,0.6); animation: userDotPulse 1.8s ease-out infinite; }
+@keyframes userDotPulse { 0% { transform: scale(0.6); opacity: 0.9; } 70% { transform: scale(3); opacity: 0; } 100% { opacity: 0; } }
 @keyframes userDotBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-.user-dot-core { position: relative; width: 16px; height: 16px; animation: userDotBreathe 1.8s ease-in-out infinite; border-radius: 50%; background: var(--blue); border: 3px solid #fff; box-shadow: 0 0 10px rgba(37,99,235,0.65); z-index: 2; }
+.user-dot-core { position: relative; width: 22px; height: 22px; animation: userDotBreathe 1.8s ease-in-out infinite; border-radius: 50%; background: var(--blue); border: 4px solid #fff; box-shadow: 0 0 0 3px rgba(37,99,235,0.35), 0 0 16px rgba(37,99,235,0.85), 0 2px 6px rgba(0,0,0,0.3); z-index: 2; }
 .user-dot-heading { position: absolute; bottom: 50%; left: 50%; width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 24px solid rgba(37,99,235,0.85); transform-origin: 50% 100%; opacity: 0; transition: opacity 0.2s ease; filter: drop-shadow(0 0 4px rgba(37,99,235,0.5)); }
 
 /* ═══ RONDS DE POSITION — variante photo de profil, façon "avatar pin"
@@ -893,7 +895,7 @@ body.driving-mode .drive-badge { display: block; }
    désactivés), donc on ne joue que sur l'opacité.
 ═══════════════════════════════════════════════════════ */
 .top, .fab-wrap, .locate-stack, .zone-pill, .info-bar,
-.hist-btn, .locate-btn, .drive-badge, .dest-badge, .nav-direction {
+.hist-btn, .locate-btn, .drive-badge, .dest-badge, .nav-direction, #arNavCard {
   transition: opacity 0.6s ease;
 }
 body.ui-idle .top,
@@ -903,8 +905,9 @@ body.ui-idle .zone-pill,
 body.ui-idle .info-bar,
 body.ui-idle .hist-btn,
 body.ui-idle .locate-btn,
-body.ui-idle .dest-badge {
-  opacity: 0.18;
+body.ui-idle .dest-badge,
+body.ui-idle #arNavCard {
+  opacity: 0.3;
 }
 /* La place prise / alerte zone restent pleinement visibles : ce sont
    des actions ponctuelles et urgentes, pas de l'habillage permanent. */
@@ -1972,7 +1975,7 @@ function buildUserIcon() {
   }
   return L.divIcon({
     html: '<div class="user-dot-wrap"><div class="user-dot-pulse"></div><div class="user-dot-heading"></div><div class="user-dot-core"></div></div>',
-    iconSize: [44, 44], iconAnchor: [22, 22], className: ''
+    iconSize: [52, 52], iconAnchor: [26, 26], className: ''
   });
 }
 function updateUserMarker(lat, lng, heading) {
@@ -2091,7 +2094,7 @@ function toggleSearchMode() {
     if (state.watchId === null) startWatch();
     // Activer followMode pour centrage auto
     followMode = true;
-    const locBtn = document.getElementById('locate-btn');
+    const locBtn = document.getElementById('btn-locate');
     if (locBtn) locBtn.classList.add('tracking');
     toast('Mode recherche actif — la carte vous suit', 'ok');
     // Centrage immédiat
@@ -2107,7 +2110,7 @@ function toggleSearchMode() {
     labelEl.textContent = 'Je cherche une place';
     badge.classList.remove('active');
     followMode = false;
-    const locBtn = document.getElementById('locate-btn');
+    const locBtn = document.getElementById('btn-locate');
     if (locBtn) locBtn.classList.remove('tracking');
     // Arrêter le watch si le consentement watch n'est pas activé
     if (!state.consent.watch) stopWatch();
@@ -2178,6 +2181,9 @@ async function locateMe() {
     updateUserMarker(lat, lng);
     state.map.setView([lat, lng], 16, { animate: true });
     onUserMoved(lat, lng); debouncedReverseGeo(lat, lng); updateZonePill();
+    // Réactive le suivi automatique — utile après avoir déplacé la carte à la main
+    followMode = true;
+    document.getElementById('btn-locate')?.classList.add('tracking');
   } catch { toast('Position introuvable', 'error'); }
 }
 
@@ -2446,7 +2452,7 @@ function firstGeolocation() {
   );
 }
 
-let accuracyCircle = null, followMode = false, lastSpeed = 0, lastSpeedPos = null, drivingMode = false, zoneAlertCooldown = false, zoneAlertTimer = null;
+let accuracyCircle = null, followMode = true, lastSpeed = 0, lastSpeedPos = null, drivingMode = false, zoneAlertCooldown = false, zoneAlertTimer = null;
 
 function startWatch() {
   if (state.watchId !== null) return;
@@ -2507,7 +2513,7 @@ function initMap() {
   state.map.on('dragstart', () => {
     if (followMode && !state.searchMode) {
       followMode = false;
-      const btn = document.getElementById('locate-btn'); if (btn) btn.classList.remove('tracking');
+      const btn = document.getElementById('btn-locate'); if (btn) btn.classList.remove('tracking');
     }
   });
   // Estompage de l'UI en cas d'inactivité — toute interaction avec la
@@ -2539,6 +2545,31 @@ function initUiIdleWatcher() {
     window.addEventListener(evt, resetUiIdle, { passive: true });
   });
   resetUiIdle();
+}
+
+/* ═══════════════════════════════════════
+   ÉCRAN TOUJOURS ALLUMÉ — Wake Lock API
+   Empêche le téléphone de se mettre en veille pendant l'utilisation
+   (utile en navigation/AR, où on regarde l'écran sans le toucher).
+   Le verrou est relâché automatiquement par le navigateur quand l'onglet
+   passe en arrière-plan — on le redemande donc à chaque retour au
+   premier plan.
+═══════════════════════════════════════ */
+let wakeLock = null;
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return; // non supporté (anciens navigateurs) — échec silencieux
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) {
+    console.warn('[wakeLock] failed', e?.message);
+  }
+}
+function initWakeLock() {
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestWakeLock();
+  });
 }
 
 /* ═══ HISTORIQUE ═══ */
@@ -2739,7 +2770,7 @@ function centerOnUser() {
   if (!state.map || !isFinite(state.lat) || !isFinite(state.lng)) { toast('Position non disponible', 'warn'); return; }
   if (state.searchMode) return; // En mode recherche, le centrage est automatique
   followMode = !followMode;
-  const btn = document.getElementById('locate-btn'); if (btn) btn.classList.toggle('tracking', followMode);
+  const btn = document.getElementById('btn-locate'); if (btn) btn.classList.toggle('tracking', followMode);
   if (followMode) { state.map.flyTo([state.lat, state.lng], Math.max(state.map.getZoom(), 16), { animate: true, duration: 0.6 }); toast('Suivi activé', 'ok'); }
   else if (!drivingMode && typeof state.map.setBearing === 'function') { state.map.setBearing(0); }
 }
@@ -3569,7 +3600,7 @@ function drawARDestinationArrow(ctx, W, H) {
 
   // ── Anneau de base (structure du cadran) ──
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 3.5; ctx.stroke();
 
   // ── Arc de proximité — se remplit à mesure qu'on approche (repère "on
   //    se rapproche"), échelle fixe sur 400 m pour rester stable. ──
@@ -3577,7 +3608,7 @@ function drawARDestinationArrow(ctx, W, H) {
   if (progress > 0.01) {
     ctx.beginPath();
     ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 6; ctx.lineCap = 'round';
     ctx.shadowColor = '#7dd3fc'; ctx.shadowBlur = 8;
     ctx.stroke(); ctx.shadowBlur = 0;
   }
@@ -3627,10 +3658,12 @@ function drawARDestinationArrow(ctx, W, H) {
 
   ctx.restore();
 
-  // ── Lecture "DISTANCE", en grand, en haut à gauche ──
+  // ── Lecture distance, en grand, en haut À DROITE (pour ne jamais
+  //    chevaucher le bouton fermer / le titre à gauche) ──
   ctx.save();
-  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-  const readX = 20, readY = H * 0.155;
+  ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+  const readX = W - 20, readY = H * 0.175;
+  const distWord = navTarget.label ? 'PROCHAIN VIRAGE' : 'DISTANCE';
   if (isArrived) {
     ctx.font = '800 34px -apple-system, system-ui';
     ctx.fillStyle = col;
@@ -3642,23 +3675,27 @@ function drawARDestinationArrow(ctx, W, H) {
     ctx.font = '800 46px -apple-system, system-ui';
     ctx.fillStyle = '#fff';
     if (dist < 60) { ctx.shadowColor = col; ctx.shadowBlur = 16; }
-    ctx.fillText(String(m), readX, readY);
+    ctx.fillText(m + ' m', readX, readY);
     ctx.shadowBlur = 0;
-    ctx.font = '700 14px -apple-system, system-ui';
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fillText('M', readX + ctx.measureText(String(m)).width + 22, readY - 24);
     ctx.font = '700 11px -apple-system, system-ui';
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.fillText('DISTANCE', readX + 2, readY + 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillText(distWord, readX, readY + 20);
   }
   // ── Instruction (nom du virage ou du lieu) sous le repère de distance ──
   ctx.font = '600 14px -apple-system, system-ui';
   ctx.fillStyle = '#fff';
   ctx.fillText(label, readX, readY + 46);
+  let noteY = readY + 68;
+  if (!navTarget.label && navRoute === null) {
+    ctx.font = '600 11px -apple-system, system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText('Itinéraire indisponible — direction à vol d\u2019oiseau', readX, noteY);
+    noteY += 18;
+  }
   if (!hasHeading) {
     ctx.font = '600 11px -apple-system, system-ui';
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText('Cap indisponible — orientation approximative', readX, readY + 68);
+    ctx.fillText('Cap indisponible — orientation approximative', readX, noteY);
   }
   ctx.restore();
 }
@@ -4029,9 +4066,11 @@ async function startRouteNavigation() {
 async function ensureNavRoute() {
   if (!selectedPoi) return null;
   if (navRoute) return navRoute;
-  const route = await fetchRoadRoute(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  let route = await fetchRoadRoute(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
+  if (!route) route = await fetchRoadRoute(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon); // 1 nouvel essai
   if (!selectedPoi) return null; // annulé entre-temps
   navRoute = route;
+  if (!route) toast("Itinéraire indisponible — direction à vol d'oiseau", 'warn');
   return navRoute;
 }
 /* Retourne le point à viser pour l'AR : le prochain virage sur la route
@@ -4095,7 +4134,6 @@ function bindEvents() {
   document.getElementById('fab').addEventListener('click', reportPlace);
   document.getElementById('fab-search').addEventListener('click', toggleSearchMode);
   document.getElementById('taken-btn')?.addEventListener('click', reportTaken);
-  document.getElementById('locate-btn')?.addEventListener('click', centerOnUser);
   document.getElementById('hist-btn')?.addEventListener('click', openHistPanel);
   document.getElementById('hist-close')?.addEventListener('click', closeHistPanel);
   document.getElementById('btn-locate').addEventListener('click', locateMe);
@@ -4305,7 +4343,9 @@ function init() {
   state.profilePhoto = loadProfilePhoto();
   if (!initMap()) return;
   bindEvents(); applyStoredFilterPrefs(); updateLayout(); applyTraffic();
+  document.getElementById('btn-locate')?.classList.toggle('tracking', followMode);
   initUiIdleWatcher();
+  initWakeLock();
 
   // Sécurité conducteur — afficher au premier lancement
   if (!_safetyAccepted) {
