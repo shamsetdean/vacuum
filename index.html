@@ -3562,6 +3562,103 @@ function bearingToScreen(poiBearing, heading, W, H, FOV = 70) {
 }
 
 /* ═══════════════════════════════════════
+   FLÈCHE DE VIRAGE 3D — indique le geste réel à faire
+   (tout droit / légèrement / franchement à gauche ou à droite /
+   demi-tour / rond-point), d'après le modifier OSRM du prochain
+   virage. Contrairement au repère sur le cadran (qui suit le cap
+   du téléphone), cette flèche reste toujours "debout" à l'écran :
+   elle se courbe dans le sens du virage à venir, comme dans une
+   vraie appli de guidage.
+═══════════════════════════════════════ */
+function turnBendDeg(modifier, type) {
+  if (type === 'uturn' || modifier === 'uturn') return 180;
+  const map = {
+    'straight': 0, 'slight left': -32, 'slight right': 32,
+    'left': -78, 'right': 78, 'sharp left': -132, 'sharp right': 132
+  };
+  return (modifier in map) ? map[modifier] : 0;
+}
+
+function drawArrowHead(ctx, x, y, angleFromUp, size, fill) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angleFromUp);
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.68);
+  ctx.lineTo(size * 0.58, size * 0.42);
+  ctx.lineTo(0, size * 0.14);
+  ctx.lineTo(-size * 0.58, size * 0.42);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = size * 0.3; ctx.shadowOffsetY = size * 0.08;
+  ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.restore();
+}
+
+function drawTurnArrow(ctx, cx, cy, size, navTarget) {
+  const type = navTarget.maneuverType, modifier = navTarget.maneuverModifier;
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  if (type === 'roundabout' || type === 'rotary') {
+    // ── Icône rond-point : flèche circulaire avec sortie ──
+    const r = size * 0.34;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, Math.PI * 0.15, Math.PI * 1.7);
+    const grad = ctx.createLinearGradient(-r, -r, r, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0.6)'); grad.addColorStop(1, '#fff');
+    ctx.strokeStyle = grad; ctx.lineWidth = size * 0.13; ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = size * 0.15;
+    ctx.stroke(); ctx.shadowBlur = 0;
+    const endA = Math.PI * 0.15;
+    drawArrowHead(ctx, Math.cos(endA) * r, Math.sin(endA) * r, endA + Math.PI * 0.5, size * 0.3, '#fff');
+    // flèche de sortie vers le haut
+    ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(0, -size * 0.66);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = size * 0.1; ctx.lineCap = 'round'; ctx.stroke();
+    drawArrowHead(ctx, 0, -size * 0.66, 0, size * 0.26, '#fff');
+  } else if (type === 'arrive') {
+    // ── Icône arrivée : fanion ──
+    ctx.beginPath(); ctx.moveTo(-size*0.18, size*0.5); ctx.lineTo(-size*0.18, -size*0.55);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = size * 0.09; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-size*0.18, -size*0.55);
+    ctx.lineTo(size*0.4, -size*0.38);
+    ctx.lineTo(-size*0.18, -size*0.12);
+    ctx.closePath();
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = size * 0.15;
+    ctx.fill(); ctx.shadowBlur = 0;
+  } else {
+    // ── Flèche courbée standard : tout droit → gauche/droite → demi-tour ──
+    const bend = turnBendDeg(modifier, type);
+    const bendRad = bend * Math.PI / 180;
+    const bottom = { x: 0, y: size * 0.6 };
+    const mid = { x: 0, y: -size * 0.02 };
+    const tipDist = size * 0.62;
+    const tip = { x: Math.sin(bendRad) * tipDist, y: -Math.cos(bendRad) * tipDist };
+    const ctrl = { x: mid.x + Math.sin(bendRad) * size * 0.4, y: mid.y - Math.cos(bendRad) * size * 0.12 };
+
+    ctx.beginPath();
+    ctx.moveTo(bottom.x, bottom.y);
+    ctx.lineTo(mid.x, mid.y);
+    ctx.quadraticCurveTo(ctrl.x, ctrl.y, tip.x, tip.y);
+    const grad = ctx.createLinearGradient(0, bottom.y, tip.x, tip.y);
+    grad.addColorStop(0, 'rgba(255,255,255,0.5)'); grad.addColorStop(1, '#ffffff');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = size * 0.26;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = size * 0.2; ctx.shadowOffsetY = size * 0.06;
+    ctx.stroke();
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+    const headAngle = Math.atan2(tip.x - ctrl.x, -(tip.y - ctrl.y));
+    drawArrowHead(ctx, tip.x, tip.y, headAngle, size * 0.34, '#fff');
+  }
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════
    FLÈCHE 2D DESTINATION POI EN AR
 ═══════════════════════════════════════ */
 /* ═══ FLÈCHE 2D HUD — redesign stylisé ═══ */
@@ -3651,10 +3748,17 @@ function drawARDestinationArrow(ctx, W, H) {
   ctx.fill(); ctx.shadowBlur = 0;
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
 
-  // ── Centre du cadran — icône catégorie ──
-  ctx.beginPath(); ctx.arc(cx, cy, 26, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
-  ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+  // ── Centre du cadran — flèche de virage 3D, bien visible ──
+  const centerR = R * 0.6;
+  ctx.beginPath(); ctx.arc(cx, cy, centerR, 0, Math.PI * 2);
+  const bgGrad = ctx.createRadialGradient(cx, cy - centerR * 0.35, centerR * 0.15, cx, cy, centerR);
+  bgGrad.addColorStop(0, 'rgba(20,20,24,0.55)'); bgGrad.addColorStop(1, 'rgba(0,0,0,0.7)');
+  ctx.fillStyle = bgGrad; ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+  ctx.shadowColor = col; ctx.shadowBlur = 12;
+  ctx.stroke(); ctx.shadowBlur = 0;
+
+  drawTurnArrow(ctx, cx, cy + centerR * 0.04, centerR * 1.5, navTarget);
 
   ctx.restore();
 
@@ -3936,28 +4040,71 @@ function detachNavOrientationListener() {
   navHeading = null;
 }
 
-/* ── Itinéraire réel sur les routes (OSRM, service public gratuit) ── */
+/* ── Itinéraire réel sur les routes (OSRM, service public gratuit) ──
+   Deux serveurs OSRM compatibles sont essayés l'un après l'autre (le
+   second est un simple filet de sécurité si le premier est en panne ou
+   surchargé), chacun avec 2 tentatives. Si les deux échouent malgré
+   tout, on ne s'arrête pas là : ensureNavRoute() relance le calcul en
+   arrière-plan toutes les 6 secondes jusqu'à obtenir un itinéraire. */
+const OSRM_HOSTS = [
+  'https://router.project-osrm.org',
+  'https://routing.openstreetmap.de/routed-car',
+];
+async function fetchRoadRouteFrom(hostBase, lat1, lng1, lat2, lng2) {
+  const url = hostBase + '/route/v1/driving/'
+    + lng1 + ',' + lat1 + ';' + lng2 + ',' + lat2
+    + '?overview=full&geometries=geojson&steps=true';
+  const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) throw new Error('osrm ' + r.status);
+  const data = await r.json();
+  const route = data?.routes?.[0];
+  if (!route) throw new Error('no route');
+  const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+  const steps = (route.legs?.[0]?.steps || []).map(s => ({
+    distance: s.distance,
+    name: s.name || '',
+    type: s.maneuver?.type || '',
+    modifier: s.maneuver?.modifier || '',
+    loc: s.maneuver?.location ? [s.maneuver.location[1], s.maneuver.location[0]] : null,
+    coords: (s.geometry?.coordinates || []).map(c => [c[1], c[0]]),
+  }));
+  return { coords, steps, distance: route.distance, duration: route.duration };
+}
 async function fetchRoadRoute(lat1, lng1, lat2, lng2) {
-  try {
-    const url = 'https://router.project-osrm.org/route/v1/driving/'
-      + lng1 + ',' + lat1 + ';' + lng2 + ',' + lat2
-      + '?overview=full&geometries=geojson&steps=true';
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) throw new Error('osrm ' + r.status);
-    const data = await r.json();
-    const route = data?.routes?.[0];
-    if (!route) throw new Error('no route');
-    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
-    const steps = (route.legs?.[0]?.steps || []).map(s => ({
-      distance: s.distance,
-      name: s.name || '',
-      type: s.maneuver?.type || '',
-      modifier: s.maneuver?.modifier || '',
-      loc: s.maneuver?.location ? [s.maneuver.location[1], s.maneuver.location[0]] : null,
-      coords: (s.geometry?.coordinates || []).map(c => [c[1], c[0]]),
-    }));
-    return { coords, steps, distance: route.distance, duration: route.duration };
-  } catch (e) { console.warn('[route] failed', e?.message); return null; }
+  for (const host of OSRM_HOSTS) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        return await fetchRoadRouteFrom(host, lat1, lng1, lat2, lng2);
+      } catch (e) {
+        console.warn('[route] échec sur ' + host + ' (essai ' + attempt + ')', e?.message);
+        if (attempt < 2) await new Promise(res => setTimeout(res, 500));
+      }
+    }
+  }
+  return null;
+}
+
+/* Relance silencieuse en arrière-plan tant qu'aucun itinéraire n'a pu
+   être calculé pour la destination active. S'arrête d'elle-même si la
+   destination change ou est annulée. */
+let navRouteRetryTimer = null;
+function clearNavRouteRetry() {
+  if (navRouteRetryTimer) { clearInterval(navRouteRetryTimer); navRouteRetryTimer = null; }
+}
+function scheduleNavRouteRetry(dest) {
+  clearNavRouteRetry();
+  navRouteRetryTimer = setInterval(async () => {
+    if (!selectedPoi || selectedPoi !== dest || navRoute) { clearNavRouteRetry(); return; }
+    const route = await fetchRoadRoute(state.lat, state.lng, dest.lat, dest.lon);
+    if (!selectedPoi || selectedPoi !== dest) { clearNavRouteRetry(); return; }
+    if (route) {
+      navRoute = route;
+      clearNavRouteRetry();
+      drawRoutePolyline(route.coords);
+      updateNavDirectionDisplay();
+      toast('Itinéraire trouvé', 'ok');
+    }
+  }, 6000);
 }
 function drawRoutePolyline(coords) {
   removeRouteLine();
@@ -4003,6 +4150,7 @@ function showNavDirection() {
 function hideNavDirection() {
   navDirectionActive = false;
   navRoute = null;
+  clearNavRouteRetry();
   removeRouteLine();
   const el = document.getElementById('nav-direction');
   if (el) el.classList.add('hidden');
@@ -4044,9 +4192,10 @@ function updateNavDirectionDisplay() {
 /* Lance le calcul d'itinéraire réel (routes) et le dessine sur la carte */
 async function startRouteNavigation() {
   if (!selectedPoi) return;
+  const dest = selectedPoi;
   const fromLat = state.lat, fromLng = state.lng;
-  const route = await fetchRoadRoute(fromLat, fromLng, selectedPoi.lat, selectedPoi.lon);
-  if (!selectedPoi) return; // annulé entre-temps
+  const route = await fetchRoadRoute(fromLat, fromLng, dest.lat, dest.lon);
+  if (!selectedPoi || selectedPoi !== dest) return; // annulé entre-temps
   if (route) {
     navRoute = route;
     drawRoutePolyline(route.coords);
@@ -4055,7 +4204,8 @@ async function startRouteNavigation() {
     }
   } else {
     navRoute = null;
-    toast("Itinéraire indisponible — direction à vol d'oiseau", 'warn');
+    toast("Itinéraire en cours de calcul — direction à vol d'oiseau pour l'instant", 'warn');
+    scheduleNavRouteRetry(dest);
   }
   updateNavDirectionDisplay();
 }
@@ -4066,12 +4216,15 @@ async function startRouteNavigation() {
 async function ensureNavRoute() {
   if (!selectedPoi) return null;
   if (navRoute) return navRoute;
-  let route = await fetchRoadRoute(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon);
-  if (!route) route = await fetchRoadRoute(state.lat, state.lng, selectedPoi.lat, selectedPoi.lon); // 1 nouvel essai
+  const dest = selectedPoi;
+  const route = await fetchRoadRoute(state.lat, state.lng, dest.lat, dest.lon);
   if (!selectedPoi) return null; // annulé entre-temps
-  navRoute = route;
-  if (!route) toast("Itinéraire indisponible — direction à vol d'oiseau", 'warn');
-  return navRoute;
+  if (route) { navRoute = route; return navRoute; }
+  // Les deux serveurs ont échoué : on ne lâche pas — relance silencieuse
+  // en arrière-plan jusqu'à obtenir un itinéraire.
+  toast("Itinéraire en cours de calcul — direction à vol d'oiseau pour l'instant", 'warn');
+  scheduleNavRouteRetry(dest);
+  return null;
 }
 /* Retourne le point à viser pour l'AR : le prochain virage sur la route
    si elle est connue, sinon la destination finale (repli à vol d'oiseau). */
@@ -4083,10 +4236,16 @@ function getArNavTarget() {
       const d = distanceM(state.lat, state.lng, nextStep.loc[0], nextStep.loc[1]);
       // Si on est déjà tout près du point de manœuvre, viser directement la
       // destination finale évite à la flèche de "sauter" nerveusement.
-      if (d > 8) return { lat: nextStep.loc[0], lng: nextStep.loc[1], label: maneuverText(nextStep) };
+      if (d > 8) return {
+        lat: nextStep.loc[0], lng: nextStep.loc[1],
+        label: maneuverText(nextStep),
+        // Type/modifier bruts OSRM conservés pour dessiner la vraie forme
+        // du virage (flèche courbée), pas seulement le texte.
+        maneuverType: nextStep.type || '', maneuverModifier: nextStep.modifier || ''
+      };
     }
   }
-  return selectedPoi ? { lat: selectedPoi.lat, lng: selectedPoi.lon, label: null } : null;
+  return selectedPoi ? { lat: selectedPoi.lat, lng: selectedPoi.lon, label: null, maneuverType: '', maneuverModifier: '' } : null;
 }
 
 /* Navigation carte depuis panneau POI */
