@@ -2555,8 +2555,38 @@ function setFollowMode(on) {
   followMode = on;
   const btn = document.getElementById('btn-locate');
   if (btn) btn.classList.toggle('tracking', on);
-  if (on) { attachMapCompass(); ensureHeadingLoop(); }
+  if (on) { attachMapCompass(); ensureHeadingLoop(); zoomFollowMode = true; }
   else { detachMapCompass(); }
+}
+
+/* ═══════════════════════════════════════
+   ZOOM AUTOMATIQUE SELON LA VITESSE
+   Plus la vitesse augmente, plus la carte s'éloigne, pour garder une
+   vision d'ensemble utile en roulant ; à l'arrêt ou à pied, elle se
+   rapproche. Le niveau cible est transmis à Leaflet (qui l'anime et
+   l'arrondit lui-même), avec un délai minimal entre deux changements
+   pour éviter les corrections trop fréquentes.
+═══════════════════════════════════════ */
+let zoomFollowMode = true;
+let lastAutoZoomAt = 0;
+const ZOOM_AUTO_MIN_INTERVAL_MS = 2500;
+
+function speedToZoom(speedKmh) {
+  if (speedKmh < 6) return 18;
+  if (speedKmh < 15) return 17;
+  if (speedKmh < 40) return 16;
+  if (speedKmh < 80) return 15;
+  return 14;
+}
+function updateSpeedZoom(speedKmh) {
+  if (!zoomFollowMode || !followMode || !state.map || state.watchId === null) return;
+  const now = Date.now();
+  if (now - lastAutoZoomAt < ZOOM_AUTO_MIN_INTERVAL_MS) return;
+  const target = speedToZoom(speedKmh);
+  if (target !== state.map.getZoom()) {
+    lastAutoZoomAt = now;
+    state.map.setZoom(target, { animate: true });
+  }
 }
 
 function startWatch() {
@@ -2584,6 +2614,7 @@ function startWatch() {
       } else {
         computeSpeed(lat, lng);
       }
+      updateSpeedZoom(lastSpeed);
       updateDrivingMode();
       if ((drivingMode || followMode) && state.map) {
         // Durée de glisse adaptée à l'intervalle réel entre deux positions GPS,
@@ -2628,6 +2659,14 @@ function initMap() {
       setFollowMode(false);
     }
   });
+  // Désengagement du zoom automatique dès qu'on zoome/dézoome à la main —
+  // molette, double-clic ou pincement (pas de zoomstart générique, qui se
+  // déclenche aussi pour les changements programmatiques de la carte).
+  const disableZoomFollow = () => { zoomFollowMode = false; };
+  const mapEl = state.map.getContainer();
+  mapEl.addEventListener('wheel', disableZoomFollow, { passive: true });
+  mapEl.addEventListener('dblclick', disableZoomFollow);
+  mapEl.addEventListener('touchstart', (e) => { if (e.touches && e.touches.length > 1) disableZoomFollow(); }, { passive: true });
   // Estompage de l'UI en cas d'inactivité — toute interaction avec la
   // carte (drag, zoom, pinch) réveille l'interface comme un tap direct.
   state.map.on('movestart zoomstart dragstart', resetUiIdle);
@@ -2661,15 +2700,17 @@ function initUiIdleWatcher() {
 
 /* ═══════════════════════════════════════
    ÉCRAN TOUJOURS ALLUMÉ — Wake Lock API
-   Empêche le téléphone de se mettre en veille pendant l'utilisation
-   (utile en navigation/AR, où on regarde l'écran sans le toucher).
-   Le verrou est relâché automatiquement par le navigateur quand l'onglet
-   passe en arrière-plan — on le redemande donc à chaque retour au
-   premier plan.
+   Empêche le téléphone de se mettre en veille pendant une navigation
+   active (carte), où on regarde l'écran sans le toucher. Le verrou est
+   relâché automatiquement par le navigateur quand l'onglet passe en
+   arrière-plan — on le redemande donc au retour au premier plan, mais
+   seulement si une navigation est toujours en cours. Safari iOS ne
+   supporte l'API que depuis peu : absence de 'wakeLock' sur navigator
+   → repli silencieux, sans erreur bloquante.
 ═══════════════════════════════════════ */
 let wakeLock = null;
 async function requestWakeLock() {
-  if (!('wakeLock' in navigator)) return; // non supporté (anciens navigateurs) — échec silencieux
+  if (!('wakeLock' in navigator)) return; // non supporté (Safari iOS ancien, etc.) — échec silencieux
   try {
     wakeLock = await navigator.wakeLock.request('screen');
     wakeLock.addEventListener('release', () => { wakeLock = null; });
@@ -2677,10 +2718,12 @@ async function requestWakeLock() {
     console.warn('[wakeLock] failed', e?.message);
   }
 }
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
 function initWakeLock() {
-  requestWakeLock();
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') requestWakeLock();
+    if (document.visibilityState === 'visible' && navDirectionActive) requestWakeLock();
   });
 }
 
@@ -4279,6 +4322,7 @@ function showNavDirection() {
   if (el) el.classList.remove('hidden');
   attachNavOrientationListener();
   updateNavDirectionDisplay();
+  requestWakeLock();
 }
 function hideNavDirection() {
   navDirectionActive = false;
@@ -4290,6 +4334,7 @@ function hideNavDirection() {
   const stepEl = document.getElementById('nav-direction-step');
   if (stepEl) stepEl.textContent = '';
   detachNavOrientationListener();
+  releaseWakeLock();
 }
 function updateNavDirectionDisplay() {
   if (!navDirectionActive || !selectedPoi) return;
