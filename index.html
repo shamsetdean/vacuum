@@ -360,6 +360,11 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
    frame) donnant une impression de flux continu vers la destination. */
 .nav-route-line { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25)) drop-shadow(0 0 6px rgba(37,99,235,0.6)); stroke-dasharray: 14 12; animation: navRouteFlow 1s linear infinite; }
 @keyframes navRouteFlow { to { stroke-dashoffset: -26; } }
+/* Itinéraires alternatifs — tracé statique atténué, sans flux, qui
+   redevient le tracé principal au tap. */
+.nav-route-alt { cursor: pointer; transition: opacity 0.2s ease; }
+.nav-route-alt:hover { opacity: 0.85 !important; }
+.nav-alt-label { background: var(--glass-solid); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; font-size: 11.5px; font-weight: 700; color: var(--text-2); white-space: nowrap; box-shadow: var(--shadow-2); cursor: pointer; }
 
 /* ═══ BOUTON EMPILÉ (droite, façon Find My) — mode nuit / recentrage ═══ */
 .locate-stack {
@@ -4163,10 +4168,12 @@ function updateARInstruction() {
 let navDirectionActive = false;
 let navHeading = null;
 let navOrientationListener = null;
-let navRoute = null;       // { coords:[[lat,lng]...], steps:[...], distance, duration }
+let navRoute = null;       // { coords:[[lat,lng]...], steps:[...], distance, duration } — itinéraire actif
 let navRouteLine = null;   // L.polyline
 let navRouteFullCoords = null; // copie brute des points OSRM, jamais tronquée
 let navRouteProgressIdx = 0;   // prochain point du tracé non encore dépassé
+let navRouteAlternatives = []; // itinéraires non actifs, même forme que navRoute
+let navAltLayers = [];         // [{ route, line, label }] calques Leaflet des alternatives
 
 function onNavOrientation(e) {
   let h;
@@ -4206,15 +4213,7 @@ const OSRM_HOSTS = [
   'https://router.project-osrm.org',
   'https://routing.openstreetmap.de/routed-car',
 ];
-async function fetchRoadRouteFrom(hostBase, lat1, lng1, lat2, lng2) {
-  const url = hostBase + '/route/v1/driving/'
-    + lng1 + ',' + lat1 + ';' + lng2 + ',' + lat2
-    + '?overview=full&geometries=geojson&steps=true';
-  const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
-  if (!r.ok) throw new Error('osrm ' + r.status);
-  const data = await r.json();
-  const route = data?.routes?.[0];
-  if (!route) throw new Error('no route');
+function parseOsrmRoute(route) {
   const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
   const steps = (route.legs?.[0]?.steps || []).map(s => ({
     distance: s.distance,
@@ -4226,11 +4225,41 @@ async function fetchRoadRouteFrom(hostBase, lat1, lng1, lat2, lng2) {
   }));
   return { coords, steps, distance: route.distance, duration: route.duration };
 }
+async function fetchRoadRouteFrom(hostBase, lat1, lng1, lat2, lng2, alternatives) {
+  const url = hostBase + '/route/v1/driving/'
+    + lng1 + ',' + lat1 + ';' + lng2 + ',' + lat2
+    + '?overview=full&geometries=geojson&steps=true'
+    + (alternatives ? '&alternatives=true' : '');
+  const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  if (!r.ok) throw new Error('osrm ' + r.status);
+  const data = await r.json();
+  const routes = data?.routes;
+  if (!routes || !routes.length) throw new Error('no route');
+  return routes.map(parseOsrmRoute);
+}
 async function fetchRoadRoute(lat1, lng1, lat2, lng2) {
   for (const host of OSRM_HOSTS) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        return await fetchRoadRouteFrom(host, lat1, lng1, lat2, lng2);
+        const routes = await fetchRoadRouteFrom(host, lat1, lng1, lat2, lng2, false);
+        return routes[0];
+      } catch (e) {
+        console.warn('[route] échec sur ' + host + ' (essai ' + attempt + ')', e?.message);
+        if (attempt < 2) await new Promise(res => setTimeout(res, 500));
+      }
+    }
+  }
+  return null;
+}
+/* Variante avec plusieurs tracés possibles (OSRM alternatives=true) — le
+   premier est le meilleur (celui qu'OSRM proposerait seul), les suivants
+   sont des itinéraires alternatifs viables. Selon la topologie, OSRM peut
+   n'en renvoyer qu'un seul : le tableau a alors une seule entrée. */
+async function fetchRoadRoutes(lat1, lng1, lat2, lng2) {
+  for (const host of OSRM_HOSTS) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        return await fetchRoadRouteFrom(host, lat1, lng1, lat2, lng2, true);
       } catch (e) {
         console.warn('[route] échec sur ' + host + ' (essai ' + attempt + ')', e?.message);
         if (attempt < 2) await new Promise(res => setTimeout(res, 500));
@@ -4291,6 +4320,57 @@ function updateRouteProgress(lat, lng) {
   const remaining = navRouteFullCoords.slice(navRouteProgressIdx);
   navRouteLine.setLatLngs([[lat, lng], ...remaining]);
 }
+
+function formatDurationMin(s) {
+  const min = Math.round(s / 60);
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  return h + 'h' + (m ? String(m).padStart(2, '0') : '');
+}
+/* Retire du tracé du dessin les itinéraires alternatifs affichés (calques
+   Leaflet + état) — n'affecte pas l'itinéraire actif (navRouteLine). */
+function clearRouteAlternatives() {
+  navAltLayers.forEach(a => {
+    if (!state.map) return;
+    state.map.removeLayer(a.line);
+    state.map.removeLayer(a.label);
+  });
+  navAltLayers = [];
+  navRouteAlternatives = [];
+}
+/* Dessine les itinéraires non actifs dans un style secondaire (tracé
+   atténué, sans flux) avec une étiquette durée/distance, tapable pour
+   devenir le nouvel itinéraire actif. */
+function drawRouteAlternatives(routes) {
+  clearRouteAlternatives();
+  if (!state.map || !L || !routes || !routes.length) return;
+  navRouteAlternatives = routes;
+  routes.forEach((route, idx) => {
+    const line = L.polyline(route.coords, { className: 'nav-route-alt', color: '#94a3b8', weight: 5, opacity: 0.6, lineCap: 'round', lineJoin: 'round' }).addTo(state.map);
+    line.on('click', () => selectRouteAlternative(idx));
+    const mid = route.coords[Math.floor(route.coords.length / 2)];
+    const label = L.marker(mid, {
+      icon: L.divIcon({ className: '', html: '<div class="nav-alt-label">' + formatDurationMin(route.duration) + ' · ' + formatDist(route.distance) + '</div>', iconSize: [90, 24], iconAnchor: [45, 12] }),
+      zIndexOffset: 500,
+    }).addTo(state.map);
+    label.on('click', () => selectRouteAlternative(idx));
+    navAltLayers.push({ route, line, label });
+  });
+}
+/* Promeut l'alternative choisie au rang d'itinéraire actif — l'ancien
+   itinéraire actif rejoint les alternatives affichées. */
+function selectRouteAlternative(idx) {
+  const chosen = navRouteAlternatives[idx];
+  if (!chosen) return;
+  const previousActive = navRoute;
+  const rest = navRouteAlternatives.filter((_, i) => i !== idx);
+  if (previousActive) rest.push(previousActive);
+  navRoute = chosen;
+  drawRoutePolyline(chosen.coords);
+  drawRouteAlternatives(rest);
+  updateNavDirectionDisplay();
+  toast('Itinéraire changé', 'ok');
+}
 const MANEUVER_FR = { left: 'à gauche', right: 'à droite', straight: 'tout droit', 'slight left': 'légèrement à gauche', 'slight right': 'légèrement à droite', 'sharp left': 'fortement à gauche', 'sharp right': 'fortement à droite', uturn: 'demi-tour' };
 function maneuverText(step) {
   if (!step) return '';
@@ -4329,6 +4409,7 @@ function hideNavDirection() {
   navRoute = null;
   clearNavRouteRetry();
   removeRouteLine();
+  clearRouteAlternatives();
   const el = document.getElementById('nav-direction');
   if (el) el.classList.add('hidden');
   const stepEl = document.getElementById('nav-direction-step');
@@ -4372,16 +4453,19 @@ async function startRouteNavigation() {
   if (!selectedPoi) return;
   const dest = selectedPoi;
   const fromLat = state.lat, fromLng = state.lng;
-  const route = await fetchRoadRoute(fromLat, fromLng, dest.lat, dest.lon);
+  const routes = await fetchRoadRoutes(fromLat, fromLng, dest.lat, dest.lon);
   if (!selectedPoi || selectedPoi !== dest) return; // annulé entre-temps
-  if (route) {
-    navRoute = route;
-    drawRoutePolyline(route.coords);
-    if (state.map && route.coords.length) {
-      state.map.fitBounds(L.latLngBounds(route.coords), { padding: [70, 70], maxZoom: 17 });
+  if (routes && routes.length) {
+    navRoute = routes[0];
+    drawRoutePolyline(navRoute.coords);
+    drawRouteAlternatives(routes.slice(1));
+    if (state.map && navRoute.coords.length) {
+      const bounds = L.latLngBounds(routes.flatMap(r => r.coords));
+      state.map.fitBounds(bounds, { padding: [70, 70], maxZoom: 17 });
     }
   } else {
     navRoute = null;
+    clearRouteAlternatives();
     toast("Itinéraire en cours de calcul — direction à vol d'oiseau pour l'instant", 'warn');
     scheduleNavRouteRetry(dest);
   }
