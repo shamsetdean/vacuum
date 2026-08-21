@@ -356,7 +356,10 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .nav-direction-step { font-size: 11px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; margin-top: 1px; }
 .nav-direction-close { width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
 .nav-direction-close svg { width: 11px; height: 11px; }
-.nav-route-line { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25)); }
+/* Tracé d'itinéraire — tirets glissants en boucle (aucun recalcul JS par
+   frame) donnant une impression de flux continu vers la destination. */
+.nav-route-line { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25)) drop-shadow(0 0 6px rgba(37,99,235,0.6)); stroke-dasharray: 14 12; animation: navRouteFlow 1s linear infinite; }
+@keyframes navRouteFlow { to { stroke-dashoffset: -26; } }
 
 /* ═══ BOUTON EMPILÉ (droite, façon Find My) — mode nuit / recentrage ═══ */
 .locate-stack {
@@ -521,14 +524,14 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 @keyframes burst-up { 0%{ opacity:1; transform:translateY(0) scale(1); } 60%{ opacity:1; transform:translateY(-44px) scale(1.2); } 100%{ opacity:0; transform:translateY(-70px) scale(0.9); } }
 
 /* ═══ MARKERS ═══ */
-/* ═══ RONDS DE POSITION — "c'est moi", suit et pivote sur la carte,
-   même principe que le point GPS d'iter (respiration + pulse + cap) ═══ */
+/* ═══ MARQUEUR DE POSITION — "c'est moi", suit et pivote sur la carte :
+   anneau qui pulse + flèche de cap, rotation pilotée par headingLoopFrame
+   (même cap lissé que la rotation de la carte) ═══ */
 .user-dot-wrap { position: relative; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .user-dot-pulse { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: rgba(37,99,235,0.6); animation: userDotPulse 1.8s ease-out infinite; }
 @keyframes userDotPulse { 0% { transform: scale(0.6); opacity: 0.9; } 70% { transform: scale(3); opacity: 0; } 100% { opacity: 0; } }
 @keyframes userDotBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-.user-dot-core { position: relative; width: 22px; height: 22px; animation: userDotBreathe 1.8s ease-in-out infinite; border-radius: 50%; background: var(--blue); border: 4px solid #fff; box-shadow: 0 0 0 3px rgba(37,99,235,0.35), 0 0 16px rgba(37,99,235,0.85), 0 2px 6px rgba(0,0,0,0.3); z-index: 2; }
-.user-dot-heading { position: absolute; bottom: 50%; left: 50%; width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 24px solid rgba(37,99,235,0.85); transform-origin: 50% 100%; opacity: 0; transition: opacity 0.2s ease; filter: drop-shadow(0 0 4px rgba(37,99,235,0.5)); }
+.user-dot-arrow { position: relative; width: 36px; height: 36px; z-index: 2; filter: drop-shadow(0 0 6px rgba(37,99,235,0.75)) drop-shadow(0 2px 4px rgba(0,0,0,0.3)); will-change: transform; }
 
 /* ═══ RONDS DE POSITION — variante photo de profil, façon "avatar pin"
    (cf. capture partagée) : photo dans un cercle blanc avec ombre, petit
@@ -1974,7 +1977,13 @@ function buildUserIcon() {
     });
   }
   return L.divIcon({
-    html: '<div class="user-dot-wrap"><div class="user-dot-pulse"></div><div class="user-dot-heading"></div><div class="user-dot-core"></div></div>',
+    html: '<div class="user-dot-wrap"><div class="user-dot-pulse"></div>'
+        + '<div class="user-dot-arrow"><svg viewBox="0 0 36 36" width="36" height="36">'
+        + '<defs><linearGradient id="udag" x1="0" y1="0" x2="0" y2="1">'
+        + '<stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#1d4ed8"/>'
+        + '</linearGradient></defs>'
+        + '<path d="M18 2 L32 32 L18 24.5 L4 32 Z" fill="url(#udag)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>'
+        + '</svg></div></div>',
     iconSize: [52, 52], iconAnchor: [26, 26], className: ''
   });
 }
@@ -1985,24 +1994,27 @@ function updateUserMarker(lat, lng, heading) {
   else { userMarker = L.marker([lat, lng], { icon: buildUserIcon(), zIndexOffset: 1000 }).addTo(state.map); }
   updateUserHeading(heading);
 }
-/* Met à jour uniquement la flèche de cap sans recréer l'icône entière,
-   pour que l'animation de respiration/pulse du rond ne redémarre jamais.
-   Fonctionne pour les deux variantes (rond plein ou photo de profil). */
+/* Met à jour le badge de cap de la variante "photo de profil" sans recréer
+   l'icône entière. La flèche de la variante ronde, elle, est pilotée en
+   continu par headingLoopFrame (cap lissé), voir applyMarkerArrowRotation. */
 function updateUserHeading(heading) {
   if (!userMarker || !userMarker._icon) return;
   lastKnownHeading = (typeof heading === 'number' && isFinite(heading)) ? heading : null;
-  const dotArrow = userMarker._icon.querySelector('.user-dot-heading');
   const avatarBadge = userMarker._icon.querySelector('.user-avatar-heading-badge');
   const avatarArrow = userMarker._icon.querySelector('.user-avatar-heading-arrow');
   const has = lastKnownHeading !== null;
-  if (dotArrow) {
-    dotArrow.style.opacity = has ? '1' : '0';
-    if (has) dotArrow.style.transform = 'translate(-50%, 0) rotate(' + lastKnownHeading + 'deg)';
-  }
   if (avatarBadge) avatarBadge.classList.toggle('visible', has);
   if (avatarArrow && has) avatarArrow.style.transform = 'rotate(' + lastKnownHeading + 'deg)';
 }
 let lastKnownHeading = null;
+/* Applique le cap lissé (markerHeadingDisplay) à la flèche de la variante
+   ronde — appelée à chaque frame par headingLoopFrame, indépendamment du
+   mode suivi : la flèche indique toujours le cap réel de l'utilisateur. */
+function applyMarkerArrowRotation(deg) {
+  if (!userMarker || !userMarker._icon) return;
+  const arrow = userMarker._icon.querySelector('.user-dot-arrow');
+  if (arrow) arrow.style.transform = 'rotate(' + deg + 'deg)';
+}
 
 /* ═══════════════════════════════════════
    PHOTO DE PROFIL — rond personnalisé sur la carte
@@ -2093,9 +2105,7 @@ function toggleSearchMode() {
     // Activer le suivi continu si pas déjà actif
     if (state.watchId === null) startWatch();
     // Activer followMode pour centrage auto
-    followMode = true;
-    const locBtn = document.getElementById('btn-locate');
-    if (locBtn) locBtn.classList.add('tracking');
+    setFollowMode(true);
     toast('Mode recherche actif — la carte vous suit', 'ok');
     // Centrage immédiat
     if (navigator.geolocation) {
@@ -2109,12 +2119,9 @@ function toggleSearchMode() {
     btn.classList.remove('searching');
     labelEl.textContent = 'Je cherche une place';
     badge.classList.remove('active');
-    followMode = false;
-    const locBtn = document.getElementById('btn-locate');
-    if (locBtn) locBtn.classList.remove('tracking');
+    setFollowMode(false);
     // Arrêter le watch si le consentement watch n'est pas activé
     if (!state.consent.watch) stopWatch();
-    if (!drivingMode && state.map && typeof state.map.setBearing === 'function') state.map.setBearing(0);
     toast('Mode recherche désactivé', 'ok');
   }
 }
@@ -2182,8 +2189,7 @@ async function locateMe() {
     state.map.setView([lat, lng], 16, { animate: true });
     onUserMoved(lat, lng); debouncedReverseGeo(lat, lng); updateZonePill();
     // Réactive le suivi automatique — utile après avoir déplacé la carte à la main
-    followMode = true;
-    document.getElementById('btn-locate')?.classList.add('tracking');
+    setFollowMode(true);
   } catch { toast('Position introuvable', 'error'); }
 }
 
@@ -2454,15 +2460,117 @@ function firstGeolocation() {
 
 let accuracyCircle = null, followMode = true, lastSpeed = 0, lastSpeedPos = null, drivingMode = false, zoneAlertCooldown = false, zoneAlertTimer = null;
 
+/* ═══════════════════════════════════════
+   SUIVI CARTE — CENTRAGE ET CAP EN TEMPS RÉEL
+   Le cap affiché en mode "heading-up" est lissé en continu par une
+   boucle requestAnimationFrame plutôt qu'appliqué d'un coup à chaque
+   nouvelle position GPS, pour éviter les sauts de rotation. La source
+   du cap est le GPS (coords.heading) quand la vitesse est suffisante
+   pour qu'il soit fiable, sinon la boussole de l'appareil
+   (deviceorientation) — utile à l'arrêt ou à pied. Tout reste local :
+   ni le cap ni la position ne quittent l'appareil pour ce suivi.
+═══════════════════════════════════════ */
+const HEADING_SMOOTH_TAU_MS = 180;
+let lastGpsHeading = null, lastFixAt = null;
+let mapCompassHeading = null, mapCompassListener = null;
+let headingDisplay = null, headingRafId = null, headingLastT = null;
+let markerHeadingDisplay = null;
+
+function shortestDeltaDeg(from, to) { return ((to - from + 540) % 360) - 180; }
+
+function effectiveHeading() {
+  if (lastGpsHeading !== null && lastSpeed >= CFG.DRIVE_HEADING_MIN_KMH) return lastGpsHeading;
+  if (mapCompassHeading !== null) return mapCompassHeading;
+  return lastGpsHeading;
+}
+
+function onMapCompass(e) {
+  let h;
+  if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+  else if (typeof e.alpha === 'number') h = (360 - e.alpha) % 360;
+  else return;
+  mapCompassHeading = h;
+}
+function attachMapCompass() {
+  if (mapCompassListener) return;
+  const attach = () => {
+    mapCompassListener = onMapCompass;
+    if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', mapCompassListener, true);
+    else window.addEventListener('deviceorientation', mapCompassListener, true);
+  };
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission().then(p => { if (p === 'granted') attach(); }).catch(attach);
+  } else { attach(); }
+}
+function detachMapCompass() {
+  if (mapCompassListener) {
+    window.removeEventListener('deviceorientationabsolute', mapCompassListener, true);
+    window.removeEventListener('deviceorientation', mapCompassListener, true);
+    mapCompassListener = null;
+  }
+  mapCompassHeading = null;
+}
+
+function headingLoopFrame(now) {
+  if (!state.map || typeof state.map.setBearing !== 'function') { headingRafId = null; headingLastT = null; return; }
+  const dt = headingLastT ? Math.min(now - headingLastT, 100) : 16;
+  headingLastT = now;
+  const tracking = state.watchId !== null;
+  const rawTarget = tracking ? effectiveHeading() : null;
+  const alpha = 1 - Math.exp(-dt / HEADING_SMOOTH_TAU_MS);
+
+  // Flèche du marqueur 2D — toujours alignée sur le cap dès qu'il est connu,
+  // indépendamment du mode suivi de la carte (identique au comportement
+  // précédent de la petite flèche de cap, juste lissé désormais).
+  if (rawTarget !== null) {
+    if (markerHeadingDisplay === null) markerHeadingDisplay = rawTarget;
+    markerHeadingDisplay = ((markerHeadingDisplay + shortestDeltaDeg(markerHeadingDisplay, rawTarget) * alpha) % 360 + 360) % 360;
+    applyMarkerArrowRotation(markerHeadingDisplay);
+  }
+
+  // Rotation de la carte — seulement en mode suivi/conduite (heading-up).
+  const mapActive = tracking && (followMode || drivingMode);
+  const mapTarget = mapActive ? rawTarget : 0;
+  if (headingDisplay === null) headingDisplay = (mapTarget !== null ? mapTarget : 0);
+  if (mapTarget !== null) {
+    headingDisplay = ((headingDisplay + shortestDeltaDeg(headingDisplay, mapTarget) * alpha) % 360 + 360) % 360;
+  }
+  state.map.setBearing(-headingDisplay);
+
+  const mapSettled = !mapActive && Math.abs(shortestDeltaDeg(headingDisplay, 0)) < 0.3;
+  if (!tracking && mapSettled) {
+    state.map.setBearing(0);
+    headingDisplay = null; headingRafId = null; headingLastT = null;
+    return;
+  }
+  headingRafId = requestAnimationFrame(headingLoopFrame);
+}
+function ensureHeadingLoop() {
+  if (headingRafId !== null) return;
+  headingLastT = null;
+  headingRafId = requestAnimationFrame(headingLoopFrame);
+}
+
+function setFollowMode(on) {
+  followMode = on;
+  const btn = document.getElementById('btn-locate');
+  if (btn) btn.classList.toggle('tracking', on);
+  if (on) { attachMapCompass(); ensureHeadingLoop(); }
+  else { detachMapCompass(); }
+}
+
 function startWatch() {
   if (state.watchId !== null) return;
   if (!navigator.geolocation) return;
+  if (followMode) attachMapCompass();
+  ensureHeadingLoop();
   state.watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const lat = pos.coords.latitude, lng = pos.coords.longitude;
       if (!isFinite(lat) || !isFinite(lng)) return;
       updateUserMarker(lat, lng, pos.coords.heading);
       updateAccuracyCircle(lat, lng, pos.coords.accuracy);
+      if (typeof pos.coords.heading === 'number' && isFinite(pos.coords.heading)) lastGpsHeading = pos.coords.heading;
       // Utiliser coords.speed natif si disponible (plus précis que calcul)
       if (pos.coords.speed !== null && isFinite(pos.coords.speed)) {
         lastSpeed = pos.coords.speed * 3.6; // m/s → km/h
@@ -2478,16 +2586,18 @@ function startWatch() {
       }
       updateDrivingMode();
       if ((drivingMode || followMode) && state.map) {
-        state.map.panTo([lat, lng], { animate: true, duration: 0.4 });
-        const heading = pos.coords.heading;
-        if (heading !== null && isFinite(heading) && lastSpeed >= CFG.DRIVE_HEADING_MIN_KMH) {
-          if (typeof state.map.setBearing === 'function') state.map.setBearing(-heading);
-        }
+        // Durée de glisse adaptée à l'intervalle réel entre deux positions GPS,
+        // pour un déplacement continu plutôt qu'un saut suivi d'un arrêt.
+        const nowT = Date.now();
+        const glideS = lastFixAt ? Math.min(Math.max((nowT - lastFixAt) / 1000, 0.6), 3) : 1;
+        lastFixAt = nowT;
+        state.map.panTo([lat, lng], { animate: true, duration: glideS, easeLinearity: 0.9 });
       }
       checkZoneAlert(lat, lng);
       onUserMoved(lat, lng);
       debouncedReverseGeo(lat, lng);
       updateZonePill();
+      if (navRouteLine) updateRouteProgress(lat, lng);
       showTakenBtn(hasActiveSignalNearby());
       if (navDirectionActive) updateNavDirectionDisplay();
     },
@@ -2495,7 +2605,10 @@ function startWatch() {
     { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 }
   );
 }
-function stopWatch() { if (state.watchId !== null) { navigator.geolocation.clearWatch(state.watchId); state.watchId = null; } }
+function stopWatch() {
+  if (state.watchId !== null) { navigator.geolocation.clearWatch(state.watchId); state.watchId = null; }
+  detachMapCompass();
+}
 
 function updateLayout() {
   const cs = getComputedStyle(document.documentElement);
@@ -2512,8 +2625,7 @@ function initMap() {
   state.map.on('zoomend', () => { for (const id of Object.keys(layers)) applyLayerVisibility(id); });
   state.map.on('dragstart', () => {
     if (followMode && !state.searchMode) {
-      followMode = false;
-      const btn = document.getElementById('btn-locate'); if (btn) btn.classList.remove('tracking');
+      setFollowMode(false);
     }
   });
   // Estompage de l'UI en cas d'inactivité — toute interaction avec la
@@ -2769,10 +2881,8 @@ function updateAccuracyCircle(lat, lng, accuracy) {
 function centerOnUser() {
   if (!state.map || !isFinite(state.lat) || !isFinite(state.lng)) { toast('Position non disponible', 'warn'); return; }
   if (state.searchMode) return; // En mode recherche, le centrage est automatique
-  followMode = !followMode;
-  const btn = document.getElementById('btn-locate'); if (btn) btn.classList.toggle('tracking', followMode);
+  setFollowMode(!followMode);
   if (followMode) { state.map.flyTo([state.lat, state.lng], Math.max(state.map.getZoom(), 16), { animate: true, duration: 0.6 }); toast('Suivi activé', 'ok'); }
-  else if (!drivingMode && typeof state.map.setBearing === 'function') { state.map.setBearing(0); }
 }
 /* ═══════════════════════════════════════
    SYSTÈME VITESSE — PASSAGER UNIQUEMENT
@@ -2857,7 +2967,8 @@ function updateDrivingMode() {
   if (isDriving === drivingMode) return;
   drivingMode = isDriving;
   document.body.classList.toggle('driving-mode', drivingMode);
-  if (!drivingMode && !followMode && state.map && typeof state.map.setBearing === 'function') state.map.setBearing(0);
+  // Le retour au nord se fait en douceur via headingLoopFrame, pas de saut instantané ici.
+  if (drivingMode) ensureHeadingLoop();
 }
 function checkZoneAlert(lat, lng) {
   if (zoneAlertCooldown || !state.searchMode) return;
@@ -3907,6 +4018,8 @@ let navHeading = null;
 let navOrientationListener = null;
 let navRoute = null;       // { coords:[[lat,lng]...], steps:[...], distance, duration }
 let navRouteLine = null;   // L.polyline
+let navRouteFullCoords = null; // copie brute des points OSRM, jamais tronquée
+let navRouteProgressIdx = 0;   // prochain point du tracé non encore dépassé
 
 function onNavOrientation(e) {
   let h;
@@ -3962,11 +4075,31 @@ async function fetchRoadRoute(lat1, lng1, lat2, lng2) {
 function drawRoutePolyline(coords) {
   removeRouteLine();
   if (!state.map || !L || !coords || !coords.length) return;
-  navRouteLine = L.polyline(coords, { className: 'nav-route-line', color: '#16a34a', weight: 6, opacity: 0.55, lineCap: 'round', lineJoin: 'round' }).addTo(state.map);
+  navRouteLine = L.polyline(coords, { className: 'nav-route-line', color: '#2563eb', weight: 6, opacity: 0.65, lineCap: 'round', lineJoin: 'round' }).addTo(state.map);
+  navRouteFullCoords = coords;
+  navRouteProgressIdx = 0;
 }
 function removeRouteLine() {
   if (navRouteLine && state.map) state.map.removeLayer(navRouteLine);
   navRouteLine = null;
+  navRouteFullCoords = null;
+  navRouteProgressIdx = 0;
+}
+/* Retire du tracé la portion déjà parcourue au fil de la progression réelle
+   — recherche bornée à une fenêtre de points suivants (pas de scan complet
+   à chaque position), le tracé démarre toujours à la position actuelle. */
+function updateRouteProgress(lat, lng) {
+  if (!navRouteLine || !navRouteFullCoords || navRouteFullCoords.length < 2) return;
+  const searchEnd = Math.min(navRouteFullCoords.length - 1, navRouteProgressIdx + 40);
+  let bestIdx = navRouteProgressIdx, bestD = Infinity;
+  for (let i = navRouteProgressIdx; i <= searchEnd; i++) {
+    const c = navRouteFullCoords[i];
+    const d = distanceM(lat, lng, c[0], c[1]);
+    if (d < bestD) { bestD = d; bestIdx = i; }
+  }
+  navRouteProgressIdx = bestIdx;
+  const remaining = navRouteFullCoords.slice(navRouteProgressIdx);
+  navRouteLine.setLatLngs([[lat, lng], ...remaining]);
 }
 const MANEUVER_FR = { left: 'à gauche', right: 'à droite', straight: 'tout droit', 'slight left': 'légèrement à gauche', 'slight right': 'légèrement à droite', 'sharp left': 'fortement à gauche', 'sharp right': 'fortement à droite', uturn: 'demi-tour' };
 function maneuverText(step) {
