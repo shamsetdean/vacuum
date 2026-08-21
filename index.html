@@ -273,7 +273,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   font-size: 13px; font-weight: 700; letter-spacing: -0.2px;
   flex-shrink: 0;
 }
-.logo-mark { width: 28px; height: 28px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(22,163,74,0.3); }
+.logo-mark { width: 30px; height: 30px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(22,163,74,0.3); }
 .logo-name b { color: var(--accent); }
 .logo-beta { font-size: 9px; font-weight: 800; letter-spacing: 0.6px; color: var(--warn); background: var(--warn-soft); padding: 2px 6px; border-radius: 6px; margin-left: 6px; text-transform: uppercase; align-self: center; }
 
@@ -295,7 +295,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 @keyframes dot-pulse { 0%,100%{ box-shadow:0 0 0 0 rgba(22,163,74,0.5); } 50%{ box-shadow:0 0 0 6px rgba(22,163,74,0); } }
 
-.icon-btn { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: transform 0.12s, color 0.2s, box-shadow 0.15s; }
+.icon-btn { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-2); transition: transform 0.12s, color 0.2s, box-shadow 0.15s; }
 .icon-btn:active { transform: scale(0.93); }
 .icon-btn:hover { color: var(--text); }
 
@@ -316,7 +316,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 @keyframes badgeIn { from { opacity:0; transform:scale(0.85) translateY(-4px); } to { opacity:1; transform:scale(1) translateY(0); } }
 
 /* ═══ ZONE PILL ═══ */
-.zone-pill { position: fixed; top: calc(var(--safe-t) + 122px); left: 50%; transform: translateX(-50%); z-index: 15; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 8px 16px; pointer-events: none; white-space: nowrap; transition: opacity 0.3s, transform 0.3s; opacity: 1; }
+.zone-pill { position: fixed; top: calc(var(--safe-t) + 175px); left: 50%; transform: translateX(-50%); z-index: 15; display: flex; align-items: center; gap: 9px; border-radius: 999px; padding: 8px 16px; pointer-events: none; white-space: nowrap; transition: opacity 0.3s, transform 0.3s; opacity: 1; }
 .zone-pill.hidden { opacity: 0; transform: translateX(-50%) translateY(-6px); pointer-events: none; }
 .zp-prob { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.3px; transition: color 0.4s; }
 .zp-label { font-size: 12px; color: var(--text-2); font-weight: 500; }
@@ -328,7 +328,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
    sinon avec le cap GPS (déplacement), sinon le nord. */
 .nav-direction {
   position: fixed;
-  top: calc(var(--safe-t) + 62px);
+  top: calc(var(--safe-t) + 103px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 21;
@@ -342,20 +342,20 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 }
 .nav-direction.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(-8px); }
 .nav-direction-ring {
-  width: 44px; height: 44px;
+  width: 50px; height: 50px;
   border-radius: 50%;
   background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%);
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-accent);
   flex-shrink: 0;
 }
-.nav-direction-arrow { width: 22px; height: 22px; transition: transform 0.25s ease; }
+.nav-direction-arrow { width: 24px; height: 24px; transition: transform 0.25s ease; }
 .nav-direction-info { display: flex; flex-direction: column; min-width: 0; padding-right: 4px; }
 .nav-direction-name { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
 .nav-direction-dist { font-size: 12.5px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
 .nav-direction-step { font-size: 11px; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; margin-top: 1px; }
-.nav-direction-close { width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
-.nav-direction-close svg { width: 11px; height: 11px; }
+.nav-direction-close { width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: center; color: var(--text-2); flex-shrink: 0; }
+.nav-direction-close svg { width: 13px; height: 13px; }
 /* Tracé d'itinéraire — tirets glissants en boucle (aucun recalcul JS par
    frame) donnant une impression de flux continu vers la destination. */
 .nav-route-line { filter: drop-shadow(0 1px 3px rgba(0,0,0,0.25)) drop-shadow(0 0 6px rgba(37,99,235,0.6)); stroke-dasharray: 14 12; animation: navRouteFlow 1s linear infinite; }
@@ -376,17 +376,17 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-radius: 28px;
+  border-radius: 30px;
   overflow: hidden;
 }
 .stack-btn {
-  width: 52px; height: 52px;
+  width: 58px; height: 58px;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-2);
   transition: transform 0.12s ease, color 0.2s;
 }
 .stack-btn:active { transform: scale(0.92); }
-.stack-divider { width: 30px; height: 1px; background: var(--border-soft); flex-shrink: 0; }
+.stack-divider { width: 34px; height: 1px; background: var(--border-soft); flex-shrink: 0; }
 .btn-locate { color: var(--blue); transition: color 0.2s, box-shadow 0.2s; }
 .btn-locate.tracking { color: var(--accent); box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
 .filter-btn { left: calc(var(--safe-l) + 14px); }
@@ -444,12 +444,12 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   pointer-events: auto;
 }
 .fab-circle-cap {
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 700;
   color: var(--text);
   background: rgba(255,255,255,0.88);
-  padding: 3px 9px;
-  border-radius: 8px;
+  padding: 4px 10px;
+  border-radius: 9px;
   box-shadow: 0 1px 4px rgba(15,29,54,0.12);
   white-space: nowrap;
 }
@@ -468,29 +468,29 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 }
 .fab:active, .fab-search:active, .fab-ar:active, .fab-poi:active { transform: scale(0.93); }
 .fab:disabled, .fab-search:disabled { opacity: 0.6; cursor: not-allowed; }
-.fab svg, .fab-search svg, .fab-ar svg, .fab-poi svg { width: 22px; height: 22px; flex-shrink: 0; }
+.fab svg, .fab-search svg, .fab-ar svg, .fab-poi svg { width: 24px; height: 24px; flex-shrink: 0; }
 
 /* Bouton AR — rond compact */
 .fab-ar {
-  width: 52px; height: 52px;
+  width: 58px; height: 58px;
   background: rgba(0,0,0,0.82);
   border: 1.5px solid rgba(255,255,255,0.16);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
-.fab-ar svg { width: 20px; height: 20px; }
+.fab-ar svg { width: 22px; height: 22px; }
 
 /* Bouton POI — violet */
 .fab-poi {
-  width: 52px; height: 52px;
+  width: 58px; height: 58px;
   background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
   box-shadow: 0 4px 14px rgba(124,58,237,0.35);
 }
-.fab-poi svg { width: 20px; height: 20px; }
+.fab-poi svg { width: 22px; height: 22px; }
 
 /* Bouton Je cherche — bleu */
 .fab-search {
-  width: 60px; height: 60px;
+  width: 68px; height: 68px;
   background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
   box-shadow: var(--shadow-search), inset 0 1px 0 rgba(255,255,255,0.2);
 }
@@ -502,14 +502,14 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 /* Bouton Place libre — vert, action principale donc rond plus grand */
 .fab {
-  width: 76px; height: 76px;
+  width: 86px; height: 86px;
   background: linear-gradient(180deg, #1ec25c 0%, #16a34a 100%);
   box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 
 /* ═══ INFO BAR ═══ */
-.info-bar { position: fixed; top: calc(var(--safe-t) + 122px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
+.info-bar { position: fixed; top: calc(var(--safe-t) + 175px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
 .info-bar.empty { opacity: 0; }
 .ib-traffic { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
 .ib-traffic.ok   { color: var(--accent); }
@@ -532,22 +532,22 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 /* ═══ MARQUEUR DE POSITION — "c'est moi", suit et pivote sur la carte :
    anneau qui pulse + flèche de cap, rotation pilotée par headingLoopFrame
    (même cap lissé que la rotation de la carte) ═══ */
-.user-dot-wrap { position: relative; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-.user-dot-pulse { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: rgba(37,99,235,0.6); animation: userDotPulse 1.8s ease-out infinite; }
+.user-dot-wrap { position: relative; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.user-dot-pulse { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: rgba(37,99,235,0.6); animation: userDotPulse 1.8s ease-out infinite; }
 @keyframes userDotPulse { 0% { transform: scale(0.6); opacity: 0.9; } 70% { transform: scale(3); opacity: 0; } 100% { opacity: 0; } }
 @keyframes userDotBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-.user-dot-arrow { position: relative; width: 36px; height: 36px; z-index: 2; filter: drop-shadow(0 0 6px rgba(37,99,235,0.75)) drop-shadow(0 2px 4px rgba(0,0,0,0.3)); will-change: transform; }
+.user-dot-arrow { position: relative; width: 40px; height: 40px; z-index: 2; filter: drop-shadow(0 0 6px rgba(37,99,235,0.75)) drop-shadow(0 2px 4px rgba(0,0,0,0.3)); will-change: transform; }
 
 /* ═══ RONDS DE POSITION — variante photo de profil, façon "avatar pin"
    (cf. capture partagée) : photo dans un cercle blanc avec ombre, petit
    point-repère en dessous, badge de cap orbitant en haut à droite ═══ */
-.user-avatar-wrap { position: relative; width: 60px; height: 78px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
-.user-avatar-pin { width: 56px; height: 56px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px var(--blue); overflow: hidden; background: #fff; flex-shrink: 0; animation: userDotBreathe 1.8s ease-in-out infinite; }
+.user-avatar-wrap { position: relative; width: 68px; height: 88px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.user-avatar-pin { width: 63px; height: 63px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 3px var(--blue); overflow: hidden; background: #fff; flex-shrink: 0; animation: userDotBreathe 1.8s ease-in-out infinite; }
 .user-avatar-pin img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.user-avatar-tail { width: 8px; height: 8px; border-radius: 50%; background: rgba(15,29,54,0.28); margin-top: 4px; }
-.user-avatar-heading-badge { position: absolute; top: -4px; right: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--blue); border: 2.5px solid #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(37,99,235,0.5); opacity: 0; transition: opacity 0.2s ease; }
+.user-avatar-tail { width: 9px; height: 9px; border-radius: 50%; background: rgba(15,29,54,0.28); margin-top: 4px; }
+.user-avatar-heading-badge { position: absolute; top: -4px; right: -2px; width: 27px; height: 27px; border-radius: 50%; background: var(--blue); border: 2.5px solid #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(37,99,235,0.5); opacity: 0; transition: opacity 0.2s ease; }
 .user-avatar-heading-badge.visible { opacity: 1; }
-.user-avatar-heading-arrow { width: 12px; height: 12px; transition: transform 0.2s ease; }
+.user-avatar-heading-arrow { width: 14px; height: 14px; transition: transform 0.2s ease; }
 .s-marker { width: 14px; height: 14px; background: var(--accent); border: 2.5px solid #fff; border-radius: 50%; box-shadow: 0 0 12px rgba(22,163,74,0.5), 0 2px 4px rgba(0,0,0,0.15); animation: signal-pop 0.45s cubic-bezier(0.4,0,0.2,1) forwards; }
 @keyframes signal-pop { 0%{ transform:scale(0); } 70%{ transform:scale(1.3); } 100%{ transform:scale(1); } }
 .accuracy-ring { border-radius: 50%; background: rgba(37,99,235,0.08); border: 1.5px solid rgba(37,99,235,0.25); pointer-events: none; }
@@ -607,10 +607,10 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 .taken-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ═══ HISTORIQUE ═══ */
-.hist-btn { position: fixed; top: 50%; transform: translateY(-50%); left: 16px; width: 48px; height: 48px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s, transform .15s, box-shadow .2s; }
+.hist-btn { position: fixed; top: 50%; transform: translateY(-50%); left: 16px; width: 54px; height: 54px; border-radius: 50%; background: var(--glass-solid); border: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 1000; transition: background .2s, transform .15s, box-shadow .2s; }
 .hist-btn:active { transform: scale(0.93); }
-.hist-btn svg { width: 20px; height: 20px; color: var(--text); }
-.hist-btn .hist-badge { position: absolute; top: -3px; right: -3px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: none; align-items: center; justify-content: center; }
+.hist-btn svg { width: 22px; height: 22px; color: var(--text); }
+.hist-btn .hist-badge { position: absolute; top: -4px; right: -4px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: none; align-items: center; justify-content: center; }
 .hist-btn .hist-badge.visible { display: flex; }
 .hist-panel { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 18px 18px 0 0; padding: 0 0 env(safe-area-inset-bottom); box-shadow: 0 -4px 24px rgba(0,0,0,.14); z-index: 2000; transform: translateY(100%); transition: transform .3s cubic-bezier(.32,.72,0,1); max-height: 60vh; overflow-y: auto; }
 .hist-panel.open { transform: translateY(0); }
@@ -650,7 +650,7 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 
 /* ═══ MODE CONDUITE ═══ */
 body.driving-mode .info-bar { display: none; }
-.drive-badge { position: fixed; top: calc(var(--safe-t, 0px) + 58px); left: 50%; transform: translateX(-50%); display:none; background: rgba(22,163,74,0.92); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; z-index: 2000; display: none; letter-spacing: 0.3px; }
+.drive-badge { position: fixed; top: calc(var(--safe-t, 0px) + 72px); left: 50%; transform: translateX(-50%); display:none; background: rgba(22,163,74,0.92); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; z-index: 2000; display: none; letter-spacing: 0.3px; }
 body.driving-mode .drive-badge { display: block; }
 
 /* ═══ BADGE VITESSE — dans la topbar ═══ */
@@ -677,7 +677,7 @@ body.driving-mode .drive-badge { display: block; }
 .speed-badge-limit { font-size: 10px; opacity: 0.75; }
 
 /* ═══ ALERTE ZONE ═══ */
-.zone-alert { position: fixed; top: calc(var(--safe-t, 0px) + 110px); left: 50%; transform: translateX(-50%); background: rgba(22,163,74,0.95); color: #fff; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 24px; z-index: 2001; opacity: 0; pointer-events: none; transition: opacity .3s; white-space: nowrap; }
+.zone-alert { position: fixed; top: calc(var(--safe-t, 0px) + 175px); left: 50%; transform: translateX(-50%); background: rgba(22,163,74,0.95); color: #fff; font-size: 13px; font-weight: 700; padding: 8px 18px; border-radius: 24px; z-index: 2001; opacity: 0; pointer-events: none; transition: opacity .3s; white-space: nowrap; }
 .zone-alert.show { opacity: 1; }
 
 /* ═══ AR OVERLAY ═══ */
@@ -1186,7 +1186,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
       <span class="speed-badge-limit" id="speed-limit" style="display:none"></span>
     </div>
     <button class="icon-btn glass tap-target" id="menu-btn" aria-label="Menu et paramètres">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>
     </button>
   </div>
 </header>
@@ -1215,11 +1215,11 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 <!-- BOUTON EMPILÉ — mode nuit (haut) + recentrage (bas), façon Find My -->
 <div class="locate-stack glass" id="locate-stack">
   <button class="stack-btn night-btn" id="night-btn" onclick="toggleNightMode()" aria-label="Mode nuit" title="Mode nuit">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
   </button>
   <div class="stack-divider" aria-hidden="true"></div>
   <button class="stack-btn btn-locate tap-target" id="btn-locate" aria-label="Recentrer sur ma position">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
   </button>
 </div>
 
@@ -1978,18 +1978,18 @@ function buildUserIcon() {
           + '<div class="user-avatar-pin"><img src="' + state.profilePhoto + '" alt=""></div>'
           + '<div class="user-avatar-tail"></div>'
           + '</div>',
-      iconSize: [60, 78], iconAnchor: [30, 74], className: ''
+      iconSize: [68, 88], iconAnchor: [34, 84], className: ''
     });
   }
   return L.divIcon({
     html: '<div class="user-dot-wrap"><div class="user-dot-pulse"></div>'
-        + '<div class="user-dot-arrow"><svg viewBox="0 0 36 36" width="36" height="36">'
+        + '<div class="user-dot-arrow"><svg viewBox="0 0 36 36" width="40" height="40">'
         + '<defs><linearGradient id="udag" x1="0" y1="0" x2="0" y2="1">'
         + '<stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#1d4ed8"/>'
         + '</linearGradient></defs>'
         + '<path d="M18 2 L32 32 L18 24.5 L4 32 Z" fill="url(#udag)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>'
         + '</svg></div></div>',
-    iconSize: [52, 52], iconAnchor: [26, 26], className: ''
+    iconSize: [58, 58], iconAnchor: [29, 29], className: ''
   });
 }
 function updateUserMarker(lat, lng, heading) {
