@@ -32,6 +32,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous" defer></script>
 <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js" crossorigin="anonymous" defer></script>
+<!-- Fond de carte vectoriel OpenFreeMap (gratuit, sans clé) affiché par MapLibre GL sous la carte Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" integrity="sha256-qx5w1Z7EBGW65+cDDaLzzPKBM/1QLmK9WY7vut/XpzI=" crossorigin="anonymous">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" integrity="sha256-RamwepGJzlYFTGIKlHzPQeKR5YyV6bYVM7dAqqZe5cs=" crossorigin="anonymous" defer></script>
 
 <script>
 /* ═══════════════════════════════════════════════════════
@@ -245,6 +248,9 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 /* ═══ MAP ═══ */
 #map { position: fixed; inset: 0; z-index: 1; filter: saturate(0.92) brightness(1.02); }
+/* Fond de carte vectoriel : sous Leaflet, synchronisé (centre, zoom, rotation), sans interaction propre */
+#basemap { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: #f2efe9; filter: saturate(0.92) brightness(1.02); }
+#map.leaflet-container { background: transparent; }
 
 /* ═══ GLASS ═══ */
 .glass {
@@ -953,7 +959,7 @@ body.driving-mode.ui-idle .locate-btn {
 /* ═══ DARK MODE ═══ */
 @media (prefers-color-scheme: dark) {
   :root { --bg:#0e1320; --bg-grad:radial-gradient(120% 80% at 20% 0%, #182236 0%, #0e1320 60%, #060912 100%); --glass:rgba(28,38,60,0.55); --glass-soft:rgba(28,38,60,0.4); --glass-solid:rgba(28,38,60,0.78); --border:rgba(255,255,255,0.08); --border-soft:rgba(255,255,255,0.06); --text:#eaf0fb; --text-2:#b0bcd4; --muted:#6b7896; }
-  #map { filter: saturate(0.85) brightness(0.82) hue-rotate(180deg) invert(0.92); }
+  #map, #basemap { filter: saturate(0.85) brightness(0.82) hue-rotate(180deg) invert(0.92); }
   .leaflet-popup-content-wrapper { background: rgba(28,38,60,0.92) !important; color: var(--text) !important; }
   .leaflet-popup-tip { background: rgba(28,38,60,0.92) !important; }
   .consent-row { background: rgba(255,255,255,0.04); }
@@ -961,7 +967,7 @@ body.driving-mode.ui-idle .locate-btn {
   .hist-panel { background: #0e1320; }
 }
 /* Mode nuit manuel (bouton lune) */
-body.night-mode #map { filter: saturate(0.75) brightness(0.70) hue-rotate(180deg) invert(0.92) !important; }
+body.night-mode #map, body.night-mode #basemap { filter: saturate(0.75) brightness(0.70) hue-rotate(180deg) invert(0.92) !important; }
 body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 
 /* ═══ Historique POI ═══ */
@@ -1002,6 +1008,7 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 </head>
 <body>
 
+<div id="basemap" aria-hidden="true"></div>
 <div id="map" role="application" aria-label="Carte des places libres"></div>
 
 <!-- AR Overlay -->
@@ -2653,11 +2660,68 @@ function updateLayout() {
 }
 function showFatal(msg) { const f = document.getElementById('fatal'); if (msg) document.getElementById('fatal-msg').textContent = msg; f.classList.add('show'); }
 
+/* ═══════════════════════════════════════
+   FOND DE CARTE : OpenFreeMap (vectoriel, gratuit, sans clé)
+   MapLibre GL dessine le fond dans #basemap, sous la carte Leaflet,
+   et suit exactement son centre, son zoom et sa rotation (mode
+   « carte orientée »). Leaflet garde toute l'interaction et les
+   calques (signalements, lieux, itinéraires).
+   Secours automatique : si WebGL ou OpenFreeMap sont indisponibles,
+   bascule sur les tuiles raster d'OpenStreetMap.
+═══════════════════════════════════════ */
+const BASEMAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+const OFM_ATTRIBUTION = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Données © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contributeurs OpenStreetMap</a>';
+function hasWebGL() {
+  try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
+}
+function useRasterBasemap() {
+  if (!state.map || state.basemapMode === 'raster') return;
+  state.basemapMode = 'raster';
+  if (state.basemap) { try { state.basemap.remove(); } catch {} state.basemap = null; }
+  const el = document.getElementById('basemap'); if (el) el.style.display = 'none';
+  try { state.map.attributionControl.removeAttribution(OFM_ATTRIBUTION); } catch {}
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">contributeurs OpenStreetMap</a>', crossOrigin: 'anonymous' }).addTo(state.map);
+}
+function setupBasemap() {
+  const el = document.getElementById('basemap');
+  if (!el || typeof maplibregl === 'undefined' || !hasWebGL()) { useRasterBasemap(); return; }
+  const bearingOf = () => -(typeof state.map.getBearing === 'function' ? (state.map.getBearing() || 0) : 0);
+  let gl;
+  try {
+    const c = state.map.getCenter();
+    gl = new maplibregl.Map({
+      container: el, style: BASEMAP_STYLE,
+      center: [c.lng, c.lat], zoom: state.map.getZoom() - 1, bearing: bearingOf(),
+      interactive: false, attributionControl: false, fadeDuration: 0,
+      pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    });
+  } catch { useRasterBasemap(); return; }
+  state.basemap = gl; state.basemapMode = 'vector';
+  let loaded = false;
+  gl.once('load', () => { loaded = true; });
+  gl.on('error', () => { if (!loaded) useRasterBasemap(); });
+  setTimeout(() => { if (!loaded) useRasterBasemap(); }, 12000);
+  // Leaflet zoom z (tuiles 256 px) correspond au zoom z-1 de MapLibre (tuiles 512 px)
+  const sync = () => {
+    if (state.basemapMode !== 'vector') return;
+    const c = state.map.getCenter();
+    gl.jumpTo({ center: [c.lng, c.lat], zoom: state.map.getZoom() - 1, bearing: bearingOf() });
+  };
+  state.map.on('move zoom rotate viewreset', sync);
+  state.map.on('resize', () => { if (state.basemapMode === 'vector') { gl.resize(); sync(); } });
+  state.map.on('zoomanim', (e) => {
+    if (state.basemapMode !== 'vector') return;
+    gl.easeTo({ center: [e.center.lng, e.center.lat], zoom: e.zoom - 1, bearing: bearingOf(), duration: 250, easing: t => 1 - Math.pow(1 - t, 3) });
+  });
+  state.map.attributionControl.addAttribution(OFM_ATTRIBUTION);
+  sync();
+}
+
 function initMap() {
   if (typeof L === 'undefined') { showFatal('Le moteur de carte (Leaflet) n\'a pas pu être chargé.'); return false; }
   const rotateOpts = (typeof L.Map.prototype.setBearing === 'function' || (L.Map && L.Map.mergeOptions)) ? { rotate: true, bearing: 0 } : {};
   state.map = L.map('map', { center: [state.lat, state.lng], zoom: 17, zoomControl: false, attributionControl: true, maxZoom: 19, ...rotateOpts });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OpenStreetMap · © CARTO', crossOrigin: 'anonymous' }).addTo(state.map);
+  setupBasemap();
   state.map.on('zoomend', () => { for (const id of Object.keys(layers)) applyLayerVisibility(id); });
   state.map.on('dragstart', () => {
     if (followMode && !state.searchMode) {
