@@ -517,12 +517,6 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 /* ═══ INFO BAR ═══ */
 .info-bar { position: fixed; top: calc(var(--safe-t) + 175px); left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; pointer-events: none; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; transition: opacity 0.3s; }
 .info-bar.empty { opacity: 0; }
-.ib-traffic { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-.ib-traffic.ok   { color: var(--accent); }
-.ib-traffic.warn { color: var(--warn); }
-.ib-traffic.bad  { color: var(--danger); }
-.ibt-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.ib-sep  { font-size: 11px; color: var(--muted); flex-shrink: 0; }
 .ib-addr { font-size: 11px; color: var(--text-2); font-weight: 500; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
 /* ═══ FEEDBACK + BURST ═══ */
@@ -1273,11 +1267,6 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
 
 <!-- INFO BAR -->
 <div class="info-bar glass empty" id="info-bar">
-  <div class="ib-traffic" id="ib-traffic" hidden>
-    <span class="ibt-dot" id="ibt-dot" aria-hidden="true"></span>
-    <span id="ibt-label">Fluide</span>
-  </div>
-  <span class="ib-sep" id="ib-sep" hidden>·</span>
   <span class="ib-addr" id="ib-addr">Localisation…</span>
 </div>
 
@@ -1610,7 +1599,6 @@ const CFG = Object.freeze({
   POI_RADIUS:       700,
   PARK_RADIUS:      800,
   POI_REFRESH:      3 * 60_000,
-  TRAFFIC_REFRESH:  90_000,
   REVERSE_DEBOUNCE_MS: 1_500,
   REVERSE_MOVE_M:   50,
   REVERSE_MIN_INTERVAL_MS: 5_000,
@@ -1899,31 +1887,6 @@ async function reverseGeo(lat, lng) {
     state.address = addr; state.lastReverseLat = lat; state.lastReverseLng = lng;
     cacheSet(cacheKey, addr); setStatus(addr);
   } catch {}
-}
-
-/* ═══ TRAFIC ESTIMÉ ═══ */
-function estimatedTraffic() {
-  const d = new Date(), h = d.getHours(), m = d.getMinutes(), day = d.getDay();
-  const isWeekend = day === 0 || day === 6, hMin = h * 60 + m;
-  const morning = !isWeekend && hMin >= 7*60+30 && hMin <= 9*60+30;
-  const evening = !isWeekend && hMin >= 17*60 && hMin <= 19*60+30;
-  const night = h < 6 || h >= 23;
-  let status, delay;
-  if (night) { status = 'ok'; delay = 0; }
-  else if (morning || evening) { const hard = evening && hMin >= 17*60+30 && hMin <= 18*60+30; status = hard ? 'bad' : 'warn'; delay = hard ? 6 + Math.floor(Math.random()*5) : 2 + Math.floor(Math.random()*3); }
-  else if (isWeekend && h >= 11 && h <= 18) { status = Math.random() > 0.7 ? 'warn' : 'ok'; delay = status === 'warn' ? 1 + Math.floor(Math.random()*2) : 0; }
-  else { status = 'ok'; delay = 0; }
-  return { status, delay };
-}
-function applyTraffic() {
-  const { status, delay } = estimatedTraffic();
-  const tb = document.getElementById('ib-traffic'), dot = document.getElementById('ibt-dot'), lbl = document.getElementById('ibt-label'), sep = document.getElementById('ib-sep');
-  if (!tb) return;
-  tb.hidden = false; sep.hidden = false;
-  tb.className = `ib-traffic ${status}`;
-  dot.style.background = status === 'ok' ? 'var(--accent)' : status === 'warn' ? 'var(--warn)' : 'var(--danger)';
-  lbl.textContent = status === 'ok' ? 'Fluide' : status === 'warn' ? `Ralenti +${delay}min` : `Bouchon +${delay}min`;
-  document.getElementById('info-bar').classList.remove('empty');
 }
 
 /* ═══ RENDU HEX ═══ */
@@ -4827,7 +4790,7 @@ function init() {
   state.userId = getOrCreateUserId();
   state.profilePhoto = loadProfilePhoto();
   if (!initMap()) return;
-  bindEvents(); applyStoredFilterPrefs(); updateLayout(); applyTraffic();
+  bindEvents(); applyStoredFilterPrefs(); updateLayout();
   document.getElementById('btn-locate')?.classList.toggle('tracking', followMode);
   initUiIdleWatcher();
   initWakeLock();
@@ -4845,7 +4808,6 @@ function init() {
     if (state.consent.geo) firstGeolocation();
     if (state.consent.geo && state.consent.watch) startWatch();
   }
-  setInterval(applyTraffic, CFG.TRAFFIC_REFRESH);
   setInterval(() => {
     const now = Date.now(), before = state.signals.length;
     state.signals = state.signals.filter(s => now - s.t < CFG.MAX_AGE_MS);
