@@ -1335,23 +1335,36 @@ body.night-mode .leaflet-control-attribution { opacity: 0.5; }
   <div class="modal">
     <div class="modal-handle" aria-hidden="true"></div>
     <h2 id="privacy-title">Politique de confidentialité</h2>
-    <p><small>Dernière mise à jour : août 2026</small></p>
+    <p><small>Dernière mise à jour : octobre 2026</small></p>
     <h3>Statut de l'application</h3>
     <p><strong>UFindGo est en phase de développement actif (version bêta).</strong></p>
     <h3>Qui traite vos données ?</h3>
-    <p>UFindGo est un projet bénévole et gratuit. Contact : <strong>shamsetdean@gmail.com</strong></p>
+    <p>UFindGo est un projet bénévole et gratuit d'Anthropotech Lab, édité par Shams Guettaf. Contact : <strong>shamsetdean@gmail.com</strong></p>
     <h3>Quelles données sont collectées ?</h3>
     <ul>
       <li>Identifiant anonyme généré aléatoirement (aucun lien avec votre identité)</li>
       <li>Position approximative au moment du signalement</li>
       <li>Horodatage serveur</li>
-      <li>Présence anonyme (identifiant + horodatage) pour afficher le nombre d'utilisateurs actifs — aucune position n'est associée à cette donnée</li>
+      <li>Présence anonyme (identifiant et horodatage) pour afficher le nombre d'utilisateurs actifs, sans aucune position associée</li>
     </ul>
-    <p><small>La photo de profil que vous pouvez ajouter reste uniquement sur votre appareil (stockage local) : elle n'est jamais envoyée à nos serveurs ni partagée avec d'autres utilisateurs.</small></p>
+    <p>Ces données sont enregistrées dans une base Google Firebase (Cloud Firestore), qui sert uniquement à partager les signalements entre utilisateurs.</p>
     <h3>Combien de temps ?</h3>
     <p>Les signalements sont conservés <strong>24 heures maximum</strong>, puis supprimés automatiquement. Les données de présence sont conservées <strong>1 heure maximum</strong>.</p>
+    <h3>Ce qui reste sur votre appareil</h3>
+    <p>Certaines informations sont gardées uniquement dans le stockage local de votre navigateur et ne sont jamais envoyées à nos serveurs : votre identifiant anonyme, vos choix de consentement, vos filtres d'affichage, vos signalements récents, l'historique de vos lieux et de vos contributions, et la photo de profil si vous en ajoutez une. Elles disparaissent si vous videz les données du site dans votre navigateur.</p>
+    <h3>Services tiers utilisés</h3>
+    <p>Pour fonctionner, UFindGo s'appuie sur des services libres ou gratuits. Comme pour toute connexion à un site, chacun reçoit votre adresse IP lors de ses réponses.</p>
+    <ul>
+      <li><strong>OpenFreeMap</strong> : fond de carte. Il reçoit la zone de carte affichée.</li>
+      <li><strong>OpenStreetMap</strong> : fond de carte de secours, si OpenFreeMap est indisponible. Il reçoit la zone de carte affichée.</li>
+      <li><strong>Nominatim (fondation OpenStreetMap)</strong> : recherche d'adresses et affichage de l'adresse où vous vous trouvez. Il reçoit le texte recherché ou votre position.</li>
+      <li><strong>OSRM (router.project-osrm.org et routing.openstreetmap.de)</strong> : calcul des itinéraires. Il reçoit votre point de départ et votre destination.</li>
+      <li><strong>unpkg</strong> : chargement des bibliothèques d'affichage de la carte (Leaflet et MapLibre).</li>
+      <li><strong>GitHub Pages</strong> : hébergement de l'application.</li>
+    </ul>
+    <p>Les données cartographiques sont © les contributeurs OpenStreetMap, sous licence ODbL. Le partage de position par SMS crée un message contenant un lien Google Maps vers votre position : il n'est envoyé qu'à la personne que vous choisissez, et seulement si vous validez l'envoi.</p>
     <h3>Vos droits</h3>
-    <p>Retrait du consentement, effacement des données, réclamation auprès de la <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">CNIL</a>.</p>
+    <p>Vous pouvez retirer votre consentement et effacer vos données à tout moment avec le bouton « Effacer toutes mes données » des réglages. Pour toute autre demande, écrivez à shamsetdean@gmail.com. Vous pouvez aussi adresser une réclamation à la <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">CNIL</a>.</p>
     <div class="modal-actions"><button class="btn btn-primary" id="privacy-close">J'ai compris</button></div>
   </div>
 </div>
