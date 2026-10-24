@@ -562,6 +562,9 @@ body.driving-mode .fab-wrap { bottom: calc(var(--safe-b) + 8px); }
 /* ═══ MODALS ═══ */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15,29,54,0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: flex-end; justify-content: center; padding: 0; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
 .modal-backdrop.open { opacity: 1; pointer-events: auto; }
+/* Quand une fenêtre ou le panneau des lieux est ouvert, les boutons flottants passent derrière elle */
+body:has(.modal-backdrop.open) :is(.hist-btn, .taken-btn, .locate-btn, .drive-badge, .zone-alert),
+body:has(.poi-panel-backdrop.open) :is(.hist-btn, .taken-btn, .locate-btn, .drive-badge, .zone-alert) { visibility: hidden; pointer-events: none; }
 .modal { width: 100%; max-width: 520px; background: var(--glass-solid); border: 1px solid var(--border); border-radius: var(--r-xl) var(--r-xl) 0 0; backdrop-filter: var(--blur-lg); -webkit-backdrop-filter: var(--blur-lg); box-shadow: var(--shadow-3); padding: 24px 22px calc(22px + var(--safe-b)); max-height: 85vh; overflow-y: auto; -webkit-overflow-scrolling: touch; transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.32,0.72,0,1); }
 .modal-backdrop.open .modal { transform: translateY(0); }
 @media (min-width: 640px) { .modal-backdrop { align-items: center; padding: 24px; } .modal { border-radius: var(--r-xl); } }
